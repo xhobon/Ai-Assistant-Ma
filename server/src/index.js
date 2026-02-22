@@ -654,6 +654,17 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
     reply = `抱歉，AI 服务暂时不可用：${err.message}`;
   }
 
+  // 兜底：用户明确说「打开 XXX」且开启了本机执行，但 AI 没返回 [CMD] 时，强制返回 open -a
+  if (localExecution && message && !/\[CMD\]/.test(reply)) {
+    const openMatch = message.match(/(?:帮我)?打开\s+([^\s，。！？]+)/i);
+    if (openMatch) {
+      const raw = openMatch[1].trim();
+      const appNames = { wps: "WPS", safari: "Safari", chrome: "Google Chrome", 日历: "Calendar", 邮件: "Mail", 备忘录: "Notes", 终端: "Terminal" };
+      const appName = appNames[raw.toLowerCase()] || raw.replace(/^(\S)/, (_, c) => c.toUpperCase() + raw.slice(1));
+      reply = `[CMD]open -a "${appName}"[/CMD]`;
+    }
+  }
+
   if (conversation) {
     await prisma.message.create({
       data: { conversationId: conversation.id, role: "assistant", content: reply }
