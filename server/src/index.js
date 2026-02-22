@@ -616,7 +616,10 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
   let systemParts = ["你是专业、可靠的AI助理，请用中文简洁回答。"];
   if (localExecution) {
     systemParts.push(
-      "当需要查看或操作用户本机上的信息时（如列出目录、读文件、系统信息），或当用户明确要求打开某个应用时，你可以输出一条 Shell 命令，格式为：[CMD]一条命令[/CMD]。只输出一条，且仅当确实需要执行时才输出。客户端会征得用户同意后在本机执行并把结果发回，你再根据结果用中文回答。命令应简洁、安全：信息类用 ls、cat、pwd、date、whoami、df -h 等；在 macOS 上打开应用用 open -a \"应用名\"（如 open -a \"WPS\"、open -a Safari）。不要使用 rm、格式化、sudo 等危险操作。"
+      "【本机执行】当前对话已开启本机执行。你必须用以下方式响应，否则用户无法在电脑上执行操作：\n" +
+      "1) 当用户说「帮我打开 XXX」「打开 XXX」时，你必须且只能回复一行 [CMD]open -a \"XXX\"[/CMD]，不要给任何手动操作步骤。例如用户说「帮我打开 wps」则回复：[CMD]open -a \"WPS\"[/CMD]。常见应用名：WPS、Safari、Chrome、Notes、Calendar、Mail、Terminal。\n" +
+      "2) 当需要查看本机信息（目录、读文件、系统信息）时，用 [CMD]命令[/CMD] 格式输出一条安全命令（如 ls、pwd、date、whoami、df -h、cat 某文件），客户端会征得用户同意后执行并把结果发回，你再根据结果用中文回答。\n" +
+      "禁止：给出手动操作步骤代替 [CMD]；使用 rm、mv、sudo、格式化等危险命令。"
     );
   }
   if (userContext && String(userContext).trim()) {
