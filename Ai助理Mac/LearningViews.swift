@@ -351,6 +351,7 @@ struct SearchBar: View {
             TextField("搜索词汇/短句/例句", text: $text)
                 .font(.subheadline)
                 .textFieldStyle(.plain)
+                .foregroundStyle(AppTheme.inputText)
             if !text.isEmpty {
                 Button { text = "" } label: {
                     Image(systemName: "xmark.circle.fill")

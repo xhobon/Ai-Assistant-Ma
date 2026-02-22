@@ -235,6 +235,10 @@ struct AppTheme {
     static let textTertiary = ModernColorSystem.Neutral.gray500
     static let textMuted = ModernColorSystem.Neutral.gray400
     static let textOnPrimary = Color.white
+    /// 输入框内文字颜色（黑色），确保与浅色背景对比清晰，所有输入框统一使用
+    static let inputText = Color.black
+    /// 输入框占位符颜色（深灰），与背景区分明显
+    static let inputPlaceholder = Color(white: 0.42)
 
     static let success = ModernColorSystem.Semantic.success
     static let warning = ModernColorSystem.Semantic.warning
@@ -396,7 +400,7 @@ struct ModernTextField: View {
                 }
             }
             .font(ModernDesignSystem.Typography.body)
-            .foregroundStyle(AppTheme.textPrimary)
+            .foregroundStyle(AppTheme.inputText)
             .focused($focusState)
         }
         .padding(ModernDesignSystem.Spacing.md)

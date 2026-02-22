@@ -394,6 +394,7 @@ private struct LabeledField: View {
                 .foregroundStyle(AppTheme.textSecondary)
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
+                .foregroundStyle(AppTheme.inputText)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .background(AppTheme.surfaceMuted)
@@ -416,13 +417,14 @@ private struct TextEditorField: View {
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $text)
                     .frame(minHeight: minHeight)
+                    .foregroundStyle(AppTheme.inputText)
                     .padding(8)
                     .background(AppTheme.surfaceMuted)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 if text.isEmpty {
                     Text(placeholder)
                         .font(.footnote)
-                        .foregroundStyle(AppTheme.textTertiary)
+                        .foregroundStyle(AppTheme.inputPlaceholder)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                 }

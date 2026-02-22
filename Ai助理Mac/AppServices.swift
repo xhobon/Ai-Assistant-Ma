@@ -528,26 +528,31 @@ final class SpeechService: NSObject, ObservableObject {
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
         URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
             guard let self else { return }
-            if error != nil || (response as? HTTPURLResponse)?.statusCode != 200 || data == nil || data!.isEmpty {
+            let statusOK = (response as? HTTPURLResponse)?.statusCode == 200
+            let hasData = data != nil && !data!.isEmpty
+            if error != nil || !statusOK || !hasData {
                 DispatchQueue.main.async { self.speakLocal(text: text, language: language) }
                 return
             }
-            lastOnlineText = text
-            lastOnlineLang = language
-            let tempDir = FileManager.default.temporaryDirectory
-            let fileURL = tempDir.appendingPathComponent(UUID().uuidString + ".webm")
-            do {
-                try data!.write(to: fileURL)
-                DispatchQueue.main.async {
-                    self.currentTempURL = fileURL
-                    self.playWithAVPlayer(url: fileURL) { [weak self] in
+            let textCopy = text
+            let dataCopy = data!
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                lastOnlineText = textCopy
+                lastOnlineLang = language
+                let tempDir = FileManager.default.temporaryDirectory
+                let fileURL = tempDir.appendingPathComponent(UUID().uuidString + ".webm")
+                do {
+                    try dataCopy.write(to: fileURL)
+                    currentTempURL = fileURL
+                    playWithAVPlayer(url: fileURL) { [weak self] in
                         self?.removeTempTTSFile()
                     }
+                } catch {
+                    lastOnlineText = nil
+                    lastOnlineLang = nil
+                    speakLocal(text: textCopy, language: language)
                 }
-            } catch {
-                lastOnlineText = nil
-                lastOnlineLang = nil
-                DispatchQueue.main.async { self.speakLocal(text: text, language: language) }
             }
         }.resume()
     }
@@ -651,10 +656,16 @@ final class OpenClawService: ObservableObject {
     static let shared = OpenClawService()
     private init() {}
 
-    /// 是否启用「使用本机执行」；存 UserDefaults，打开即可用，无需单独部署
+    /// 是否启用「使用本机执行」；存 UserDefaults。未配置时默认 true，首页对话框可直接发指令操作电脑，无需先去设置里打开
     var useOpenClawForAssistant: Bool {
-        get { UserDefaults.standard.bool(forKey: "openclaw_use_for_assistant") }
+        get {
+            if !UserDefaults.standard.bool(forKey: "openclaw_use_for_assistant_configured") {
+                return true  // 默认开启，首页对话即可用
+            }
+            return UserDefaults.standard.bool(forKey: "openclaw_use_for_assistant")
+        }
         set {
+            UserDefaults.standard.set(true, forKey: "openclaw_use_for_assistant_configured")
             UserDefaults.standard.set(newValue, forKey: "openclaw_use_for_assistant")
             objectWillChange.send()
         }
@@ -685,6 +696,9 @@ final class OpenClawService: ObservableObject {
         if ["pwd", "date", "whoami"].contains(first) { return true }
         if first.hasPrefix("ls") || first.hasPrefix("df") || first.hasPrefix("uname") { return true }
         if first == "echo", !c.contains("`"), !c.contains("$(") { return true }
+        // 允许 macOS 打开应用：open -a "AppName"，禁止 URL/管道/分号等
+        if first == "open", lower.contains("-a"),
+           !lower.contains("http"), !lower.contains("|"), !c.contains(";"), !c.contains("&&") { return true }
         return false
     }
 

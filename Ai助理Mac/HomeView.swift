@@ -5,7 +5,8 @@ struct HomeView: View {
     @State private var inputText = ""
     @State private var isListening = false
     @State private var showQuickActions = false
-    @StateObject private var viewModel = ChatViewModel()
+    /// 首页对话默认启用本机执行，直接发指令即可操作电脑，无需去设置里打开
+    @StateObject private var viewModel = ChatViewModel(allowLocalExecution: true)
     
     private let quickActions: [(title: String, icon: String, prompt: String)] = [
         ("垃圾清理", "trash.fill", "帮我清理系统垃圾文件"),
@@ -21,69 +22,80 @@ struct HomeView: View {
             // 顶部栏：左侧时钟+新对话，右侧用户+反馈
             HomeTopBar()
             
-            // 主内容区
+            // 主内容区：有对话时显示消息列表，无对话时显示欢迎
             VStack(spacing: 0) {
-                Spacer()
-                
-                // AI头像和问候
-                VStack(spacing: 24) {
-                    // AI头像（浅蓝色头发动漫风格，有绿色在线状态点）
-                    ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 120, height: 120)
-                            .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
-                        
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.85, green: 0.92, blue: 0.98),
-                                        Color(red: 0.9, green: 0.94, blue: 1.0)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+                if viewModel.messages.isEmpty {
+                    Spacer()
+                    // AI头像和问候（仅无消息时显示）
+                    VStack(spacing: 24) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 120, height: 120)
+                                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color(red: 0.85, green: 0.92, blue: 0.98),
+                                            Color(red: 0.9, green: 0.94, blue: 1.0)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
                                 )
-                            )
-                            .frame(width: 110, height: 110)
-                        
-                        Image(systemName: "face.smiling.fill")
-                            .font(.system(size: 55))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.5, green: 0.7, blue: 0.95),
-                                        Color(red: 0.6, green: 0.75, blue: 0.98)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+                                .frame(width: 110, height: 110)
+                            Image(systemName: "face.smiling.fill")
+                                .font(.system(size: 55))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [
+                                            Color(red: 0.5, green: 0.7, blue: 0.95),
+                                            Color(red: 0.6, green: 0.75, blue: 0.98)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
                                 )
-                            )
-                        
-                        // 绿色在线状态点
-                        Circle()
-                            .fill(Color(red: 0.2, green: 0.7, blue: 0.3))
-                            .frame(width: 16, height: 16)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white, lineWidth: 2)
-                            )
-                            .offset(x: 40, y: -40)
+                            Circle()
+                                .fill(Color(red: 0.2, green: 0.7, blue: 0.3))
+                                .frame(width: 16, height: 16)
+                                .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                                .offset(x: 40, y: -40)
+                        }
+                        VStack(spacing: 10) {
+                            Text("Hi,有什么需要我帮忙的吗~")
+                                .font(.title2.weight(.semibold))
+                                .foregroundStyle(Color(red: 0.2, green: 0.2, blue: 0.2))
+                            Text("电脑异常修复、畅聊陪伴、办公学习样样精通~")
+                                .font(.subheadline)
+                                .foregroundStyle(Color(red: 0.5, green: 0.5, blue: 0.5))
+                        }
                     }
-                    
-                    // 问候语和副标题
-                    VStack(spacing: 10) {
-                        Text("Hi,有什么需要我帮忙的吗~")
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(Color(red: 0.2, green: 0.2, blue: 0.2))
-                        
-                        Text("电脑异常修复、畅聊陪伴、办公学习样样精通~")
-                            .font(.subheadline)
-                            .foregroundStyle(Color(red: 0.5, green: 0.5, blue: 0.5))
+                    Spacer()
+                } else {
+                    // 有消息时显示对话列表，发送后自动滚到最新消息
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            ChatMessageSection(messages: viewModel.messages, onClear: viewModel.resetConversation)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 12)
+                                .padding(.bottom, 8)
+                            Color.clear
+                                .frame(height: 1)
+                                .id("homeChatBottom")
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .onChange(of: viewModel.messages.count) { _, _ in
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                proxy.scrollTo("homeChatBottom", anchor: .bottom)
+                            }
+                        }
+                        .onAppear {
+                            proxy.scrollTo("homeChatBottom", anchor: .bottom)
+                        }
                     }
                 }
-                
-                Spacer()
                 
                 // 快捷功能（点击加号时在输入框上方一排显示）
                 VStack(spacing: 12) {
@@ -131,6 +143,34 @@ struct HomeView: View {
             .background(Color.white)
         }
         .background(Color.white)
+        .confirmationDialog("执行命令", isPresented: Binding(
+            get: { viewModel.pendingCommand != nil },
+            set: { if !$0 { viewModel.cancelCommandExecution() } }
+        )) {
+            Button("允许") { viewModel.confirmCommandExecution() }
+            Button("拒绝", role: .cancel) { viewModel.cancelCommandExecution() }
+        } message: {
+            if let pending = viewModel.pendingCommand {
+                Text("助理请求在本机执行：\n\(pending.command)")
+            }
+        }
+        .confirmationDialog("发送执行结果", isPresented: Binding(
+            get: { viewModel.pendingSendResult != nil },
+            set: { if !$0 { viewModel.cancelSendResult() } }
+        )) {
+            Button("继续") { viewModel.confirmSendResult() }
+            Button("取消", role: .cancel) { viewModel.cancelSendResult() }
+        } message: {
+            Text("执行结果将发送至服务器以生成回复。请确认结果中无敏感信息后再继续，保护您的隐私。")
+        }
+        .alert("提示", isPresented: Binding(
+            get: { viewModel.alertMessage != nil },
+            set: { if !$0 { viewModel.alertMessage = nil } }
+        )) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(viewModel.alertMessage ?? "")
+        }
     }
 }
 
@@ -228,15 +268,18 @@ struct HomeInputField: View {
             .padding(.leading, 16)
             .accessibilityLabel("附件")
             
-            // 直接使用整块区域输入，无内嵌小框
+            // 中间输入区：占满剩余宽度，保证可见；占位符与边框在深浅色下都清晰
             TextField("输入您的问题,或告诉我要做什么...", text: $text, axis: .vertical)
                 .font(.subheadline)
                 .textFieldStyle(.plain)
-                .foregroundStyle(AppTheme.textPrimary)
+                .foregroundStyle(AppTheme.inputText)
+                .tint(AppTheme.primary)
                 .lineLimit(1...4)
+                .frame(maxWidth: .infinity, minHeight: 40)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
                 .onSubmit { onSend() }
+                .accentColor(AppTheme.primary)
             
             // 右侧：剪刀、麦克风、发送、加号（上下居中）
             HStack(spacing: 10) {
@@ -293,11 +336,11 @@ struct HomeInputField: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color.white)
+        .background(Color(white: 0.97))
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(AppTheme.unifiedButtonBorder.opacity(0.3), lineWidth: 1)
+                .stroke(AppTheme.unifiedButtonBorder.opacity(0.6), lineWidth: 1)
         )
     }
 }

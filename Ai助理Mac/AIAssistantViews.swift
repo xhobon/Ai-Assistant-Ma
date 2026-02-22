@@ -58,6 +58,7 @@ struct AIAssistantHomeView: View {
                             TextField("搜索AI服务...", text: $searchText)
                                 .font(.subheadline)
                                 .textFieldStyle(.plain)
+                                .foregroundStyle(AppTheme.inputText)
                             if !searchText.isEmpty {
                                 Button { searchText = "" } label: {
                                     Image(systemName: "xmark.circle.fill")
@@ -240,6 +241,7 @@ struct HomeSearchBar: View {
                 .foregroundStyle(AppTheme.textSecondary)
             TextField("搜索服务/场景/关键词", text: $text)
                 .textFieldStyle(.plain)
+                .foregroundStyle(AppTheme.inputText)
             if !text.isEmpty {
                 Button {
                     text = ""
@@ -1576,7 +1578,8 @@ struct ChatComposerBar: View {
             )
             .font(.subheadline)
             .textFieldStyle(.plain)
-            .foregroundStyle(AppTheme.textPrimary)
+            .foregroundStyle(AppTheme.inputText)
+            .tint(AppTheme.primary)
             .lineLimit(1...4)
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
@@ -1585,7 +1588,8 @@ struct ChatComposerBar: View {
             TextField("发消息或按住说话...", text: $text, axis: .vertical)
                 .font(.subheadline)
                 .textFieldStyle(.plain)
-                .foregroundStyle(AppTheme.textPrimary)
+                .foregroundStyle(AppTheme.inputText)
+                .tint(AppTheme.primary)
                 .lineLimit(1...4)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
@@ -1655,11 +1659,16 @@ struct PasteableTextField: NSViewRepresentable {
         textField.focusRingType = .none
         textField.delegate = context.coordinator
         textField.onPasteImage = onPasteImage
+        textField.textColor = NSColor.black
         
         // 设置 cell 以支持多行
         if let cell = textField.cell as? NSTextFieldCell {
             cell.wraps = true
             cell.isScrollable = false
+            cell.placeholderAttributedString = NSAttributedString(
+                string: placeholder,
+                attributes: [.foregroundColor: NSColor(white: 0.42, alpha: 1)]
+            )
         }
         
         return textField
@@ -1670,6 +1679,13 @@ struct PasteableTextField: NSViewRepresentable {
             nsView.stringValue = text
         }
         nsView.onPasteImage = onPasteImage
+        nsView.textColor = NSColor.black
+        if let cell = nsView.cell as? NSTextFieldCell {
+            cell.placeholderAttributedString = NSAttributedString(
+                string: placeholder,
+                attributes: [.foregroundColor: NSColor(white: 0.42, alpha: 1)]
+            )
+        }
     }
     
     func makeCoordinator() -> Coordinator {
@@ -2245,7 +2261,7 @@ struct ChatBubble: View {
                 }
                 Text(message.time.formatted(date: .omitted, time: .shortened))
                     .font(.caption2)
-                    .foregroundStyle(message.role == .user ? .white.opacity(0.8) : .secondary)
+                    .foregroundStyle(message.role == .user ? .white.opacity(0.8) : AppTheme.textSecondary)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -2294,6 +2310,7 @@ struct MessageInputBar: View {
         HStack(spacing: 12) {
             TextField("输入内容或使用语音", text: $text)
                 .textFieldStyle(.plain)
+                .foregroundStyle(AppTheme.inputText)
             GlassTinyButton(systemImage: "mic")
             GlassTinyButton(systemImage: "paperplane.fill", action: onSend)
         }
@@ -2376,6 +2393,7 @@ struct ModernSearchBar: View {
             TextField("搜索智能服务...", text: $text)
                 .font(.callout)
                 .textFieldStyle(.plain)
+                .foregroundStyle(AppTheme.inputText)
                 .onTapGesture {
                     isEditing = true
                 }

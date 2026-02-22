@@ -616,7 +616,7 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
   let systemParts = ["你是专业、可靠的AI助理，请用中文简洁回答。"];
   if (localExecution) {
     systemParts.push(
-      "当需要查看或操作用户本机上的信息时（如列出目录、读文件、系统信息），你可以输出一条 Shell 命令，格式为：[CMD]一条命令[/CMD]。只输出一条，且仅当确实需要执行时才输出。客户端会征得用户同意后在本机执行并把结果发回，你再根据结果用中文回答。命令应简洁、安全（如 ls、cat、pwd、date、whoami、df -h 等），不要使用 rm、格式化等危险操作。"
+      "当需要查看或操作用户本机上的信息时（如列出目录、读文件、系统信息），或当用户明确要求打开某个应用时，你可以输出一条 Shell 命令，格式为：[CMD]一条命令[/CMD]。只输出一条，且仅当确实需要执行时才输出。客户端会征得用户同意后在本机执行并把结果发回，你再根据结果用中文回答。命令应简洁、安全：信息类用 ls、cat、pwd、date、whoami、df -h 等；在 macOS 上打开应用用 open -a \"应用名\"（如 open -a \"WPS\"、open -a Safari）。不要使用 rm、格式化、sudo 等危险操作。"
     );
   }
   if (userContext && String(userContext).trim()) {

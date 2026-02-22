@@ -1209,6 +1209,7 @@ struct AssistantMemoryView: View {
                 TextField("例如：偏好简洁回答、常用印尼语翻译", text: $newContent, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(3...6)
+                    .foregroundStyle(AppTheme.inputText)
                     .padding(12)
                     .background(AppTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -1216,7 +1217,6 @@ struct AssistantMemoryView: View {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .stroke(AppTheme.border, lineWidth: 1)
                     )
-                    .foregroundStyle(AppTheme.textPrimary)
                 Picker("类型", selection: $newCategory) {
                     Text("事实").tag("fact")
                     Text("偏好").tag("preference")
@@ -1348,11 +1348,23 @@ struct OpenClawSetupView: View {
                         Button {
                             refreshStatus()
                         } label: {
-                            Image(systemName: "arrow.clockwise")
-                            Text("刷新")
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.clockwise")
+                                Text("刷新")
+                            }
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(AppTheme.inputText)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(AppTheme.surfaceMuted)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(AppTheme.borderStrong, lineWidth: 1)
+                            )
                         }
                         .disabled(isRefreshing)
-                        .foregroundStyle(AppTheme.primary)
+                        .opacity(isRefreshing ? 0.6 : 1.0)
                     }
                     .padding(12)
                     .background(AppTheme.surface)
@@ -1371,7 +1383,9 @@ struct OpenClawSetupView: View {
                         get: { openClaw.useOpenClawForAssistant },
                         set: { openClaw.useOpenClawForAssistant = $0 }
                     ))
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.inputText)
+                    .tint(AppTheme.primary)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -1470,7 +1484,7 @@ struct AuthView: View {
                             .foregroundStyle(AppTheme.textPrimary)
                         SecureField("请输入密码", text: $password)
                             .textFieldStyle(.plain)
-                            .foregroundStyle(AppTheme.textPrimary)
+                            .foregroundStyle(AppTheme.inputText)
                             .padding(12)
                             .background(AppTheme.surface)
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -1561,7 +1575,7 @@ struct AuthTextField: View {
                     .foregroundStyle(AppTheme.textPrimary)
                 TextField(placeholder, text: $text)
                     .textFieldStyle(.plain)
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .foregroundStyle(AppTheme.inputText)
                     .padding(12)
                     .background(AppTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

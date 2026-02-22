@@ -295,7 +295,7 @@ struct TranslationInputField: View {
                     TextEditor(text: $text)
                         .font(.title3.weight(.semibold))
                         .frame(minHeight: 52)
-                        .foregroundStyle(AppTheme.textPrimary)
+                        .foregroundStyle(AppTheme.inputText)
                         .scrollContentBackground(.hidden)
                 }
             } else {
@@ -1227,7 +1227,7 @@ struct TranslationInputBox: View {
                 }
                 TextEditor(text: $text)
                     .font(.subheadline)
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .foregroundStyle(AppTheme.inputText)
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
                     .frame(minHeight: 200, maxHeight: isExpanded ? 400 : 200)
