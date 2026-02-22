@@ -10,6 +10,7 @@
     "db:push": "prisma db push",
     "db:seed": "node src/seed.js",
     "set-api-key": "node src/set-api-key.js",
+    "create-super-admin": "node src/create-super-admin.js",
     "prisma:generate": "prisma generate",
     "build": "prisma generate",
     "vercel-build": "prisma generate"
