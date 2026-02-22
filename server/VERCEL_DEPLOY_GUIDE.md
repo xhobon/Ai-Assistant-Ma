@@ -8,7 +8,7 @@
 2. 在 **API Keys** 中创建或复制你的 API Key（形如 `gsk_...`）。
 3. 在 Vercel 中配置该 Key（见下一节环境变量）。
 
-后端已接入 Groq：优先使用 `GROQ_API_KEY` 调用 `llama-3.1-8b-instant`，未配置时再回退到 DeepSeek。
+后端仅使用 Groq：通过 `GROQ_API_KEY` 调用 `llama-3.1-8b-instant`。
 
 ## 二、环境变量（在 Vercel 项目设置里填写）
 
@@ -19,7 +19,6 @@
 | `GROQ_API_KEY` | 必填，[Groq Console](https://console.groq.com/) 获取，用于 AI 对话与翻译 |
 | `DATABASE_URL` | 数据库连接串（如 Neon PostgreSQL） |
 | `JWT_SECRET` | 登录 Token 签名，建议随机长字符串 |
-| `DEEPSEEK_API_KEY` | 可选，无 GROQ 时的备选模型 |
 
 添加后勾选 **Production**、**Preview**，保存后需 **Redeploy** 一次才能生效。
 

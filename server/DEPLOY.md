@@ -4,14 +4,14 @@
 
 - Node.js 18+
 - PostgreSQL 14+（或使用 Docker Compose）
-- DeepSeek API Key（[获取地址](https://platform.deepseek.com)）
+- Groq API Key（[获取地址](https://console.groq.com)）
 
 ## 二、本地开发
 
 ```bash
 cd server
 cp .env.example .env
-# 编辑 .env：填写 DATABASE_URL、JWT_SECRET、DEEPSEEK_API_KEY
+# 编辑 .env：填写 DATABASE_URL、JWT_SECRET、GROQ_API_KEY
 
 npm install
 npx prisma db push
@@ -23,7 +23,7 @@ npm run dev
 
 ```bash
 cd server
-export DEEPSEEK_API_KEY="sk-xxx"
+export GROQ_API_KEY="gsk_xxx"
 export JWT_SECRET="随机生成的长字符串"
 
 docker compose up -d
@@ -47,7 +47,7 @@ sudo usermod -aG docker $USER
 git clone <your-repo> ai-assistant
 cd ai-assistant/server
 cp .env.example .env
-nano .env   # 填写 DEEPSEEK_API_KEY、JWT_SECRET，修改 DATABASE_URL 若用外部数据库
+nano .env   # 填写 GROQ_API_KEY、JWT_SECRET，修改 DATABASE_URL 若用外部数据库
 ```
 
 ### 3. 启动服务
@@ -78,26 +78,12 @@ server {
 
 在 App 中进入 **我的 → 设置**，填写 **服务器地址** 为 `https://your-domain.com`，保存后即可通过服务器进行登录、AI 对话、翻译等。
 
-## 五、API Key 配置（数据库存储）
-
-API Key 可写入后端数据库，无需在 App 内配置：
-
-```bash
-# 方式一：命令行写入
-npm run set-api-key -- sk-xxx
-
-# 方式二：环境变量写入
-DEEPSEEK_API_KEY=sk-xxx npm run set-api-key
-```
-
-优先级：环境变量 DEEPSEEK_API_KEY > 数据库。DeepSeek 提供免费额度，可在 [platform.deepseek.com](https://platform.deepseek.com) 获取。
-
-## 六、环境变量说明
+## 五、环境变量说明
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
 | DATABASE_URL | 是 | PostgreSQL 连接串 |
 | JWT_SECRET | 是 | 登录 Token 签名密钥，建议随机 32 位 |
-| DEEPSEEK_API_KEY | 否 | DeepSeek API Key（也可用 set-api-key 写入数据库） |
+| GROQ_API_KEY | 是 | Groq API Key（[console.groq.com](https://console.groq.com) 免费获取） |
 | PORT | 否 | 端口，默认 8080 |
 | CORS_ORIGIN | 否 | 允许的来源，默认 * |

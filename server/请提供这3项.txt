@@ -5,9 +5,9 @@
    - 创建数据库后复制连接串，形如：
      postgresql://用户名:密码@ep-xxx.region.aws.neon.tech/库名?sslmode=require
 
-2) DeepSeek API Key
-   - 你已有：sk-2a523738a2664059a63dd0584eca7361
-   - 若换新的请发新的
+2) Groq API Key（GROQ_API_KEY）
+   - 打开 https://console.groq.com 注册并创建 API Key（免费）
+   - 形如 gsk_xxx
 
 3) JWT 密钥（JWT_SECRET）
    - 任意一串随机字符即可，例如：mySecretKey2024RandomString

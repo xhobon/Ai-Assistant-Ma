@@ -1,26 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
-const key = process.argv[2] || process.env.DEEPSEEK_API_KEY;
-if (!key || key.length < 10) {
-  console.error("用法: node src/set-api-key.js <API_KEY>");
-  console.error("或设置环境变量 DEEPSEEK_API_KEY 后执行");
-  process.exit(1);
-}
-
-async function main() {
-  await prisma.systemConfig.upsert({
-    where: { configKey: "DEEPSEEK_API_KEY" },
-    update: { configVal: key },
-    create: { configKey: "DEEPSEEK_API_KEY", configVal: key }
-  });
-  console.log("DEEPSEEK_API_KEY 已写入数据库");
-}
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+// 已废弃：后端仅使用 Groq（GROQ_API_KEY 环境变量），不再支持将 API Key 写入数据库。
+// 若需配置 Groq，请在 Vercel / 部署环境变量中设置 GROQ_API_KEY。
+console.warn("set-api-key.js 已废弃，请使用环境变量 GROQ_API_KEY 配置 Groq。");
+process.exit(0);

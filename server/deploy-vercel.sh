@@ -10,12 +10,12 @@ if [ -f .env ]; then
   set +a
 fi
 : "${DATABASE_URL:=}"
-: "${DEEPSEEK_API_KEY:=}"
+: "${GROQ_API_KEY:=}"
 : "${JWT_SECRET:=}"
 
 echo "检查环境变量..."
 [ -n "$DATABASE_URL" ] || { echo "错误: 请设置 DATABASE_URL"; exit 1; }
-[ -n "$DEEPSEEK_API_KEY" ] || { echo "错误: 请设置 DEEPSEEK_API_KEY"; exit 1; }
+[ -n "$GROQ_API_KEY" ] || { echo "错误: 请设置 GROQ_API_KEY"; exit 1; }
 [ -n "$JWT_SECRET" ] || { echo "错误: 请设置 JWT_SECRET"; exit 1; }
 
 echo "安装依赖..."
@@ -31,7 +31,7 @@ npx prisma db push
 echo "正在把环境变量写入 Vercel..."
 printf '%s' "$DATABASE_URL" | npx vercel env add DATABASE_URL production 2>/dev/null || true
 printf '%s' "$JWT_SECRET" | npx vercel env add JWT_SECRET production 2>/dev/null || true
-printf '%s' "$DEEPSEEK_API_KEY" | npx vercel env add DEEPSEEK_API_KEY production 2>/dev/null || true
+printf '%s' "$GROQ_API_KEY" | npx vercel env add GROQ_API_KEY production 2>/dev/null || true
 
 echo "部署到 Vercel（首次会要求浏览器登录，项目名请填: ai-assistant-backend）..."
 npx vercel --prod --yes 2>/dev/null || npx vercel --prod

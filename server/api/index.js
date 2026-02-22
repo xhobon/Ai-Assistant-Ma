@@ -39,7 +39,7 @@ export default async function handler(req, res) {
       JSON.stringify({
         error: "FUNCTION_INVOCATION_FAILED",
         message: err?.message || String(err),
-        hint: "Check Vercel env: DATABASE_URL, GROQ_API_KEY（或 DEEPSEEK_API_KEY）, JWT_SECRET. Run prisma generate in build."
+        hint: "Check Vercel env: DATABASE_URL, GROQ_API_KEY, JWT_SECRET. Run prisma generate in build."
       })
     );
   }

@@ -47,68 +47,33 @@ function getGroqApiKey() {
   return process.env.GROQ_API_KEY || null;
 }
 
-async function getDeepSeekApiKey() {
-  if (process.env.DEEPSEEK_API_KEY) return process.env.DEEPSEEK_API_KEY;
-  try {
-    const row = await prisma.systemConfig.findUnique({
-      where: { configKey: "DEEPSEEK_API_KEY" }
-    });
-    return row?.configVal || null;
-  } catch {
-    return null;
-  }
-}
-
 async function llmChat(messages) {
   const groqKey = getGroqApiKey();
-  if (groqKey && groqKey.length > 10) {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${groqKey}`
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages,
-        temperature: 0.4
-      })
-    });
-    const raw = await res.text().catch(() => "");
-    const data = (() => { try { return JSON.parse(raw); } catch { return {}; } })();
-    if (res.ok) {
-      const content = data?.choices?.[0]?.message?.content;
-      if (content) return content.trim();
-    }
-    const errMsg = data?.error?.message || data?.error || raw || `HTTP ${res.status}`;
-    throw new Error(`Groq API 错误: ${res.status} ${String(errMsg).slice(0, 200)}`);
+  if (!groqKey || groqKey.length <= 10) {
+    throw new Error(
+      "请配置 GROQ_API_KEY（免费）：访问 https://console.groq.com 注册，创建 API Key，在 Vercel 环境变量中添加 GROQ_API_KEY，并 Redeploy"
+    );
   }
-  const deepSeekKey = await getDeepSeekApiKey();
-  if (deepSeekKey && deepSeekKey.length > 10) {
-    const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${deepSeekKey}`
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages,
-        temperature: 0.4
-      })
-    });
-    const raw = await res.text().catch(() => "");
-    const data = (() => { try { return JSON.parse(raw); } catch { return {}; } })();
-    if (res.ok) {
-      const content = data?.choices?.[0]?.message?.content;
-      if (content) return content.trim();
-    }
-    const errMsg = data?.error?.message || JSON.stringify(data?.error) || raw || `HTTP ${res.status}`;
-    throw new Error(`DeepSeek API 错误: ${res.status} ${String(errMsg).slice(0, 200)}`);
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${groqKey}`
+    },
+    body: JSON.stringify({
+      model: "llama-3.1-8b-instant",
+      messages,
+      temperature: 0.4
+    })
+  });
+  const raw = await res.text().catch(() => "");
+  const data = (() => { try { return JSON.parse(raw); } catch { return {}; } })();
+  if (res.ok) {
+    const content = data?.choices?.[0]?.message?.content;
+    if (content) return content.trim();
   }
-  throw new Error(
-    "请配置 GROQ_API_KEY（免费）：访问 https://console.groq.com 注册，创建 API Key，在 Vercel 环境变量中添加 GROQ_API_KEY，并 Redeploy"
-  );
+  const errMsg = data?.error?.message || data?.error || raw || `HTTP ${res.status}`;
+  throw new Error(`Groq API 错误: ${res.status} ${String(errMsg).slice(0, 200)}`);
 }
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));

@@ -1,8 +1,8 @@
 //
 //  Item.swift
-//  Ai助理Mac
+//  Ai助理
 //
-//  Created by Akun on 2026/2/22.
+//  Created by Akun on 20/02/26.
 //
 
 import Foundation

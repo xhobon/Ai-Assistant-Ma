@@ -27,7 +27,7 @@ Vercel 上无法跑本地 PostgreSQL，需要先用云端数据库：
    |--------|------|
    | `DATABASE_URL` | PostgreSQL 连接串（Vercel Postgres 创建后会自动加） |
    | `JWT_SECRET` | 任意长随机字符串，用于登录 Token |
-   | `DEEPSEEK_API_KEY` | 你的 DeepSeek API Key（如 `sk-xxx`） |
+   | `GROQ_API_KEY` | 你的 Groq API Key（[console.groq.com](https://console.groq.com) 获取，如 `gsk_xxx`） |
 
 4. **部署**：  
    - 保存环境变量后，在 Deployments 里 “Redeploy” 一次  
@@ -40,7 +40,7 @@ Vercel 不会自动执行 `db push`，需要你在本地或脚本里跑一次：
 - **方式 A（推荐）**：本地已装 Node 和 Prisma 时，在 **本机** 的 `server` 目录执行：
   - 把 `.env` 里的 `DATABASE_URL` 改成 Vercel 用的那个（同上）
   - 执行：`npx prisma db push`
-  - 可选：`npm run db:seed`、`npm run set-api-key`（若 Key 要写进数据库）
+  - 可选：`npm run db:seed`
 
 - **方式 B**：用 Vercel 的 “Run Command” 或一次性脚本（需在项目里加可执行脚本），在部署环境里执行 `prisma db push`（不推荐新手，优先用方式 A）。
 
@@ -55,6 +55,6 @@ Vercel 不会自动执行 `db push`，需要你在本地或脚本里跑一次：
 
 ## 五、注意事项
 
-- **执行时间**：Vercel 免费版单次请求约 10 秒限制，DeepSeek 回复一般够用。
+- **执行时间**：Vercel 免费版单次请求约 10 秒限制，Groq 回复一般够用。
 - **冷启动**：一段时间没人访问再请求可能稍慢，属正常。
 - **CORS**：当前后端已允许 `*`，若以后要限制域名，在环境变量里设 `CORS_ORIGIN` 即可。
