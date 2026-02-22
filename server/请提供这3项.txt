@@ -1,0 +1,17 @@
+请把下面 3 项发给我（可直接粘贴），我会帮你写入配置并执行部署，部署后 App 无需再填任何地址。
+
+1) PostgreSQL 连接串（DATABASE_URL）
+   - 打开 https://neon.tech 免费注册
+   - 创建数据库后复制连接串，形如：
+     postgresql://用户名:密码@ep-xxx.region.aws.neon.tech/库名?sslmode=require
+
+2) DeepSeek API Key
+   - 你已有：sk-2a523738a2664059a63dd0584eca7361
+   - 若换新的请发新的
+
+3) JWT 密钥（JWT_SECRET）
+   - 任意一串随机字符即可，例如：mySecretKey2024RandomString
+
+发给我后我会：
+- 在 server 目录执行部署脚本并填入上述变量
+- 部署完成后后端地址为 https://ai-assistant-backend.vercel.app（已写进 App 默认，你不用在设置里填）
