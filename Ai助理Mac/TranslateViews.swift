@@ -563,7 +563,7 @@ struct TranslationHistoryRow: View {
                 .foregroundStyle(AppTheme.textPrimary)
             Text(entry.targetText)
                 .font(.caption)
-                .foregroundStyle(AppTheme.textSecondary)
+                .foregroundStyle(AppTheme.textPrimary)
         }
         .padding(12)
         .background(AppTheme.background)
@@ -1186,7 +1186,7 @@ struct TranslationInputBox: View {
             HStack {
                 Text(title)
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(AppTheme.textSecondary)
+                    .foregroundStyle(AppTheme.textPrimary)
                 Spacer(minLength: 0)
                 if showActions {
                     HStack(spacing: 8) {
@@ -1212,7 +1212,7 @@ struct TranslationInputBox: View {
                 if !text.isEmpty {
                     Text("\(text.count)/5000")
                         .font(.caption2)
-                        .foregroundStyle(AppTheme.textTertiary)
+                        .foregroundStyle(AppTheme.textSecondary)
                 }
             }
             .padding(.bottom, 10)
@@ -1222,11 +1222,12 @@ struct TranslationInputBox: View {
                 if text.isEmpty {
                     Text(placeholder)
                         .font(.subheadline)
-                        .foregroundStyle(AppTheme.textTertiary)
+                        .foregroundStyle(AppTheme.textSecondary)
                         .allowsHitTesting(false)
                 }
                 TextEditor(text: $text)
                     .font(.subheadline)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
                     .frame(minHeight: 200, maxHeight: isExpanded ? 400 : 200)
@@ -1504,7 +1505,7 @@ struct TranslationRecordRowWithActions: View {
                     .lineLimit(isExpanded ? nil : 2)
                 Text(item.targetText)
                     .font(.callout)
-                    .foregroundStyle(AppTheme.textSecondary)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(isExpanded ? nil : 2)
             }
             if item.sourceText.count > 80 || item.targetText.count > 80 {

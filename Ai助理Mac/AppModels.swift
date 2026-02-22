@@ -54,3 +54,15 @@ struct LearningStat: Identifiable, Hashable {
     let title: String
     let value: String
 }
+
+/// 助理长期记忆条目（偏好、习惯、重要事实），用于个性化回复与持续学习
+struct UserMemoryItem: Identifiable, Hashable, Codable {
+    let id: String
+    var content: String
+    var category: String /// fact | preference | habit
+    let createdAt: Date
+
+    static func from(_ content: String, category: String = "fact", id: String = UUID().uuidString, createdAt: Date = Date()) -> UserMemoryItem {
+        UserMemoryItem(id: id, content: content, category: category, createdAt: createdAt)
+    }
+}

@@ -40,6 +40,19 @@ model User {
   translations   TranslationHistory[]
   favorites      Favorite[]
   learningLogs   LearningSession[]
+  memories       UserMemory[]
+}
+
+/// 助理长期记忆：偏好、习惯、重要事实等，用于个性化回复与持续学习
+model UserMemory {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String   /// 一条记忆内容（如「用户偏好简洁回答」「用户常问印尼语翻译」）
+  category  String   @default("fact") /// fact | preference | habit
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model AuthProvider {

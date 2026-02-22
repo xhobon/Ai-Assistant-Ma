@@ -232,6 +232,7 @@ struct HomeInputField: View {
             TextField("输入您的问题,或告诉我要做什么...", text: $text, axis: .vertical)
                 .font(.subheadline)
                 .textFieldStyle(.plain)
+                .foregroundStyle(AppTheme.textPrimary)
                 .lineLimit(1...4)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)

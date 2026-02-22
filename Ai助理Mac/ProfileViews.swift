@@ -24,6 +24,8 @@ struct ProfileCenterView: View {
     @State private var showAgreement = false
     @State private var showTerms = false
     @State private var showSupport = false
+    @State private var showAssistantMemory = false
+    @State private var showOpenClawSetup = false
 
     private let quickActions: [ProfileQuickAction] = [
         ProfileQuickAction(id: "fav", title: "我的收藏", icon: "star.fill"),
@@ -35,6 +37,8 @@ struct ProfileCenterView: View {
     private let settingsItems: [ProfileMenuItem] = [
         ProfileMenuItem(id: "settings", title: "设置", subtitle: "通知、隐私、深色模式", icon: "gearshape"),
         ProfileMenuItem(id: "account", title: "账户与安全", subtitle: "登录信息、设备管理", icon: "shield.fill"),
+        ProfileMenuItem(id: "memory", title: "助理记忆", subtitle: "偏好与长期记忆，让助理更懂你", icon: "brain.head.profile"),
+        ProfileMenuItem(id: "openclaw", title: "本机执行", subtitle: "已集成，无需安装即可使用", icon: "terminal"),
         ProfileMenuItem(id: "member", title: "会员说明", subtitle: "权益、自动续费规则", icon: "doc.plaintext"),
         ProfileMenuItem(id: "faq", title: "常见问题", subtitle: "快速获取帮助", icon: "questionmark.circle")
     ]
@@ -75,6 +79,8 @@ struct ProfileCenterView: View {
                         switch item.id {
                         case "settings": showSettings = true
                         case "account": showAccount = true
+                        case "memory": showAssistantMemory = true
+                        case "openclaw": showOpenClawSetup = true
                         case "member": showMemberExplain = true
                         case "faq": showFAQ = true
                         default: break
@@ -121,6 +127,12 @@ struct ProfileCenterView: View {
             }
             .navigationDestination(isPresented: $showAccount) {
                 AccountSecurityView()
+            }
+            .navigationDestination(isPresented: $showAssistantMemory) {
+                AssistantMemoryView()
+            }
+            .navigationDestination(isPresented: $showOpenClawSetup) {
+                OpenClawSetupView()
             }
             .navigationDestination(isPresented: $showMemberExplain) {
                 MemberExplainView()
@@ -1099,6 +1111,302 @@ struct AppSettingsView: View {
     }
 }
 
+// MARK: - 助理记忆（长期记忆与自主学习）
+
+struct AssistantMemoryView: View {
+    @State private var items: [UserMemoryItem] = []
+    @State private var loading = false
+    @State private var errorMessage: String?
+    @State private var newContent = ""
+    @State private var newCategory = "fact"
+    @State private var showAddSheet = false
+
+    private var isLoggedIn: Bool { TokenStore.shared.isLoggedIn }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("助理会根据聊天与使用情况自动记住你的偏好和重要信息，也可在此手动添加。登录后记忆会同步到你的账号。")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .padding(.horizontal)
+
+                if loading && items.isEmpty {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("加载中…")
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                } else if let err = errorMessage {
+                    Text(err)
+                        .font(.subheadline)
+                        .foregroundStyle(.red)
+                        .padding()
+                } else {
+                    LazyVStack(spacing: 10) {
+                        ForEach(items) { item in
+                            HStack(alignment: .top, spacing: 10) {
+                                Text(categoryLabel(item.category))
+                                    .font(.caption2)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(AppTheme.surface)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                Text(item.content)
+                                    .font(.subheadline)
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Button {
+                                    deleteItem(item)
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.subheadline)
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(12)
+                            .background(AppTheme.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(AppTheme.border, lineWidth: 1)
+                            )
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+            .padding(.vertical, 16)
+        }
+        .background(AppTheme.pageBackground.ignoresSafeArea())
+        .navigationTitle("助理记忆")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    newContent = ""
+                    newCategory = "fact"
+                    showAddSheet = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                    Text("添加")
+                }
+                .foregroundStyle(AppTheme.primary)
+            }
+        }
+        .onAppear { loadMemories() }
+        .sheet(isPresented: $showAddSheet) {
+            addMemorySheet
+        }
+    }
+
+    private var addMemorySheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                TextField("例如：偏好简洁回答、常用印尼语翻译", text: $newContent, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(3...6)
+                    .padding(12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+                    .foregroundStyle(AppTheme.textPrimary)
+                Picker("类型", selection: $newCategory) {
+                    Text("事实").tag("fact")
+                    Text("偏好").tag("preference")
+                    Text("习惯").tag("habit")
+                }
+                .pickerStyle(.segmented)
+                .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+            }
+            .padding(20)
+            .background(AppTheme.pageBackground.ignoresSafeArea())
+            .navigationTitle("添加记忆")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        showAddSheet = false
+                    }
+                    .foregroundStyle(AppTheme.textPrimary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        saveNewMemory()
+                        showAddSheet = false
+                    }
+                    .foregroundStyle(AppTheme.primary)
+                    .disabled(newContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+
+    private func categoryLabel(_ c: String) -> String {
+        switch c {
+        case "preference": return "偏好"
+        case "habit": return "习惯"
+        default: return "事实"
+        }
+    }
+
+    private func loadMemories() {
+        loading = true
+        errorMessage = nil
+        Task {
+            do {
+                if isLoggedIn {
+                    let local = LocalDataStore.shared.loadMemories()
+                    if !local.isEmpty {
+                        try await APIClient.shared.addMemories(local.map { ($0.content, $0.category) })
+                        LocalDataStore.shared.saveMemories([])
+                    }
+                    let list = try await APIClient.shared.getMemories()
+                    await MainActor.run {
+                        items = list
+                        loading = false
+                    }
+                } else {
+                    await MainActor.run {
+                        items = LocalDataStore.shared.loadMemories()
+                        loading = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = userFacingMessage(for: error)
+                    loading = false
+                }
+            }
+        }
+    }
+
+    private func saveNewMemory() {
+        let content = newContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty else { return }
+        let item = UserMemoryItem.from(content, category: newCategory)
+        if isLoggedIn {
+            Task {
+                do {
+                    try await APIClient.shared.addMemories([(content: content, category: newCategory)])
+                    await MainActor.run { loadMemories() }
+                } catch {
+                    await MainActor.run { errorMessage = userFacingMessage(for: error) }
+                }
+            }
+        } else {
+            LocalDataStore.shared.addMemory(item)
+            items.insert(item, at: 0)
+        }
+    }
+
+    private func deleteItem(_ item: UserMemoryItem) {
+        if isLoggedIn {
+            Task {
+                do {
+                    try await APIClient.shared.deleteMemory(id: item.id)
+                    await MainActor.run { items.removeAll { $0.id == item.id } }
+                } catch {
+                    await MainActor.run { errorMessage = userFacingMessage(for: error) }
+                }
+            }
+        } else {
+            LocalDataStore.shared.removeMemory(id: item.id)
+            items.removeAll { $0.id == item.id }
+        }
+    }
+}
+
+// MARK: - OpenClaw 安装与状态
+
+struct OpenClawSetupView: View {
+    @ObservedObject private var openClaw = OpenClawService.shared
+    @State private var statusText: String = "检测中…"
+    @State private var isRefreshing = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("状态")
+                        .font(.headline)
+                        .foregroundStyle(AppTheme.textPrimary)
+                    HStack {
+                        Text(statusText)
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Button {
+                            refreshStatus()
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                            Text("刷新")
+                        }
+                        .disabled(isRefreshing)
+                        .foregroundStyle(AppTheme.primary)
+                    }
+                    .padding(12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("在助理中使用本机执行")
+                        .font(.headline)
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Toggle("发送消息时使用本机执行（列出文件、读文件等，执行前需确认）", isOn: Binding(
+                        get: { openClaw.useOpenClawForAssistant },
+                        set: { openClaw.useOpenClawForAssistant = $0 }
+                    ))
+                    .foregroundStyle(AppTheme.textPrimary)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("使用说明")
+                        .font(.headline)
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text("本机执行功能已集成在应用内，无需单独安装。在助理对话页打开「使用本机执行」后，助理可请求执行安全命令（如列出目录、读文件、系统信息），执行前会征得你的同意。")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+            .padding(20)
+        }
+        .background(AppTheme.pageBackground.ignoresSafeArea())
+        .navigationTitle("本机执行")
+        .onAppear { refreshStatus() }
+    }
+
+    private func codeLine(_ s: String) -> some View {
+        Text(s)
+            .textSelection(.enabled)
+    }
+
+    private func refreshStatus() {
+        isRefreshing = true
+        Task {
+            let status = await OpenClawService.shared.fetchStatus()
+            await MainActor.run {
+                statusText = status
+                isRefreshing = false
+            }
+        }
+    }
+}
+
 // MARK: - Auth
 
 enum AuthMode: String, CaseIterable, Identifiable {
@@ -1122,12 +1430,31 @@ struct AuthView: View {
             VStack(spacing: 18) {
                 AuthHeaderCard()
 
-                Picker("模式", selection: $mode) {
-                    ForEach(AuthMode.allCases) { item in
-                        Text(item.rawValue).tag(item)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("模式")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    HStack(spacing: 0) {
+                        ForEach(AuthMode.allCases) { item in
+                            Button {
+                                mode = item
+                            } label: {
+                                Text(item.rawValue)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(mode == item ? Color.white : AppTheme.textPrimary)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                            }
+                            .buttonStyle(.plain)
+                            .background(mode == item ? AppTheme.accentWarm : AppTheme.surface)
+                        }
                     }
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
                 }
-                .pickerStyle(.segmented)
 
                 VStack(spacing: 12) {
                     if mode == .login {
@@ -1137,15 +1464,21 @@ struct AuthView: View {
                         AuthTextField(title: "手机号", placeholder: "+62...", text: $phone)
                         AuthTextField(title: "昵称", placeholder: "请输入昵称", text: $displayName)
                     }
-                    SecureField("密码", text: $password)
-                        .textFieldStyle(.plain)
-                        .padding(12)
-                        .background(AppTheme.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(AppTheme.border, lineWidth: 1)
-                        )
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("密码")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        SecureField("请输入密码", text: $password)
+                            .textFieldStyle(.plain)
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .padding(12)
+                            .background(AppTheme.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(AppTheme.border, lineWidth: 1)
+                            )
+                    }
                 }
 
                 Button {
@@ -1175,12 +1508,14 @@ struct AuthView: View {
                     Button("完成") {
                         dismiss()
                     }
+                    .foregroundStyle(AppTheme.textPrimary)
                 }
                 #else
                 ToolbarItem(placement: .automatic) {
                     Button("完成") {
                         dismiss()
                     }
+                    .foregroundStyle(AppTheme.textPrimary)
                 }
                 #endif
             }
@@ -1201,9 +1536,10 @@ struct AuthHeaderCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("欢迎回来")
                     .font(.headline)
+                    .foregroundStyle(AppTheme.textPrimary)
                 Text("登录后即可同步您的数据")
                     .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
+                    .foregroundStyle(AppTheme.textPrimary.opacity(0.85))
             }
             Spacer()
         }
@@ -1219,19 +1555,20 @@ struct AuthTextField: View {
     @Binding var text: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(AppTheme.textSecondary)
-            TextField(placeholder, text: $text)
-                .textFieldStyle(.plain)
-                .padding(12)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(AppTheme.border, lineWidth: 1)
-                )
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textPrimary)
+                TextField(placeholder, text: $text)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .padding(12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
         }
     }
 }
@@ -1248,11 +1585,17 @@ struct AuthSocialButton: View {
                 Text(title)
             }
             .font(.subheadline.weight(.semibold))
+            .foregroundStyle(AppTheme.textPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
             .background(AppTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(AppTheme.border, lineWidth: 1)
+            )
         }
+        .buttonStyle(.plain)
     }
 }
 

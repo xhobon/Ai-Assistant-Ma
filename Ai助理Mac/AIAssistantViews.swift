@@ -103,7 +103,7 @@ struct AIAssistantHomeView: View {
                         ], spacing: 8) {
                             ForEach(filteredServices) { service in
                                 NavigationLink {
-                                    AIAssistantChatView(title: service.title)
+                                    AIAssistantChatView(title: service.title, allowLocalExecution: service.id == "s1")
                                 } label: {
                                     TechServiceCard(service: service)
                                 }
@@ -267,21 +267,21 @@ struct HomeQuickActionStrip: View {
     var body: some View {
         HStack(spacing: 12) {
             NavigationLink {
-                AIAssistantChatView(title: primaryService.title)
+                AIAssistantChatView(title: primaryService.title, allowLocalExecution: true)
             } label: {
                 HomeQuickActionCard(title: "智能对话", subtitle: "立即开始", systemImage: "sparkles", tint: AppTheme.accentStrong)
             }
             .buttonStyle(.plain)
 
             NavigationLink {
-                AIAssistantChatView(title: primaryService.title)
+                AIAssistantChatView(title: primaryService.title, allowLocalExecution: true)
             } label: {
                 HomeQuickActionCard(title: "语音助手", subtitle: "点击输入", systemImage: "waveform", tint: AppTheme.accentWarm)
             }
             .buttonStyle(.plain)
 
             NavigationLink {
-                AIAssistantChatView(title: primaryService.title)
+                AIAssistantChatView(title: primaryService.title, allowLocalExecution: true)
             } label: {
                 HomeQuickActionCard(title: "图像识别", subtitle: "拍照导入", systemImage: "camera.fill", tint: AppTheme.brandBlue)
             }
@@ -442,7 +442,7 @@ struct HomePrimaryEntryCard: View {
 
     var body: some View {
         NavigationLink {
-            AIAssistantChatView(title: service.title)
+            AIAssistantChatView(title: service.title, allowLocalExecution: true)
         } label: {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 12) {
@@ -534,7 +534,7 @@ struct HomeQuickEntryCard: View {
 
     var body: some View {
         NavigationLink {
-            AIAssistantChatView(title: service.title)
+            AIAssistantChatView(title: service.title, allowLocalExecution: service.id == "s1")
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 ZStack {
@@ -680,10 +680,21 @@ struct AssistantService: Identifiable, Hashable {
 
 struct AIAssistantChatView: View {
     let title: String
-    @StateObject private var viewModel = ChatViewModel()
+    /// 仅首页入口为 true，其他（法律/投资/面试等）保持原样，不显示本机执行
+    var allowLocalExecution: Bool = false
+
+    @StateObject private var viewModel: ChatViewModel
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
+    @ObservedObject private var openClawService = OpenClawService.shared
+
+    init(title: String, allowLocalExecution: Bool = false) {
+        self.title = title
+        self.allowLocalExecution = allowLocalExecution
+        _viewModel = StateObject(wrappedValue: ChatViewModel(allowLocalExecution: allowLocalExecution))
+    }
     @State private var showPhotoPicker = false
     @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var showFilePicker = false
     @State private var showChatMenu = false
     @State private var showVoiceCall = false
     @State private var showVideoCall = false
@@ -760,6 +771,26 @@ struct AIAssistantChatView: View {
                     .padding(.bottom, 6)
                 }
 
+                if allowLocalExecution {
+                    HStack(spacing: 8) {
+                        Image(systemName: "terminal")
+                            .font(.caption)
+                            .foregroundStyle(openClawService.useOpenClawForAssistant ? AppTheme.primary : AppTheme.textTertiary)
+                        Text("使用本机执行")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        Toggle("", isOn: Binding(
+                            get: { openClawService.useOpenClawForAssistant },
+                            set: { openClawService.useOpenClawForAssistant = $0 }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .background(AppTheme.surface.opacity(0.6))
+                }
+
                 HStack(alignment: .bottom, spacing: 0) {
                     ChatComposerBar(
                         text: $viewModel.inputText,
@@ -773,7 +804,13 @@ struct AIAssistantChatView: View {
                         },
                         onVoice: { viewModel.toggleListening() },
                         onSend: { viewModel.sendMessage() },
-                        onPlus: { showShortcutRow.toggle() }
+                        onPlus: { showShortcutRow.toggle() },
+                        onPasteImage: { imageData in
+                            viewModel.handlePastedImage(imageData)
+                        },
+                        onFileUpload: {
+                            showFilePicker = true
+                        }
                     )
                     .frame(maxWidth: .infinity)
                 }
@@ -785,12 +822,40 @@ struct AIAssistantChatView: View {
         }
         #if os(iOS)
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
+        .fileImporter(
+            isPresented: $showFilePicker,
+            allowedContentTypes: [.image, .pdf, .text, .plainText, .rtf, .data, .item],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let url) = result, let fileURL = url.first {
+                if fileURL.startAccessingSecurityScopedResource() {
+                    defer { fileURL.stopAccessingSecurityScopedResource() }
+                    if let data = try? Data(contentsOf: fileURL) {
+                        viewModel.handleFileUpload(url: fileURL, data: data)
+                    }
+                }
+            }
+        }
         #elseif os(macOS)
         .fileImporter(isPresented: $showPhotoPicker, allowedContentTypes: [.image]) { result in
             if case .success(let url) = result, url.startAccessingSecurityScopedResource() {
                 defer { url.stopAccessingSecurityScopedResource() }
                 if let data = try? Data(contentsOf: url) {
                     viewModel.handleImageData(data)
+                }
+            }
+        }
+        .fileImporter(
+            isPresented: $showFilePicker,
+            allowedContentTypes: [.image, .pdf, .text, .plainText, .rtf, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let url) = result, let fileURL = url.first {
+                if fileURL.startAccessingSecurityScopedResource() {
+                    defer { fileURL.stopAccessingSecurityScopedResource() }
+                    if let data = try? Data(contentsOf: fileURL) {
+                        viewModel.handleFileUpload(url: fileURL, data: data)
+                    }
                 }
             }
         }
@@ -818,6 +883,34 @@ struct AIAssistantChatView: View {
             }
             Button("取消", role: .cancel) {}
         }
+        .confirmationDialog("执行命令", isPresented: Binding(
+            get: { viewModel.pendingCommand != nil },
+            set: { if !$0 { viewModel.cancelCommandExecution() } }
+        )) {
+            Button("允许") {
+                viewModel.confirmCommandExecution()
+            }
+            Button("拒绝", role: .cancel) {
+                viewModel.cancelCommandExecution()
+            }
+        } message: {
+            if let pending = viewModel.pendingCommand {
+                Text("助理请求在本机执行：\n\(pending.command)")
+            }
+        }
+        .confirmationDialog("发送执行结果", isPresented: Binding(
+            get: { viewModel.pendingSendResult != nil },
+            set: { if !$0 { viewModel.cancelSendResult() } }
+        )) {
+            Button("继续") {
+                viewModel.confirmSendResult()
+            }
+            Button("取消", role: .cancel) {
+                viewModel.cancelSendResult()
+            }
+        } message: {
+            Text("执行结果将发送至服务器以生成回复。请确认结果中无敏感信息后再继续，保护您的隐私。")
+        }
         .alert("提示", isPresented: Binding(
             get: { viewModel.alertMessage != nil },
             set: { if !$0 { viewModel.alertMessage = nil } }
@@ -839,6 +932,11 @@ struct AIAssistantChatView: View {
         #if os(iOS)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
+        #elseif os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            // 窗口失焦时停止播放
+            SpeechService.shared.stopSpeaking()
+        }
         #endif
     }
 }
@@ -1437,6 +1535,8 @@ struct ChatComposerBar: View {
     var onVoice: () -> Void
     var onSend: () -> Void
     var onPlus: () -> Void = {}
+    var onPasteImage: ((Data) -> Void)? = nil
+    var onFileUpload: (() -> Void)? = nil
 
     private var canSend: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
@@ -1455,14 +1555,42 @@ struct ChatComposerBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("拍照或相册")
+            
+            Button(action: { onFileUpload?() }) {
+                Image(systemName: "doc.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.unifiedButtonBorder)
+                    .frame(width: 36, height: 36)
+                    .background(Color.white)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("上传文件")
 
+            #if os(macOS)
+            PasteableTextField(
+                text: $text,
+                placeholder: "发消息或按住说话...",
+                onPasteImage: onPasteImage
+            )
+            .font(.subheadline)
+            .textFieldStyle(.plain)
+            .foregroundStyle(AppTheme.textPrimary)
+            .lineLimit(1...4)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .onSubmit { onSend() }
+            #else
             TextField("发消息或按住说话...", text: $text, axis: .vertical)
                 .font(.subheadline)
                 .textFieldStyle(.plain)
+                .foregroundStyle(AppTheme.textPrimary)
                 .lineLimit(1...4)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
                 .onSubmit { onSend() }
+            #endif
 
             Button(action: onVoice) {
                 Image(systemName: isListening ? "waveform.circle.fill" : "mic.fill")
@@ -1511,6 +1639,110 @@ struct ChatComposerBar: View {
         )
     }
 }
+
+#if os(macOS)
+/// 支持粘贴图片的 TextField（macOS）
+struct PasteableTextField: NSViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    var onPasteImage: ((Data) -> Void)?
+    
+    func makeNSView(context: Context) -> CustomTextField {
+        let textField = CustomTextField()
+        textField.placeholderString = placeholder
+        textField.isBordered = false
+        textField.backgroundColor = .clear
+        textField.focusRingType = .none
+        textField.delegate = context.coordinator
+        textField.onPasteImage = onPasteImage
+        
+        // 设置 cell 以支持多行
+        if let cell = textField.cell as? NSTextFieldCell {
+            cell.wraps = true
+            cell.isScrollable = false
+        }
+        
+        return textField
+    }
+    
+    func updateNSView(_ nsView: CustomTextField, context: Context) {
+        if nsView.stringValue != text {
+            nsView.stringValue = text
+        }
+        nsView.onPasteImage = onPasteImage
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+    
+    class Coordinator: NSObject, NSTextFieldDelegate {
+        @Binding var text: String
+        
+        init(text: Binding<String>) {
+            _text = text
+        }
+        
+        func controlTextDidChange(_ obj: Notification) {
+            if let textField = obj.object as? NSTextField {
+                text = textField.stringValue
+            }
+        }
+    }
+}
+
+/// 自定义 TextField，支持拦截粘贴事件
+class CustomTextField: NSTextField {
+    var onPasteImage: ((Data) -> Void)?
+    
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        // 拦截 Cmd+V
+        if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "v" {
+            return handlePaste()
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+    
+    private func handlePaste() -> Bool {
+        let pasteboard = NSPasteboard.general
+        
+        // 检查是否有图片（使用正确的 PasteboardType）
+        let imageTypes: [NSPasteboard.PasteboardType] = [
+            .png,
+            .tiff,
+            NSPasteboard.PasteboardType("public.jpeg"),
+            NSPasteboard.PasteboardType("public.jpg")
+        ]
+        
+        for type in imageTypes {
+            if let imageData = pasteboard.data(forType: type) {
+                DispatchQueue.main.async {
+                    self.onPasteImage?(imageData)
+                }
+                return true
+            }
+        }
+        
+        // 检查是否有文件 URL
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
+           let url = urls.first {
+            if url.startAccessingSecurityScopedResource() {
+                defer { url.stopAccessingSecurityScopedResource() }
+                if let imageData = try? Data(contentsOf: url),
+                   NSImage(data: imageData) != nil {
+                    DispatchQueue.main.async {
+                        self.onPasteImage?(imageData)
+                    }
+                    return true
+                }
+            }
+        }
+        
+        // 允许普通文本粘贴
+        return false
+    }
+}
+#endif
 
 struct ChatPromptChip: View {
     let text: String
@@ -1969,6 +2201,7 @@ struct AIStatusCard: View {
 /// 用户消息靠右、AI 消息靠左，不居中
 struct ChatBubble: View {
     let message: ChatMessage
+    @ObservedObject private var speechService = SpeechService.shared
 
     private let userBubbleBlue = AppTheme.primary
     private let aiBubbleGray = Color(red: 0.965, green: 0.965, blue: 0.97)
@@ -1986,9 +2219,13 @@ struct ChatBubble: View {
                 if message.role == .assistant {
                     HStack(spacing: 12) {
                         Button {
-                            SpeechService.shared.speak(message.content, language: "zh-CN")
+                            if speechService.isPlaying {
+                                speechService.stopSpeaking()
+                            } else {
+                                speechService.speak(message.content, language: "zh-CN")
+                            }
                         } label: {
-                            Label("朗读", systemImage: "speaker.wave.2.fill")
+                            Label(speechService.isPlaying ? "停止" : "朗读", systemImage: speechService.isPlaying ? "stop.fill" : "speaker.wave.2.fill")
                                 .labelStyle(.iconOnly)
                         }
                         .buttonStyle(.plain)

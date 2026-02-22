@@ -76,6 +76,36 @@ async function llmChat(messages) {
   throw new Error(`Groq API 错误: ${res.status} ${String(errMsg).slice(0, 200)}`);
 }
 
+/** 从最近一轮对话中提取可长期记忆的用户信息（偏好、习惯、重要事实），返回 { content, category }[] */
+async function extractMemoriesFromConversation(userMessage, assistantReply) {
+  const groqKey = getGroqApiKey();
+  if (!groqKey || groqKey.length <= 10) return [];
+  const prompt = `你是一个记忆提取助手。根据下面这一轮对话，提取值得长期记住的、关于用户的信息（例如：偏好、习惯、重要事实、称呼、工作/生活背景等）。每条用一行简短中文描述，格式为：类别|内容。类别只能是 preference、habit、fact 之一。
+若没有任何值得长期记忆的信息，只输出：无
+
+用户：${(userMessage || "").slice(0, 800)}
+助理：${(assistantReply || "").slice(0, 800)}`;
+  try {
+    const out = await llmChat([
+      { role: "system", content: "只输出上述格式的条目或「无」，不要其他解释。" },
+      { role: "user", content: prompt }
+    ]);
+    const lines = (out || "")
+      .split(/\n/)
+      .map((s) => s.trim())
+      .filter((s) => s && s !== "无" && /^(preference|habit|fact)\|/.test(s));
+    return lines.map((line) => {
+      const idx = line.indexOf("|");
+      const category = idx > 0 ? line.slice(0, idx).toLowerCase() : "fact";
+      const content = (idx > 0 ? line.slice(idx + 1) : line).trim().slice(0, 500);
+      return { content, category: ["preference", "habit", "fact"].includes(category) ? category : "fact" };
+    });
+  } catch (e) {
+    console.warn("extractMemoriesFromConversation error:", e?.message);
+    return [];
+  }
+}
+
 /// 支持图片的 AI 对话（使用 vision 模型）
 async function llmChatWithImage(messages, imageBase64, userPrompt) {
   const groqKey = getGroqApiKey();
@@ -423,6 +453,7 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
       const fileName = formData.fileName || "unknown";
       const fileType = formData.fileType || "text";
       const conversationId = formData.conversationId;
+      const userContext = formData.userContext ? String(formData.userContext).trim() : "";
       
       if (!file || !file.data) {
         return res.status(400).json({ error: "未提供文件" });
@@ -490,10 +521,26 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
       } else {
         history = [{ role: "user", content: processedMessage }];
       }
-      if (!history.some((m) => m.role === "system")) {
-        history.unshift({ role: "system", content: "你是专业、可靠的AI助理，请用中文简洁回答。当用户上传文件时，请仔细分析文件内容并给出有用的建议。" });
+      let systemParts = ["你是专业、可靠的AI助理，请用中文简洁回答。当用户上传文件时，请仔细分析文件内容并给出有用的建议。"];
+      if (userContext) {
+        systemParts.push("关于当前用户（请据此个性化回答）：\n" + userContext.slice(0, 2000));
       }
-      
+      if (req.user) {
+        const memories = await prisma.userMemory.findMany({
+          where: { userId: req.user.sub },
+          orderBy: { createdAt: "desc" },
+          take: 50
+        });
+        if (memories.length > 0) {
+          systemParts.push("已记住的关于该用户的信息：\n" + memories.map((m) => `- [${m.category}] ${m.content}`).join("\n"));
+        }
+      }
+      const systemContent = systemParts.join("\n\n");
+      if (!history.some((m) => m.role === "system")) {
+        history.unshift({ role: "system", content: systemContent });
+      } else {
+        history[0] = { role: "system", content: systemContent };
+      }
       // 更新最后一条消息为包含文件内容的消息
       if (history.length > 0 && history[history.length - 1].role === "user") {
         history[history.length - 1].content = processedMessage;
@@ -525,14 +572,16 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
   const schema = z.object({
     conversationId: z.string().optional(),
     message: z.string().optional(),
-    image: z.string().optional() // base64 图片
+    image: z.string().optional(), // base64 图片
+    userContext: z.string().optional(), // 未登录时客户端传来的「关于用户」的上下文（本地记忆）
+    localExecution: z.boolean().optional() // 本机执行模式：助理可输出 [CMD]命令[/CMD]，由客户端执行后回传结果
   });
   const parseResult = schema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({ error: parseResult.error.flatten() });
   }
 
-  const { conversationId, message, image } = parseResult.data;
+  const { conversationId, message, image, userContext, localExecution } = parseResult.data;
   // 至少需要 message 或 image 之一
   if ((!message || message.trim().length === 0) && !image) {
     return res.status(400).json({ error: "需要提供消息或图片" });
@@ -562,13 +611,37 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
   } else {
     history = [{ role: "user", content: userMessageContent }];
   }
+
+  // 构建系统提示：基础 + 用户上下文（未登录时的 userContext + 登录用户的云端记忆）+ 本机执行约定
+  let systemParts = ["你是专业、可靠的AI助理，请用中文简洁回答。"];
+  if (localExecution) {
+    systemParts.push(
+      "当需要查看或操作用户本机上的信息时（如列出目录、读文件、系统信息），你可以输出一条 Shell 命令，格式为：[CMD]一条命令[/CMD]。只输出一条，且仅当确实需要执行时才输出。客户端会征得用户同意后在本机执行并把结果发回，你再根据结果用中文回答。命令应简洁、安全（如 ls、cat、pwd、date、whoami、df -h 等），不要使用 rm、格式化等危险操作。"
+    );
+  }
+  if (userContext && String(userContext).trim()) {
+    systemParts.push("关于当前用户（请据此个性化回答）：\n" + String(userContext).trim().slice(0, 2000));
+  }
+  if (req.user) {
+    const memories = await prisma.userMemory.findMany({
+      where: { userId: req.user.sub },
+      orderBy: { createdAt: "desc" },
+      take: 50
+    });
+    if (memories.length > 0) {
+      const memoryText = memories.map((m) => `- [${m.category}] ${m.content}`).join("\n");
+      systemParts.push("已记住的关于该用户的信息：\n" + memoryText);
+    }
+  }
+  const systemContent = systemParts.join("\n\n");
   if (!history.some((m) => m.role === "system")) {
-    history.unshift({ role: "system", content: "你是专业、可靠的AI助理，请用中文简洁回答。" });
+    history.unshift({ role: "system", content: systemContent });
+  } else {
+    history[0] = { role: "system", content: systemContent };
   }
 
   let reply;
   try {
-    // 如果有图片，使用 vision 模型
     if (image) {
       reply = await llmChatWithImage(history, image, message || "请识别这张图片");
     } else {
@@ -582,6 +655,26 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
     await prisma.message.create({
       data: { conversationId: conversation.id, role: "assistant", content: reply }
     });
+  }
+
+  // 登录用户：从本轮对话中提取新记忆并写入
+  if (req.user && reply) {
+    try {
+      const newMemories = await extractMemoriesFromConversation(userMessageContent, reply);
+      for (const { content, category } of newMemories) {
+        if (!content || content.length < 2) continue;
+        const existing = await prisma.userMemory.findFirst({
+          where: { userId: req.user.sub, content }
+        });
+        if (!existing) {
+          await prisma.userMemory.create({
+            data: { userId: req.user.sub, content: content.slice(0, 500), category }
+          });
+        }
+      }
+    } catch (extractErr) {
+      console.warn("Memory extract/save error:", extractErr?.message);
+    }
   }
 
   return res.json({
@@ -768,6 +861,56 @@ app.post("/api/learning/session", authMiddleware, async (req, res) => {
   });
 
   return res.json({ log });
+});
+
+// ---------- 助理长期记忆（自主学习与个性化） ----------
+app.get("/api/user/memory", authMiddleware, async (req, res) => {
+  const list = await prisma.userMemory.findMany({
+    where: { userId: req.user.sub },
+    orderBy: { createdAt: "desc" },
+    take: 200
+  });
+  return res.json({
+    memories: list.map((m) => ({
+      id: m.id,
+      content: m.content,
+      category: m.category,
+      createdAt: m.createdAt.toISOString()
+    }))
+  });
+});
+
+app.post("/api/user/memory", authMiddleware, async (req, res) => {
+  const schema = z.object({
+    memories: z.array(z.object({
+      content: z.string().min(1).max(500),
+      category: z.enum(["fact", "preference", "habit"]).optional()
+    })).max(50)
+  });
+  const parseResult = schema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+  const { memories } = parseResult.data;
+  for (const { content, category = "fact" } of memories) {
+    const existing = await prisma.userMemory.findFirst({
+      where: { userId: req.user.sub, content }
+    });
+    if (!existing) {
+      await prisma.userMemory.create({
+        data: { userId: req.user.sub, content: content.trim().slice(0, 500), category }
+      });
+    }
+  }
+  return res.json({ success: true });
+});
+
+app.delete("/api/user/memory/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  await prisma.userMemory.deleteMany({
+    where: { id, userId: req.user.sub }
+  });
+  return res.json({ success: true });
 });
 
 app.use((err, req, res, next) => {

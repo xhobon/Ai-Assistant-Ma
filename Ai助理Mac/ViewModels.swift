@@ -10,6 +10,9 @@ import NaturalLanguage
 
 @MainActor
 final class ChatViewModel: ObservableObject {
+    /// 是否允许本机执行（仅首页入口为 true，其他入口保持原样）
+    let allowLocalExecution: Bool
+
     @Published var messages: [ChatMessage] = []
     @Published var inputText: String = ""
     @Published var isListening = false
@@ -18,34 +21,81 @@ final class ChatViewModel: ObservableObject {
     @Published var statusText = "AI 已就绪"
     @Published var isSending = false
     @Published var alertMessage: String?
+    /// 本机执行模式：助理返回 [CMD] 时等待用户确认执行
+    @Published var pendingCommand: (displayText: String, command: String, conversationId: String?)?
+    /// 命令已执行，等待用户确认后再将结果发送至服务器（保护隐私）
+    @Published var pendingSendResult: (output: String, conversationId: String?)?
 
     private let speechTranscriber = SpeechTranscriber()
     private let maxContextCount = 12
     private var serverConversationId: String?
+    private var localConversationId: String
     private var voiceStopWorkItem: DispatchWorkItem?
     private var lastVoiceText: String?
     private var isStoppingVoice = false
+    private var pendingImageData: Data? = nil
+    
+    init(allowLocalExecution: Bool = false) {
+        self.allowLocalExecution = allowLocalExecution
+        // 加载或创建本地对话ID
+        if let savedId = LocalDataStore.shared.loadCurrentConversationId() {
+            localConversationId = savedId
+            // 加载本地保存的消息
+            messages = LocalDataStore.shared.loadConversation(id: savedId)
+        } else {
+            localConversationId = UUID().uuidString
+            LocalDataStore.shared.saveCurrentConversationId(localConversationId)
+        }
+        
+        // 如果已登录，尝试从云端同步
+        if TokenStore.shared.isLoggedIn {
+            Task {
+                await syncFromCloud()
+            }
+        }
+    }
 
     func sendMessage() {
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let userMessage = ChatMessage(id: UUID().uuidString, role: .user, content: trimmed, time: Date())
+        let hasImage = pendingImageData != nil
+        guard !trimmed.isEmpty || hasImage else { return }
+        
+        // 创建用户消息（如果有图片，显示提示）
+        let messageContent = hasImage ? (trimmed.isEmpty ? "[图片]" : trimmed + " [图片]") : trimmed
+        let userMessage = ChatMessage(id: UUID().uuidString, role: .user, content: messageContent, time: Date())
         messages.append(userMessage)
+        
+        // 保存到本地
+        saveMessagesToLocal()
+        
+        let imageData = pendingImageData
+        pendingImageData = nil
         inputText = ""
         statusText = "思考中..."
         isSending = true
 
         Task {
             do {
-                let (cid, reply) = try await APIClient.shared.assistantChat(
+                let userContext = TokenStore.shared.isLoggedIn ? nil : LocalDataStore.shared.memoriesAsUserContext()
+                let useLocal = allowLocalExecution && OpenClawService.shared.useOpenClawForAssistant
+                let (cid, serverReply) = try await APIClient.shared.assistantChat(
                     conversationId: serverConversationId,
-                    message: trimmed
+                    message: trimmed.isEmpty ? nil : (trimmed + (imageData != nil ? " [用户附了一张图]" : "")),
+                    imageData: imageData,
+                    userContext: userContext,
+                    localExecution: useLocal
                 )
                 serverConversationId = cid
-                let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: reply, time: Date())
+                let (displayText, command) = useLocal ? OpenClawService.parseCommand(from: serverReply) : (serverReply, nil)
+                let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: displayText, time: Date())
                 messages.append(replyMsg)
-                statusText = "AI 已就绪"
-                SpeechService.shared.speak(reply, language: "zh-CN")
+                saveMessagesToLocal()
+                if let cmd = command, !cmd.isEmpty {
+                    pendingCommand = (displayText, cmd, cid)
+                } else {
+                    statusText = "AI 已就绪"
+                    SpeechService.shared.speak(displayText, language: "zh-CN")
+                }
             } catch {
                 alertMessage = userFacingMessage(for: error)
                 statusText = "AI 未就绪"
@@ -54,26 +104,206 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    func resetConversation() {
-        messages.removeAll()
-        serverConversationId = nil
+    /// 用户确认执行本机命令后调用（先执行，再弹出「发送结果」确认以保护隐私）
+    func confirmCommandExecution() {
+        guard let pending = pendingCommand else { return }
+        let command = pending.command
+        let cid = pending.conversationId
+        pendingCommand = nil
+        if !OpenClawService.isCommandAllowed(command) {
+            alertMessage = "出于安全与隐私保护，该命令未被允许执行。仅支持只读类命令（如 ls、pwd、date、whoami、df）。"
+            statusText = "AI 已就绪"
+            return
+        }
+        statusText = "执行中..."
+        Task {
+            let output = await OpenClawService.shared.runLocalCommand(command)
+            await MainActor.run {
+                pendingSendResult = (output, cid)
+                statusText = "请确认是否将结果发送至服务器"
+            }
+        }
+    }
+
+    /// 用户确认将执行结果发送至服务器后调用
+    func confirmSendResult() {
+        guard let pending = pendingSendResult else { return }
+        let output = pending.output
+        let cid = pending.conversationId
+        pendingSendResult = nil
+        statusText = "思考中..."
+        Task {
+            do {
+                let followUp = "（你上一条回复中请求执行的命令已执行，结果如下）\n```\n\(output)\n```\n请根据结果用中文继续回答。"
+                let userContext = TokenStore.shared.isLoggedIn ? nil : LocalDataStore.shared.memoriesAsUserContext()
+                let (newCid, secondReply) = try await APIClient.shared.assistantChat(
+                    conversationId: cid,
+                    message: followUp,
+                    userContext: userContext,
+                    localExecution: true
+                )
+                serverConversationId = newCid
+                let (displayText, _) = OpenClawService.parseCommand(from: secondReply)
+                let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: displayText, time: Date())
+                messages.append(replyMsg)
+                saveMessagesToLocal()
+                statusText = "AI 已就绪"
+                SpeechService.shared.speak(displayText, language: "zh-CN")
+            } catch {
+                alertMessage = userFacingMessage(for: error)
+                statusText = "AI 已就绪"
+            }
+        }
+    }
+
+    /// 用户取消发送执行结果
+    func cancelSendResult() {
+        pendingSendResult = nil
         statusText = "AI 已就绪"
     }
 
-    /// 发送一条消息并等待 AI 回复（用于语音/视频通话）
+    /// 用户取消执行本机命令
+    func cancelCommandExecution() {
+        pendingCommand = nil
+        statusText = "AI 已就绪"
+    }
+    
+    /// 处理粘贴的图片
+    func handlePastedImage(_ imageData: Data) {
+        #if os(macOS)
+        guard NSImage(data: imageData) != nil else {
+            alertMessage = "图片格式不支持"
+            return
+        }
+        #elseif os(iOS)
+        guard UIImage(data: imageData) != nil else {
+            alertMessage = "图片格式不支持"
+            return
+        }
+        #endif
+        pendingImageData = imageData
+        // 如果输入框为空，自动发送；否则等待用户输入文字后一起发送
+        if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            inputText = "请识别这张图片"
+            sendMessage()
+        }
+    }
+    
+    /// 处理文件上传
+    func handleFileUpload(url: URL, data: Data) {
+        let fileName = url.lastPathComponent
+        let fileExtension = url.pathExtension.lowercased()
+        
+        // 判断文件类型
+        let isImage = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "heic", "webp"].contains(fileExtension)
+        let isPDF = fileExtension == "pdf"
+        let isText = ["txt", "md", "markdown", "json", "xml", "csv", "log"].contains(fileExtension)
+        
+        if isImage {
+            // 图片文件，使用图片处理逻辑
+            pendingImageData = data
+            if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                inputText = "请识别这张图片：\(fileName)"
+            } else {
+                inputText += " [文件: \(fileName)]"
+            }
+            sendMessage()
+        } else if isPDF || isText {
+            // PDF或文本文件，发送给AI分析
+            statusText = "正在上传文件..."
+            isSending = true
+            
+            Task {
+                do {
+                    let userContext = TokenStore.shared.isLoggedIn ? nil : LocalDataStore.shared.memoriesAsUserContext()
+                    let (cid, reply) = try await APIClient.shared.assistantChatWithFile(
+                        conversationId: serverConversationId,
+                        message: inputText.isEmpty ? "请分析这个文件：\(fileName)" : inputText,
+                        fileData: data,
+                        fileName: fileName,
+                        fileType: isPDF ? "pdf" : "text",
+                        userContext: userContext
+                    )
+                    serverConversationId = cid
+                    
+                    // 添加用户消息
+                    let userMessageContent = inputText.isEmpty ? "[文件: \(fileName)]" : inputText + " [文件: \(fileName)]"
+                    let userMessage = ChatMessage(id: UUID().uuidString, role: .user, content: userMessageContent, time: Date())
+                    await MainActor.run {
+                        messages.append(userMessage)
+                        saveMessagesToLocal()
+                    }
+                    
+                    // 添加AI回复
+                    let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: reply, time: Date())
+                    await MainActor.run {
+                        messages.append(replyMsg)
+                        saveMessagesToLocal()
+                        inputText = ""
+                        statusText = "AI 已就绪"
+                        SpeechService.shared.speak(reply, language: "zh-CN")
+                    }
+                } catch {
+                    await MainActor.run {
+                        alertMessage = userFacingMessage(for: error)
+                        statusText = "AI 未就绪"
+                    }
+                }
+                await MainActor.run {
+                    isSending = false
+                }
+            }
+        } else {
+            alertMessage = "不支持的文件类型：\(fileExtension)。支持的类型：图片、PDF、文本文件"
+        }
+    }
+
+    func resetConversation() {
+        messages.removeAll()
+        serverConversationId = nil
+        
+        // 创建新的本地对话
+        localConversationId = UUID().uuidString
+        LocalDataStore.shared.saveCurrentConversationId(localConversationId)
+        
+        statusText = "AI 已就绪"
+    }
+    
+    /// 保存消息到本地
+    private func saveMessagesToLocal() {
+        LocalDataStore.shared.saveConversation(id: localConversationId, messages: messages)
+    }
+    
+    /// 从云端同步数据
+    private func syncFromCloud() async {
+        // 如果已有服务器对话ID，可在此从云端加载对话；目前先使用本地数据
+        guard serverConversationId != nil else { return }
+    }
+
+    /// 发送一条消息并等待 AI 回复（用于语音/视频通话）；本机执行模式下若有 [CMD] 只返回文案不执行
     func sendAndWaitForReply(text: String) async throws -> String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw NSError(domain: "Chat", code: -1, userInfo: [NSLocalizedDescriptionKey: "内容为空"]) }
         let userMessage = ChatMessage(id: UUID().uuidString, role: .user, content: trimmed, time: Date())
-        await MainActor.run { messages.append(userMessage) }
-        let (cid, replyText) = try await APIClient.shared.assistantChat(
+        await MainActor.run {
+            messages.append(userMessage)
+            saveMessagesToLocal()
+        }
+        let userContext = TokenStore.shared.isLoggedIn ? nil : LocalDataStore.shared.memoriesAsUserContext()
+        let (cid, serverReply) = try await APIClient.shared.assistantChat(
             conversationId: serverConversationId,
-            message: trimmed
+            message: trimmed,
+            userContext: userContext,
+            localExecution: allowLocalExecution && OpenClawService.shared.useOpenClawForAssistant
         )
         await MainActor.run { serverConversationId = cid }
-        let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: replyText, time: Date())
-        await MainActor.run { messages.append(replyMsg) }
-        return replyText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        let (displayText, _) = OpenClawService.parseCommand(from: serverReply)
+        let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: displayText, time: Date())
+        await MainActor.run {
+            messages.append(replyMsg)
+            saveMessagesToLocal()
+        }
+        return displayText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
     }
 
     func toggleListening() {
@@ -129,6 +359,11 @@ final class ChatViewModel: ObservableObject {
         if !trimmed.isEmpty, trimmed != lastVoiceText {
             lastVoiceText = trimmed
             sendMessage()
+            // 确保输入框被清空（防止某些情况下 sendMessage 没有清空）
+            inputText = ""
+        } else {
+            // 即使不发送消息，也要清空输入框
+            inputText = ""
         }
         statusText = "AI 已就绪"
         isStoppingVoice = false
@@ -260,12 +495,22 @@ final class TranslateViewModel: ObservableObject {
     @Published var isListening = false
     @Published var listeningSide: ListeningSide = .left
     @Published var alertMessage: String?
-
+    
     private let speechTranscriber = SpeechTranscriber()
     private var autoStopWorkItem: DispatchWorkItem?
     private let silenceTimeout: TimeInterval = 1.2
 
     init() {
+        // 加载本地翻译历史
+        history = LocalDataStore.shared.loadAllTranslations()
+        
+        // 如果已登录，尝试从云端同步
+        if TokenStore.shared.isLoggedIn {
+            Task {
+                await syncTranslationsFromCloud()
+            }
+        }
+        
         NotificationCenter.default.addObserver(forName: .clearLocalData, object: nil, queue: .main) { [weak self] _ in
             guard let viewModel = self else { return }
             Task { @MainActor in
@@ -322,17 +567,25 @@ final class TranslateViewModel: ObservableObject {
                 let translated = result.trimmingCharacters(in: .whitespacesAndNewlines)
                 await MainActor.run {
                     translatedText = translated
-                    history.insert(
-                        TranslationEntry(
-                            id: UUID().uuidString,
-                            sourceText: trimmed,
-                            targetText: result,
-                            sourceLang: sourceLang,
-                            targetLang: targetLang,
-                            createdAt: Date()
-                        ),
-                        at: 0
+                    let entry = TranslationEntry(
+                        id: UUID().uuidString,
+                        sourceText: trimmed,
+                        targetText: result,
+                        sourceLang: sourceLang,
+                        targetLang: targetLang,
+                        createdAt: Date()
                     )
+                    history.insert(entry, at: 0)
+                    
+                    // 保存到本地
+                    LocalDataStore.shared.saveTranslation(entry)
+                    
+                    // 如果已登录，同步到云端
+                    if TokenStore.shared.isLoggedIn {
+                        Task {
+                            await syncTranslationToCloud(entry)
+                        }
+                    }
                     SpeechService.shared.speak(translated, language: targetLang.speechCode)
                 }
             } catch {
@@ -359,17 +612,25 @@ final class TranslateViewModel: ObservableObject {
                 let translated = result.trimmingCharacters(in: .whitespacesAndNewlines)
                 await MainActor.run {
                     sourceText = translated
-                    history.insert(
-                        TranslationEntry(
-                            id: UUID().uuidString,
-                            sourceText: trimmed,
-                            targetText: result,
-                            sourceLang: targetLang,
-                            targetLang: sourceLang,
-                            createdAt: Date()
-                        ),
-                        at: 0
+                    let entry = TranslationEntry(
+                        id: UUID().uuidString,
+                        sourceText: trimmed,
+                        targetText: result,
+                        sourceLang: targetLang,
+                        targetLang: sourceLang,
+                        createdAt: Date()
                     )
+                    history.insert(entry, at: 0)
+                    
+                    // 保存到本地
+                    LocalDataStore.shared.saveTranslation(entry)
+                    
+                    // 如果已登录，同步到云端
+                    if TokenStore.shared.isLoggedIn {
+                        Task {
+                            await syncTranslationToCloud(entry)
+                        }
+                    }
                     SpeechService.shared.speak(translated, language: sourceLang.speechCode)
                 }
             } catch {
@@ -475,6 +736,45 @@ final class TranslateViewModel: ObservableObject {
     func copyResult() {
         guard !translatedText.isEmpty else { return }
         ClipboardService.copy(translatedText)
+    }
+    
+    /// 同步翻译到云端
+    private func syncTranslationToCloud(_ entry: TranslationEntry) async {
+        do {
+            try await APIClient.shared.saveTranslation(
+                sourceLang: entry.sourceLang.code,
+                targetLang: entry.targetLang.code,
+                sourceText: entry.sourceText,
+                targetText: entry.targetText
+            )
+        } catch {
+            // 静默失败，不影响用户体验
+            #if DEBUG
+            print("[TranslateViewModel] 云端同步失败: \(error.localizedDescription)")
+            #endif
+        }
+    }
+    
+    /// 从云端同步翻译历史
+    private func syncTranslationsFromCloud() async {
+        do {
+            let cloudTranslations = try await APIClient.shared.getTranslationHistory()
+            await MainActor.run {
+                // 合并云端和本地数据，去重
+                var merged = history
+                for cloud in cloudTranslations {
+                    if !merged.contains(where: { $0.id == cloud.id }) {
+                        merged.append(cloud)
+                    }
+                }
+                history = merged.sorted { $0.createdAt > $1.createdAt }
+            }
+        } catch {
+            // 静默失败，使用本地数据
+            #if DEBUG
+            print("[TranslateViewModel] 云端同步失败: \(error.localizedDescription)")
+            #endif
+        }
     }
 }
 

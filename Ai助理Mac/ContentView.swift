@@ -176,6 +176,10 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
 #endif
         }
+        .onChange(of: selectedItem) { _, _ in
+            // 切换侧边栏页面时停止语音播放，避免在其它页还能听到朗读
+            SpeechService.shared.stopSpeaking()
+        }
         .preferredColorScheme(appearance.colorScheme)
     }
 }
