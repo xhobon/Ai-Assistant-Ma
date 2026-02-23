@@ -108,22 +108,26 @@ async function extractMemoriesFromConversation(userMessage, assistantReply) {
   }
 }
 
-// 专用于翻译的模型调用：与聊天分开配置，温度更低，避免乱发挥
+// 专用于翻译的模型调用：走千问（DashScope）免费/低价模型，避免和聊天共用 Groq
 async function llmTranslate(messages) {
-  const groqKey = getGroqApiKey();
-  if (!groqKey || groqKey.length <= 10) {
+  const qwenKeyRaw = process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY || "";
+  const qwenKey = qwenKeyRaw.trim().replace(/^["']|["']$/g, "");
+  if (!qwenKey || qwenKey.length < 10) {
     throw new Error(
-      "请配置 GROQ_API_KEY（免费）：访问 https://console.groq.com 注册，创建 API Key，在 Vercel 环境变量中添加 GROQ_API_KEY，并 Redeploy"
+      "请配置 QWEN_API_KEY（千问 Model Studio 的 API Key）。在 .env/.env.local 与 Vercel 环境变量中设置 QWEN_API_KEY 后重新部署。"
     );
   }
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const baseURL = (process.env.QWEN_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1").replace(/\/+$/, "");
+  const model = process.env.QWEN_TRANSLATE_MODEL || "qwen-plus";
+
+  const res = await fetch(`${baseURL}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${groqKey}`
+      Authorization: `Bearer ${qwenKey}`
     },
     body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
+      model,
       messages,
       temperature: 0 // 纯翻译，尽量减少生成花样
     })
@@ -765,38 +769,46 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
     const langNames = { "zh-CN": "中文", "id-ID": "印尼语", "en-US": "英语" };
     const s = langNames[sourceLang] || sourceLang;
     const t = langNames[targetLang] || targetLang;
-    const baseMessages = [
-      {
-        role: "system",
-        content:
-          `你现在是一个**纯翻译引擎**，严禁回答问题或补充说明。\n` +
-          `规则：\n` +
-          `1）只把用户给出的整段文本从${s}翻译为${t}，绝不输出多余句子。\n` +
-          `2）不要解释、不要润色、不要加入「我没看到……」「请你提供……」之类的话。\n` +
-          `3）如果原文是疑问句，只翻译这个疑问句本身，不要回答它。\n` +
-          `4）保持原有语气与礼貌程度。`
-      },
+
+    // 本接口仅做中文与印尼文互译，禁止任何问答，仅输出与原文对应的翻译
+    const systemPrompt =
+      `你是一个纯翻译引擎，仅做中文与印尼文互译。禁止任何问答、解释、自我介绍或额外句子，仅输出与用户输入对应的翻译。\n` +
+      `规则（必须遵守）：\n` +
+      `1）只把用户给的整段从${s}译成${t}，输出仅该句/段的翻译，无任何其他内容。\n` +
+      `2）疑问句只译成疑问句，绝不回答。例：输入「你是谁？」只输出「Siapa kamu?」或「Siapa Anda?」；输入「你是什么模型？」只输出「Kamu model apa?」或「Model apa kamu?」。禁止输出「Saya adalah...」「我是...」「dikembangkan oleh」等任何回答。\n` +
+      `3）请求/祈使句只译成请求/祈使句，绝不回答。例：输入「帮我看看合同有没有问题」只输出「Bantu saya periksa apakah kontrak ini ada masalah」。禁止输出「我需要看到…」「Saya perlu melihat...」「请提供」等。\n` +
+      `4）输出长度与原文相当，禁止成段解释或补充。`;
+    translated = await llmTranslate([
+      { role: "system", content: systemPrompt },
       { role: "user", content: text }
-    ];
-    translated = await llmTranslate(baseMessages);
+    ]);
 
-    // 简单校验：如果目标是印尼语却还有大量中文，或目标是中文却几乎没有中文，则再重试一次
-    const hasChinese = /[\u4e00-\u9fff]/.test(translated || "");
-    const hasLatin = /[A-Za-z]/.test(translated || "");
-    let needRetry = false;
-    if (targetLang === "id-ID" && hasChinese) {
-      needRetry = true;
-    } else if (targetLang === "zh-CN" && !hasChinese && hasLatin) {
-      needRetry = true;
-    }
-
-    if (needRetry) {
-      const retrySystem =
+    const out = (translated || "").trim();
+    // 禁止出现的回答式句式：一旦出现即视为违规，重试为纯翻译
+    const answerPhrases =
+      /saya adalah|i am|我是|i'm|dikembangkan oleh|developed by|perusahaan teknologi|technology company|meta|openai|我需要|请提供|我没看到|i need to see|please provide|silakan berikan|saya perlu melihat/i;
+    const looksLikeAnswer = answerPhrases.test(out);
+    if (looksLikeAnswer) {
+      const strictUser =
         targetLang === "id-ID"
-          ? "你只负责把中文翻译成**印尼文**，输出必须全是印尼文拉丁字母，不能包含任何中文、英文解释或额外句子。"
-          : "你只负责把印尼文翻译成**中文**，输出必须全是简体中文，不能包含印尼文、英文解释或额外句子。";
+          ? `Translate the following to Indonesian only. Output ONLY the translation, one short sentence. Do not answer the question, do not introduce yourself, do not explain.\n\n${text}`
+          : `Translate the following to Chinese only. Output ONLY the translation, one short sentence. Do not answer the question, do not introduce yourself, do not explain.\n\n${text}`;
       translated = await llmTranslate([
-        { role: "system", content: retrySystem },
+        { role: "system", content: "You are a translator. Output ONLY the translation of the user's text. No answer, no self-introduction, no explanation. One short sentence only." },
+        { role: "user", content: strictUser }
+      ]);
+    }
+    const out2 = (translated || "").trim();
+    const hasChinese = /[\u4e00-\u9fff]/.test(out2);
+    const hasLatin = /[A-Za-z]/.test(out2);
+    if (targetLang === "id-ID" && hasChinese) {
+      translated = await llmTranslate([
+        { role: "system", content: "Output ONLY the Indonesian translation. No Chinese characters, no explanation." },
+        { role: "user", content: text }
+      ]);
+    } else if (targetLang === "zh-CN" && !hasChinese && hasLatin) {
+      translated = await llmTranslate([
+        { role: "system", content: "Output ONLY the Chinese translation. No English/Indonesian, no explanation." },
         { role: "user", content: text }
       ]);
     }

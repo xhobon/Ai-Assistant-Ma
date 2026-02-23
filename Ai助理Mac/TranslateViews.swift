@@ -20,7 +20,7 @@ struct AITranslateHomeView: View {
                     DualTranslationInputCard(viewModel: viewModel)
                         .padding(.horizontal, 14)
                     
-                    // 翻译按钮
+                    // 翻译按钮（支持 Cmd+Enter 快捷键）
                     ModernTranslationActionBar(viewModel: viewModel)
                         .padding(.horizontal, 14)
                     
@@ -1151,7 +1151,7 @@ struct DualTranslationInputCard: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // 左侧：中文输入框（可编辑）
+            // 左侧：中文输入框（可编辑）；回车或 Cmd+Enter 触发翻译
             TranslationInputBox(
                 title: viewModel.sourceLang.name,
                 text: $viewModel.sourceText,
@@ -1169,10 +1169,11 @@ struct DualTranslationInputCard: View {
                     viewModel.sourceText = ""
                 },
                 showActions: !viewModel.sourceText.isEmpty,
-                language: viewModel.sourceLang
+                language: viewModel.sourceLang,
+                onEnterToTranslate: { viewModel.translate() }
             )
             
-            // 右侧：印尼文输入框（可编辑）
+            // 右侧：印尼文输入框（可编辑）；回车或 Cmd+Enter 触发翻译
             TranslationInputBox(
                 title: viewModel.targetLang.name,
                 text: $viewModel.translatedText,
@@ -1190,7 +1191,8 @@ struct DualTranslationInputCard: View {
                     viewModel.translatedText = ""
                 },
                 showActions: !viewModel.translatedText.isEmpty,
-                language: viewModel.targetLang
+                language: viewModel.targetLang,
+                onEnterToTranslate: { viewModel.translate() }
             )
         }
         .padding(16)
@@ -1201,7 +1203,7 @@ struct DualTranslationInputCard: View {
     }
 }
 
-/// 单个翻译输入框组件（左侧或右侧）- 两个框大小一致、功能相同
+/// 单个翻译输入框组件（左侧或右侧）- 两个框大小一致、功能相同；回车键触发翻译
 struct TranslationInputBox: View {
     let title: String
     @Binding var text: String
@@ -1214,6 +1216,8 @@ struct TranslationInputBox: View {
     let onClear: () -> Void
     let showActions: Bool
     let language: LanguageOption
+    /// 回车键或 Cmd+Enter 时调用（翻译）
+    var onEnterToTranslate: (() -> Void)? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1252,7 +1256,7 @@ struct TranslationInputBox: View {
             }
             .padding(.bottom, 10)
             
-            // 输入框区域（可编辑）- 靠上靠左对齐，整个框内都是输入区域
+            // 输入框区域（可编辑）- 靠上靠左对齐；回车触发翻译
             ZStack(alignment: .topLeading) {
                 if text.isEmpty {
                     Text(placeholder)
@@ -1260,12 +1264,18 @@ struct TranslationInputBox: View {
                         .foregroundStyle(AppTheme.textSecondary)
                         .allowsHitTesting(false)
                 }
+                #if os(macOS)
+                TranslationPageTextView(text: $text, onEnterToTranslate: onEnterToTranslate ?? {})
+                    .font(.subheadline)
+                    .frame(minHeight: 200, maxHeight: isExpanded ? 400 : 200)
+                #else
                 TextEditor(text: $text)
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.inputText)
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
                     .frame(minHeight: 200, maxHeight: isExpanded ? 400 : 200)
+                #endif
             }
             .frame(maxWidth: .infinity, minHeight: 200, maxHeight: isExpanded ? 400 : 200, alignment: .topLeading)
             
@@ -1318,6 +1328,84 @@ struct TranslationInputBox: View {
         .frame(maxWidth: .infinity)
     }
 }
+
+#if os(macOS)
+/// 翻译页多行输入框（macOS）：回车触发翻译，Shift+回车换行
+struct TranslationPageTextView: NSViewRepresentable {
+    @Binding var text: String
+    var onEnterToTranslate: () -> Void
+    
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        
+        let textView = TranslationPageNSTextView()
+        textView.string = text
+        textView.onEnterToTranslate = onEnterToTranslate
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize(for: .regular))
+        textView.textColor = NSColor.labelColor
+        textView.minSize = NSSize(width: 0, height: 200)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
+        textView.delegate = context.coordinator
+        
+        scrollView.documentView = textView
+        return scrollView
+    }
+    
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? TranslationPageNSTextView else { return }
+        if textView.string != text {
+            textView.string = text
+        }
+        textView.onEnterToTranslate = onEnterToTranslate
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: TranslationPageTextView
+        init(_ parent: TranslationPageTextView) {
+            self.parent = parent
+        }
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            parent.text = textView.string
+        }
+    }
+}
+
+/// 自定义 NSTextView：回车触发翻译，Shift+回车换行
+class TranslationPageNSTextView: NSTextView {
+    var onEnterToTranslate: (() -> Void)?
+    
+    override func keyDown(with event: NSEvent) {
+        let isReturn = event.keyCode == 36 || event.charactersIgnoringModifiers == "\r" || event.charactersIgnoringModifiers == "\n"
+        if isReturn {
+            if event.modifierFlags.contains(.shift) {
+                super.keyDown(with: event)
+            } else {
+                onEnterToTranslate?()
+            }
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+}
+#endif
 
 // 保留原组件以兼容
 struct ModernTranslationInputCard: View {
@@ -1391,7 +1479,7 @@ struct ModernTranslationActionBar: View {
             .buttonStyle(.plain)
             .disabled(!canTranslate)
 
-            // 翻译按钮
+            // 翻译按钮（支持 Cmd+Enter 快捷键）
             Button(action: { viewModel.translate() }) {
                 HStack(spacing: 6) {
                     if viewModel.isTranslating {
@@ -1413,6 +1501,7 @@ struct ModernTranslationActionBar: View {
             }
             .buttonStyle(.plain)
             .disabled(!canTranslate)
+            .keyboardShortcut(.return, modifiers: .command)
         }
     }
 }
