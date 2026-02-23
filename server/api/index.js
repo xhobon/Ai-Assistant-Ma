@@ -1,7 +1,17 @@
 // 先单独处理 /health，不加载 Prisma，确保部署可测
 function sendHealth(res) {
+  const raw = process.env.GROQ_API_KEY || "";
+  const key = raw.trim().replace(/^["']|["']$/g, "");
+  const groqConfigured = key.length > 10;
   res.setHeader("Content-Type", "application/json");
-  res.status(200).end(JSON.stringify({ status: "ok", time: new Date().toISOString() }));
+  res.status(200).end(
+    JSON.stringify({
+      status: "ok",
+      time: new Date().toISOString(),
+      groq_configured: groqConfigured,
+      ...(groqConfigured ? {} : { hint: "在 Vercel Settings → Environment Variables 添加 GROQ_API_KEY 并 Redeploy" })
+    })
+  );
 }
 
 export default async function handler(req, res) {
