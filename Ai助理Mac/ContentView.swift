@@ -1,20 +1,18 @@
 import SwiftUI
 
-/// 侧边栏项：参考图 6 项 + 原有的翻译、学习、设置
+/// 侧边栏项：助理为默认页 + 写作、PPT、笔记、总结、翻译、学习、设置
 enum SidebarItem: Int, CaseIterable {
-    case home = 0           // 首页 → AI助理
-    case partner = 1        // 伙伴 → AI助理
-    case writing = 2        // 写作 → AI助理
-    case ppt = 3            // PPT → AI助理
-    case notes = 4          // 笔记 → AI助理
-    case summary = 5        // 总结 → AI助理
-    case translate = 6      // 翻译（原有）
-    case learning = 7       // 学习（原有）→ 印尼语学习
-    case profile = 8        // 设置（原有）
+    case partner = 0        // 助理（默认）
+    case writing = 1        // 写作
+    case ppt = 2            // PPT
+    case notes = 3         // 笔记
+    case summary = 4       // 总结
+    case translate = 5     // 翻译
+    case learning = 6      // 学习
+    case profile = 7       // 设置
 
     var title: String {
         switch self {
-        case .home: return "首页"
         case .partner: return "助理"
         case .writing: return "写作"
         case .ppt: return "PPT"
@@ -28,7 +26,6 @@ enum SidebarItem: Int, CaseIterable {
 
     var icon: String {
         switch self {
-        case .home: return "house"
         case .partner: return "person.2"
         case .writing: return "pencil"
         case .ppt: return "rectangle.stack"
@@ -90,17 +87,19 @@ struct SidebarRow: View {
 }
 
 struct ContentView: View {
-    @State private var selectedItem: SidebarItem? = .home
+    @State private var selectedItem: SidebarItem? = .partner
     @ObservedObject private var appearance = AppearanceStore.shared
     private var primarySidebarItems: [SidebarItem] {
-        SidebarItem.allCases.filter { $0 != .profile }
+        // 侧边栏只保留：助理、笔记、总结、翻译、学习（写作/PPT 入口已移动到助理页面的加号里）
+        SidebarItem.allCases.filter { ![.profile, .writing, .ppt].contains($0) }
     }
+
+    private static var defaultSidebarItem: SidebarItem { .partner }
 
     /// 根据当前选中的页面返回窗口标题
     private var currentWindowTitle: String {
-        let item = selectedItem ?? .home
+        let item = selectedItem ?? .partner
         switch item {
-        case .home: return "首页"
         case .partner: return "AI助理"
         case .writing: return "写作"
         case .ppt: return "PPT"
@@ -149,11 +148,9 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 100, ideal: 115, max: 140)
         } detail: {
             Group {
-                switch selectedItem ?? .home {
-                case .home:
-                    HomeView()
+                switch selectedItem ?? Self.defaultSidebarItem {
                 case .partner:
-                    AIAssistantChatView(title: "AI助理")
+                    AIAssistantChatView(title: "AI助理", allowLocalExecution: false)
                 case .writing:
                     WritingStudioView()
                 case .ppt:

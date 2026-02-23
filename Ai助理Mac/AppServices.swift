@@ -11,18 +11,15 @@ import Vision
 import Security
 import SwiftUI
 
-/// 服务器配置：固定使用内置生产地址，AI 对话与翻译全部走后端（API Key 在后端配置）
+/// 服务器配置：固定使用 Vercel 生产地址，AI 对话全部走后端
 final class ServerConfigStore: ObservableObject {
     static let shared = ServerConfigStore()
 
-    /// 内置生产地址（Vercel 部署的后端，Groq 智能体）
+    /// 注意：这里要与实际部署后端的 Vercel 域名保持一致
     private static let builtInProductionURL = "https://ai-assistant-mac.vercel.app"
 
     var baseURL: URL {
-        guard let u = URL(string: Self.builtInProductionURL) else {
-            return URL(string: "https://ai-assistant-mac.vercel.app")!
-        }
-        return u
+        URL(string: Self.builtInProductionURL) ?? URL(string: "https://ai-assistant-mac.vercel.app")!
     }
 
     var baseURLString: String { Self.builtInProductionURL }
@@ -649,27 +646,12 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
     }
 }
 
-// MARK: - 本机执行（内置，无需用户安装 OpenClaw）
+// MARK: - 本机执行（与后端 localExecution 配合，解析 [CMD]...[/CMD] 并在用户确认后执行）
 
-/// 内置「本机命令执行」：与后端 localExecution 模式配合，解析 [CMD]...[/CMD] 并在用户确认后执行
+/// 本机命令执行：解析 [CMD]...[/CMD]，白名单内命令在用户确认后执行
 final class OpenClawService: ObservableObject {
     static let shared = OpenClawService()
     private init() {}
-
-    /// 是否启用「使用本机执行」；存 UserDefaults。未配置时默认 true，首页对话框可直接发指令操作电脑，无需先去设置里打开
-    var useOpenClawForAssistant: Bool {
-        get {
-            if !UserDefaults.standard.bool(forKey: "openclaw_use_for_assistant_configured") {
-                return true  // 默认开启，首页对话即可用
-            }
-            return UserDefaults.standard.bool(forKey: "openclaw_use_for_assistant")
-        }
-        set {
-            UserDefaults.standard.set(true, forKey: "openclaw_use_for_assistant_configured")
-            UserDefaults.standard.set(newValue, forKey: "openclaw_use_for_assistant")
-            objectWillChange.send()
-        }
-    }
 
     /// 从助理回复中解析 [CMD]...[/CMD]，返回展示文案与待执行命令（无则 command 为 nil）
     static func parseCommand(from reply: String) -> (displayText: String, command: String?) {
@@ -696,14 +678,49 @@ final class OpenClawService: ObservableObject {
         if ["pwd", "date", "whoami"].contains(first) { return true }
         if first.hasPrefix("ls") || first.hasPrefix("df") || first.hasPrefix("uname") { return true }
         if first == "echo", !c.contains("`"), !c.contains("$(") { return true }
-        // 允许 macOS 打开应用：open -a "AppName"，禁止 URL/管道/分号等
+        if first == "cat", !lower.contains("/etc"), !lower.contains(".ssh"), !lower.contains(".aws"), !lower.contains("id_rsa"), !c.contains(";"), !c.contains("|") { return true }
+        // 允许 macOS 打开应用：open -a "AppName" 或 open -a "A" || open -a "B"（仅允许 || 依次尝试，禁止单管道）
         if first == "open", lower.contains("-a"),
-           !lower.contains("http"), !lower.contains("|"), !c.contains(";"), !c.contains("&&") { return true }
+           !lower.contains("http"), !c.contains(";"), !c.contains("&&") {
+            let noDoublePipe = lower.replacingOccurrences(of: " || ", with: " ")
+            if !noDoublePipe.contains("|") { return true }
+        }
+        // 允许 OPEN_APP:关键词 — 由客户端按关键词在 /Applications 中查找并打开
+        if c.hasPrefix("OPEN_APP:") {
+            let keyword = String(c.dropFirst("OPEN_APP:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !keyword.isEmpty, !keyword.contains(";"), !keyword.contains("|") { return true }
+        }
+        // 允许 OPEN_FOLDER:路径 / OPEN_FILE:路径 — 打开文件夹（Finder）或文件（默认应用），路径需在允许范围内
+        if c.hasPrefix("OPEN_FOLDER:") || c.hasPrefix("OPEN_FILE:") {
+            let pathPart = String(c.dropFirst(c.hasPrefix("OPEN_FOLDER:") ? "OPEN_FOLDER:".count : "OPEN_FILE:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !pathPart.isEmpty, !pathPart.contains(";"), !pathPart.contains("|"), !pathPart.contains("&&") { return true }
+        }
         return false
     }
 
-    /// 在本机执行一条 Shell 命令（仅允许通过 isCommandAllowed 的命令），返回 stdout+stderr
+    /// 允许的路径前缀（仅允许打开用户目录与 /Applications 下的路径，防止越权）
+    private static func isPathAllowed(_ path: String) -> Bool {
+        let expanded = (path as NSString).expandingTildeInPath
+        let url = URL(fileURLWithPath: expanded).standardized
+        let pathStr = url.path
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return pathStr.hasPrefix(home) || pathStr.hasPrefix("/Applications")
+    }
+
+    /// 在本机执行一条 Shell 命令（仅允许通过 isCommandAllowed 的命令），返回 stdout+stderr；OPEN_APP/OPEN_FOLDER/OPEN_FILE 则走本地能力
     func runLocalCommand(_ command: String) async -> String {
+        if command.hasPrefix("OPEN_APP:") {
+            let keyword = String(command.dropFirst("OPEN_APP:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            return await openAppByKeyword(keyword)
+        }
+        if command.hasPrefix("OPEN_FOLDER:") {
+            let pathPart = String(command.dropFirst("OPEN_FOLDER:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            return await openPath(pathPart, asFolder: true)
+        }
+        if command.hasPrefix("OPEN_FILE:") {
+            let pathPart = String(command.dropFirst("OPEN_FILE:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            return await openPath(pathPart, asFolder: false)
+        }
         guard Self.isCommandAllowed(command) else {
             return "出于安全与隐私保护，该命令未被允许执行。仅支持：ls、pwd、date、whoami、df、uname、echo 等只读类命令。"
         }
@@ -733,10 +750,70 @@ final class OpenClawService: ObservableObject {
         }
     }
 
-    /// 状态文案：已集成，无需安装
-    func fetchStatus() async -> String {
-        "已集成在应用内，打开「使用本机执行」即可使用，无需单独安装。"
+    /// 按关键词在 /Applications 与 ~/Applications 中查找 .app 并打开第一个匹配项（不依赖精确应用名）
+    private func openAppByKeyword(_ keyword: String) async -> String {
+        guard !keyword.isEmpty else { return "未提供应用关键词。" }
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let fileManager = FileManager.default
+                let searchDirs: [URL] = [
+                    URL(fileURLWithPath: "/Applications"),
+                    fileManager.urls(for: .applicationDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory() + "/Applications")
+                ].filter { fileManager.fileExists(atPath: $0.path) }
+                let lowerKeyword = keyword.lowercased()
+                var found: URL?
+                for dir in searchDirs {
+                    guard let contents = try? fileManager.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) else { continue }
+                    for url in contents where url.pathExtension == "app" {
+                        let name = url.deletingPathExtension().lastPathComponent
+                        if name.range(of: keyword, options: .caseInsensitive) != nil
+                            || name.lowercased().contains(lowerKeyword)
+                            || name.contains(keyword) {
+                            found = url
+                            break
+                        }
+                    }
+                    if found != nil { break }
+                }
+                guard let appURL = found else {
+                    continuation.resume(returning: "未在「应用程序」中找到包含「\(keyword)」的应用，请确认已安装或改用更精确的名称。")
+                    return
+                }
+                #if os(macOS)
+                let opened = NSWorkspace.shared.open(appURL)
+                continuation.resume(returning: opened ? "已打开 \(appURL.deletingPathExtension().lastPathComponent)。" : "无法打开该应用。")
+                #else
+                continuation.resume(returning: "当前仅支持在 macOS 上打开应用。")
+                #endif
+            }
+        }
     }
+
+    /// 打开指定路径的文件夹（Finder）或文件（默认应用），路径仅允许用户目录与 /Applications 下
+    private func openPath(_ pathPart: String, asFolder: Bool) async -> String {
+        let expanded = (pathPart as NSString).expandingTildeInPath
+        guard Self.isPathAllowed(pathPart) else {
+            return "出于安全考虑，仅允许打开用户目录（如 ~/Desktop、~/Downloads）或 /Applications 下的路径。"
+        }
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let fileManager = FileManager.default
+                let url = URL(fileURLWithPath: expanded).standardized
+                guard fileManager.fileExists(atPath: url.path) else {
+                    continuation.resume(returning: "路径不存在：\(pathPart)")
+                    return
+                }
+                #if os(macOS)
+                let opened = NSWorkspace.shared.open(url)
+                let name = url.lastPathComponent
+                continuation.resume(returning: opened ? "已打开「\(name)」。" : "无法打开该路径。")
+                #else
+                continuation.resume(returning: "当前仅支持在 macOS 上打开路径。")
+                #endif
+            }
+        }
+    }
+
 }
 
 struct ClipboardService {

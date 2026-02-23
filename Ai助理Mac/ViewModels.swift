@@ -10,7 +10,7 @@ import NaturalLanguage
 
 @MainActor
 final class ChatViewModel: ObservableObject {
-    /// 是否允许本机执行（仅首页入口为 true，其他入口保持原样）
+    /// 是否允许本机执行（助理入口为 true 时，后端可返回 [CMD] 由用户确认执行）
     let allowLocalExecution: Bool
 
     @Published var messages: [ChatMessage] = []
@@ -77,16 +77,15 @@ final class ChatViewModel: ObservableObject {
         Task {
             do {
                 let userContext = TokenStore.shared.isLoggedIn ? nil : LocalDataStore.shared.memoriesAsUserContext()
-                let useLocal = allowLocalExecution && OpenClawService.shared.useOpenClawForAssistant
                 let (cid, serverReply) = try await APIClient.shared.assistantChat(
                     conversationId: serverConversationId,
                     message: trimmed.isEmpty ? nil : (trimmed + (imageData != nil ? " [用户附了一张图]" : "")),
                     imageData: imageData,
                     userContext: userContext,
-                    localExecution: useLocal
+                    localExecution: allowLocalExecution
                 )
                 serverConversationId = cid
-                let (displayText, command) = useLocal ? OpenClawService.parseCommand(from: serverReply) : (serverReply, nil)
+                let (displayText, command) = allowLocalExecution ? OpenClawService.parseCommand(from: serverReply) : (serverReply, nil)
                 let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: displayText, time: Date())
                 messages.append(replyMsg)
                 saveMessagesToLocal()
@@ -294,7 +293,7 @@ final class ChatViewModel: ObservableObject {
             conversationId: serverConversationId,
             message: trimmed,
             userContext: userContext,
-            localExecution: allowLocalExecution && OpenClawService.shared.useOpenClawForAssistant
+            localExecution: allowLocalExecution
         )
         await MainActor.run { serverConversationId = cid }
         let (displayText, _) = OpenClawService.parseCommand(from: serverReply)
@@ -497,6 +496,8 @@ final class TranslateViewModel: ObservableObject {
     @Published var alertMessage: String?
     
     private let speechTranscriber = SpeechTranscriber()
+    private var autoTranslateWorkItem: DispatchWorkItem?
+    private let autoTranslateDelay: TimeInterval = 0.6
     private var autoStopWorkItem: DispatchWorkItem?
     private let silenceTimeout: TimeInterval = 1.2
 
@@ -521,6 +522,24 @@ final class TranslateViewModel: ObservableObject {
 
     func clearHistory() {
         history.removeAll()
+    }
+
+    /// 文本改变后延迟自动翻译（边输入边翻译），避免每个按键都请求后端
+    func scheduleAutoTranslate() {
+        autoTranslateWorkItem?.cancel()
+        guard !isTranslating else { return }
+        let leftTrimmed = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rightTrimmed = translatedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 两个框都空时不翻译
+        guard !leftTrimmed.isEmpty || !rightTrimmed.isEmpty else { return }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                self?.translate()
+            }
+        }
+        autoTranslateWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + autoTranslateDelay, execute: workItem)
     }
 
     func swapLanguages() {
@@ -778,10 +797,16 @@ final class TranslateViewModel: ObservableObject {
     }
 }
 
+enum RealtimeSourceLanguage {
+    case indonesian
+    case chinese
+}
+
 struct RealtimeTranslateEntry: Identifiable {
     let id = UUID()
     let indonesian: String
     let chinese: String
+    let sourceLanguage: RealtimeSourceLanguage
 }
 
 @MainActor
@@ -795,6 +820,7 @@ final class RealTimeTranslateViewModel: ObservableObject {
     @Published var isRightRecording = false
     @Published var isTranslating = false
     @Published var alertMessage: String?
+    @Published var currentSourceLanguage: RealtimeSourceLanguage = .indonesian
 
     private let speechTranscriber = SpeechTranscriber()
     private var autoStopWorkItem: DispatchWorkItem?
@@ -804,6 +830,7 @@ final class RealTimeTranslateViewModel: ObservableObject {
         if isLeftRecording {
             stopRecording()
         } else {
+            currentSourceLanguage = .indonesian
             startRecording(locale: Locale(identifier: "id-ID"), isLeft: true)
         }
     }
@@ -812,6 +839,7 @@ final class RealTimeTranslateViewModel: ObservableObject {
         if isRightRecording {
             stopRecording()
         } else {
+            currentSourceLanguage = .chinese
             startRecording(locale: Locale(identifier: "zh-CN"), isLeft: false)
         }
     }
@@ -889,7 +917,7 @@ final class RealTimeTranslateViewModel: ObservableObject {
                     result = try await APIClient.shared.translate(text: source, sourceLang: "id-ID", targetLang: "zh-CN")
                     await MainActor.run {
                         rightTranslated = result
-                        entries.append(RealtimeTranslateEntry(indonesian: source, chinese: result))
+                        entries.append(RealtimeTranslateEntry(indonesian: source, chinese: result, sourceLanguage: .indonesian))
                         leftText = ""
                         rightTranslated = ""
                         SpeechService.shared.speak(result, language: "zh-CN")
@@ -898,7 +926,7 @@ final class RealTimeTranslateViewModel: ObservableObject {
                     result = try await APIClient.shared.translate(text: source, sourceLang: "zh-CN", targetLang: "id-ID")
                     await MainActor.run {
                         leftTranslated = result
-                        entries.append(RealtimeTranslateEntry(indonesian: result, chinese: source))
+                        entries.append(RealtimeTranslateEntry(indonesian: result, chinese: source, sourceLanguage: .chinese))
                         rightText = ""
                         leftTranslated = ""
                         SpeechService.shared.speak(result, language: "id-ID")

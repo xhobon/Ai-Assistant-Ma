@@ -25,7 +25,6 @@ struct ProfileCenterView: View {
     @State private var showTerms = false
     @State private var showSupport = false
     @State private var showAssistantMemory = false
-    @State private var showOpenClawSetup = false
 
     private let quickActions: [ProfileQuickAction] = [
         ProfileQuickAction(id: "fav", title: "我的收藏", icon: "star.fill"),
@@ -38,7 +37,6 @@ struct ProfileCenterView: View {
         ProfileMenuItem(id: "settings", title: "设置", subtitle: "通知、隐私、深色模式", icon: "gearshape"),
         ProfileMenuItem(id: "account", title: "账户与安全", subtitle: "登录信息、设备管理", icon: "shield.fill"),
         ProfileMenuItem(id: "memory", title: "助理记忆", subtitle: "偏好与长期记忆，让助理更懂你", icon: "brain.head.profile"),
-        ProfileMenuItem(id: "openclaw", title: "本机执行", subtitle: "已集成，无需安装即可使用", icon: "terminal"),
         ProfileMenuItem(id: "member", title: "会员说明", subtitle: "权益、自动续费规则", icon: "doc.plaintext"),
         ProfileMenuItem(id: "faq", title: "常见问题", subtitle: "快速获取帮助", icon: "questionmark.circle")
     ]
@@ -80,7 +78,6 @@ struct ProfileCenterView: View {
                         case "settings": showSettings = true
                         case "account": showAccount = true
                         case "memory": showAssistantMemory = true
-                        case "openclaw": showOpenClawSetup = true
                         case "member": showMemberExplain = true
                         case "faq": showFAQ = true
                         default: break
@@ -130,9 +127,6 @@ struct ProfileCenterView: View {
             }
             .navigationDestination(isPresented: $showAssistantMemory) {
                 AssistantMemoryView()
-            }
-            .navigationDestination(isPresented: $showOpenClawSetup) {
-                OpenClawSetupView()
             }
             .navigationDestination(isPresented: $showMemberExplain) {
                 MemberExplainView()
@@ -1322,101 +1316,6 @@ struct AssistantMemoryView: View {
         } else {
             LocalDataStore.shared.removeMemory(id: item.id)
             items.removeAll { $0.id == item.id }
-        }
-    }
-}
-
-// MARK: - OpenClaw 安装与状态
-
-struct OpenClawSetupView: View {
-    @ObservedObject private var openClaw = OpenClawService.shared
-    @State private var statusText: String = "检测中…"
-    @State private var isRefreshing = false
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("状态")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    HStack {
-                        Text(statusText)
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.textSecondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Button {
-                            refreshStatus()
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.clockwise")
-                                Text("刷新")
-                            }
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(AppTheme.inputText)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(AppTheme.surfaceMuted)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(AppTheme.borderStrong, lineWidth: 1)
-                            )
-                        }
-                        .disabled(isRefreshing)
-                        .opacity(isRefreshing ? 0.6 : 1.0)
-                    }
-                    .padding(12)
-                    .background(AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(AppTheme.border, lineWidth: 1)
-                    )
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("在助理中使用本机执行")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Toggle("发送消息时使用本机执行（列出文件、读文件等，执行前需确认）", isOn: Binding(
-                        get: { openClaw.useOpenClawForAssistant },
-                        set: { openClaw.useOpenClawForAssistant = $0 }
-                    ))
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.inputText)
-                    .tint(AppTheme.primary)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("使用说明")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text("本机执行功能已集成在应用内，无需单独安装。在助理对话页打开「使用本机执行」后，助理可请求执行安全命令（如列出目录、读文件、系统信息），执行前会征得你的同意。")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-            }
-            .padding(20)
-        }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .navigationTitle("本机执行")
-        .onAppear { refreshStatus() }
-    }
-
-    private func codeLine(_ s: String) -> some View {
-        Text(s)
-            .textSelection(.enabled)
-    }
-
-    private func refreshStatus() {
-        isRefreshing = true
-        Task {
-            let status = await OpenClawService.shared.fetchStatus()
-            await MainActor.run {
-                statusText = status
-                isRefreshing = false
-            }
         }
     }
 }

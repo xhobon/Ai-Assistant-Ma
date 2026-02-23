@@ -660,43 +660,87 @@ struct RealTimeTranslationView: View {
                         VStack(spacing: 12) {
                             ForEach(viewModel.entries) { entry in
                                 VStack(spacing: 8) {
-                                    SpeechBubbleCard(
-                                        title: "中文",
-                                        text: entry.chinese,
-                                        placeholder: "",
-                                        tint: AppTheme.accentWarm,
-                                        alignTrailing: true,
-                                        languageForSpeech: "zh-CN",
-                                        onCopy: { ClipboardService.copy(entry.chinese) }
-                                    )
-                                    SpeechBubbleCard(
-                                        title: "印度尼西亚语",
-                                        text: entry.indonesian,
-                                        placeholder: "",
-                                        tint: AppTheme.brandBlue,
-                                        languageForSpeech: "id-ID",
-                                        onCopy: { ClipboardService.copy(entry.indonesian) }
-                                    )
+                                    if entry.sourceLanguage == .chinese {
+                                        // 原文是中文：中文在上，印尼文在下
+                                        SpeechBubbleCard(
+                                            title: "中文",
+                                            text: entry.chinese,
+                                            placeholder: "",
+                                            tint: AppTheme.accentWarm,
+                                            alignTrailing: true,
+                                            languageForSpeech: "zh-CN",
+                                            onCopy: { ClipboardService.copy(entry.chinese) }
+                                        )
+                                        SpeechBubbleCard(
+                                            title: "印度尼西亚语",
+                                            text: entry.indonesian,
+                                            placeholder: "",
+                                            tint: AppTheme.brandBlue,
+                                            languageForSpeech: "id-ID",
+                                            onCopy: { ClipboardService.copy(entry.indonesian) }
+                                        )
+                                    } else {
+                                        // 原文是印尼文：印尼文在上，中文在下
+                                        SpeechBubbleCard(
+                                            title: "印度尼西亚语",
+                                            text: entry.indonesian,
+                                            placeholder: "",
+                                            tint: AppTheme.brandBlue,
+                                            languageForSpeech: "id-ID",
+                                            onCopy: { ClipboardService.copy(entry.indonesian) }
+                                        )
+                                        SpeechBubbleCard(
+                                            title: "中文",
+                                            text: entry.chinese,
+                                            placeholder: "",
+                                            tint: AppTheme.accentWarm,
+                                            alignTrailing: true,
+                                            languageForSpeech: "zh-CN",
+                                            onCopy: { ClipboardService.copy(entry.chinese) }
+                                        )
+                                    }
                                 }
                             }
                             VStack(spacing: 8) {
-                                SpeechBubbleCard(
-                                    title: "中文",
-                                    text: viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText,
-                                    placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
-                                    tint: AppTheme.accentWarm,
-                                    alignTrailing: true,
-                                    languageForSpeech: "zh-CN",
-                                    onCopy: { ClipboardService.copy(viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText) }
-                                )
-                                SpeechBubbleCard(
-                                    title: "印度尼西亚语",
-                                    text: viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText,
-                                    placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
-                                    tint: AppTheme.brandBlue,
-                                    languageForSpeech: "id-ID",
-                                    onCopy: { ClipboardService.copy(viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText) }
-                                )
+                                if viewModel.currentSourceLanguage == .chinese {
+                                    // 当前原文预期为中文：中文在上
+                                    SpeechBubbleCard(
+                                        title: "中文",
+                                        text: viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText,
+                                        placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
+                                        tint: AppTheme.accentWarm,
+                                        alignTrailing: true,
+                                        languageForSpeech: "zh-CN",
+                                        onCopy: { ClipboardService.copy(viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText) }
+                                    )
+                                    SpeechBubbleCard(
+                                        title: "印度尼西亚语",
+                                        text: viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText,
+                                        placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
+                                        tint: AppTheme.brandBlue,
+                                        languageForSpeech: "id-ID",
+                                        onCopy: { ClipboardService.copy(viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText) }
+                                    )
+                                } else {
+                                    // 当前原文预期为印尼文：印尼文在上
+                                    SpeechBubbleCard(
+                                        title: "印度尼西亚语",
+                                        text: viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText,
+                                        placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
+                                        tint: AppTheme.brandBlue,
+                                        languageForSpeech: "id-ID",
+                                        onCopy: { ClipboardService.copy(viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText) }
+                                    )
+                                    SpeechBubbleCard(
+                                        title: "中文",
+                                        text: viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText,
+                                        placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
+                                        tint: AppTheme.accentWarm,
+                                        alignTrailing: true,
+                                        languageForSpeech: "zh-CN",
+                                        onCopy: { ClipboardService.copy(viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText) }
+                                    )
+                                }
                             }
                             .id("current")
                         }
@@ -718,6 +762,7 @@ struct RealTimeTranslationView: View {
                 .padding(.bottom, 20)
             }
         }
+        .navigationTitle("实时语音翻译")
         #if os(iOS)
         .toolbar(.hidden, for: .tabBar)
         #endif
@@ -756,35 +801,25 @@ struct RealTimeCompactHeader: View {
     var onClose: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 12) {
-                Button(action: onClose) {
-                    Image(systemName: "chevron.left")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(AppTheme.unifiedButtonBorder)
-                        .frame(width: 32, height: 32)
-                        .background(Color.white)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("实时语音翻译")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text("轻触下方按钮开始 · 自动识别语言")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-                Spacer(minLength: 0)
-                Text(isRecording ? "录音中" : "待机")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(isRecording ? AppTheme.accentWarm : AppTheme.textTertiary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(AppTheme.surfaceMuted)
-                    .clipShape(Capsule())
+        HStack(alignment: .center, spacing: 12) {
+            Button(action: onClose) {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.unifiedButtonBorder)
+                    .frame(width: 32, height: 32)
+                    .background(Color.white)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
             }
+            .buttonStyle(.plain)
+            Spacer(minLength: 0)
+            Text(isRecording ? "录音中" : "待机")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(isRecording ? AppTheme.accentWarm : AppTheme.textTertiary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(Capsule())
         }
     }
 }
@@ -1234,7 +1269,7 @@ struct TranslationInputBox: View {
             }
             .frame(maxWidth: .infinity, minHeight: 200, maxHeight: isExpanded ? 400 : 200, alignment: .topLeading)
             
-            // 底部操作栏：语音播放/文档 + 清空 + 录音（两个框都有）
+            // 底部操作栏：语音播放/文档 + 录音（清空移动到底部操作条的统一按钮）
             HStack(spacing: 8) {
                 Button(action: onPlay) {
                     Image(systemName: "speaker.wave.2.fill")
@@ -1262,18 +1297,7 @@ struct TranslationInputBox: View {
                 .accessibilityLabel("文档")
                 
                 Spacer(minLength: 0)
-                
-                if !text.isEmpty {
-                    Button(action: onClear) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.textTertiary)
-                            .frame(width: 24, height: 24)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("清空")
-                }
-                
+
                 Button(action: onVoice) {
                     Image(systemName: isListening ? "stop.fill" : "mic.fill")
                         .font(.subheadline)
@@ -1340,6 +1364,34 @@ struct ModernTranslationActionBar: View {
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
+
+            // 清空内容按钮：清空左右两个输入框
+            Button(action: {
+                viewModel.sourceText = ""
+                viewModel.translatedText = ""
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "xmark.circle")
+                        .font(.subheadline)
+                    Text("清空内容")
+                        .font(.subheadline)
+                }
+                .foregroundStyle(AppTheme.textSecondary)
+                .frame(height: barHeight)
+                .padding(.horizontal, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.white)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(AppTheme.border, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(!canTranslate)
+
+            // 翻译按钮
             Button(action: { viewModel.translate() }) {
                 HStack(spacing: 6) {
                     if viewModel.isTranslating {

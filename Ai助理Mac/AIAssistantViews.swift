@@ -102,9 +102,9 @@ struct AIAssistantHomeView: View {
                             GridItem(.flexible(), spacing: 8),
                             GridItem(.flexible(), spacing: 8)
                         ], spacing: 8) {
-                            ForEach(filteredServices) { service in
-                                NavigationLink {
-                                    AIAssistantChatView(title: service.title, allowLocalExecution: service.id == "s1")
+                        ForEach(filteredServices) { service in
+                            NavigationLink {
+                                AIAssistantChatView(title: service.title, allowLocalExecution: false)
                                 } label: {
                                     TechServiceCard(service: service)
                                 }
@@ -269,21 +269,21 @@ struct HomeQuickActionStrip: View {
     var body: some View {
         HStack(spacing: 12) {
             NavigationLink {
-                AIAssistantChatView(title: primaryService.title, allowLocalExecution: true)
+                AIAssistantChatView(title: primaryService.title, allowLocalExecution: false)
             } label: {
                 HomeQuickActionCard(title: "智能对话", subtitle: "立即开始", systemImage: "sparkles", tint: AppTheme.accentStrong)
             }
             .buttonStyle(.plain)
 
             NavigationLink {
-                AIAssistantChatView(title: primaryService.title, allowLocalExecution: true)
+                AIAssistantChatView(title: primaryService.title, allowLocalExecution: false)
             } label: {
                 HomeQuickActionCard(title: "语音助手", subtitle: "点击输入", systemImage: "waveform", tint: AppTheme.accentWarm)
             }
             .buttonStyle(.plain)
 
             NavigationLink {
-                AIAssistantChatView(title: primaryService.title, allowLocalExecution: true)
+                AIAssistantChatView(title: primaryService.title, allowLocalExecution: false)
             } label: {
                 HomeQuickActionCard(title: "图像识别", subtitle: "拍照导入", systemImage: "camera.fill", tint: AppTheme.brandBlue)
             }
@@ -444,7 +444,7 @@ struct HomePrimaryEntryCard: View {
 
     var body: some View {
         NavigationLink {
-            AIAssistantChatView(title: service.title, allowLocalExecution: true)
+            AIAssistantChatView(title: service.title, allowLocalExecution: false)
         } label: {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 12) {
@@ -536,7 +536,7 @@ struct HomeQuickEntryCard: View {
 
     var body: some View {
         NavigationLink {
-            AIAssistantChatView(title: service.title, allowLocalExecution: service.id == "s1")
+            AIAssistantChatView(title: service.title, allowLocalExecution: false)
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 ZStack {
@@ -687,7 +687,6 @@ struct AIAssistantChatView: View {
 
     @StateObject private var viewModel: ChatViewModel
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
-    @ObservedObject private var openClawService = OpenClawService.shared
 
     init(title: String, allowLocalExecution: Bool = false) {
         self.title = title
@@ -748,14 +747,31 @@ struct AIAssistantChatView: View {
                 }
                 .background(AppTheme.surface)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        ChatMessageSection(messages: viewModel.messages, onClear: viewModel.resetConversation)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            ChatMessageSection(messages: viewModel.messages, onClear: viewModel.resetConversation)
+                            Color.clear
+                                .frame(height: 1)
+                                .id("assistantChatBottom")
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 24)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 24)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onChange(of: viewModel.messages.count) { _, _ in
+                        DispatchQueue.main.async {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo("assistantChatBottom", anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onAppear {
+                        proxy.scrollTo("assistantChatBottom", anchor: .bottom)
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
             VStack(spacing: 0) {
@@ -771,26 +787,6 @@ struct AIAssistantChatView: View {
                     .padding(.vertical, 10)
                     .background(AppTheme.surface)
                     .padding(.bottom, 6)
-                }
-
-                if allowLocalExecution {
-                    HStack(spacing: 8) {
-                        Image(systemName: "terminal")
-                            .font(.caption)
-                            .foregroundStyle(openClawService.useOpenClawForAssistant ? AppTheme.primary : AppTheme.textTertiary)
-                        Text("使用本机执行")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                        Toggle("", isOn: Binding(
-                            get: { openClawService.useOpenClawForAssistant },
-                            set: { openClawService.useOpenClawForAssistant = $0 }
-                        ))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                    .background(AppTheme.surface.opacity(0.6))
                 }
 
                 HStack(alignment: .bottom, spacing: 0) {
@@ -1574,7 +1570,8 @@ struct ChatComposerBar: View {
             PasteableTextField(
                 text: $text,
                 placeholder: "发消息或按住说话...",
-                onPasteImage: onPasteImage
+                onPasteImage: onPasteImage,
+                onSubmit: { onSend() }
             )
             .font(.subheadline)
             .textFieldStyle(.plain)
@@ -1650,6 +1647,7 @@ struct PasteableTextField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String
     var onPasteImage: ((Data) -> Void)?
+    var onSubmit: (() -> Void)?
     
     func makeNSView(context: Context) -> CustomTextField {
         let textField = CustomTextField()
@@ -1659,6 +1657,7 @@ struct PasteableTextField: NSViewRepresentable {
         textField.focusRingType = .none
         textField.delegate = context.coordinator
         textField.onPasteImage = onPasteImage
+        textField.onSubmit = onSubmit
         textField.textColor = NSColor.black
         
         // 设置 cell 以支持多行
@@ -1679,6 +1678,7 @@ struct PasteableTextField: NSViewRepresentable {
             nsView.stringValue = text
         }
         nsView.onPasteImage = onPasteImage
+        nsView.onSubmit = onSubmit
         nsView.textColor = NSColor.black
         if let cell = nsView.cell as? NSTextFieldCell {
             cell.placeholderAttributedString = NSAttributedString(
@@ -1710,11 +1710,24 @@ struct PasteableTextField: NSViewRepresentable {
 /// 自定义 TextField，支持拦截粘贴事件
 class CustomTextField: NSTextField {
     var onPasteImage: ((Data) -> Void)?
+    var onSubmit: (() -> Void)?
     
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         // 拦截 Cmd+V
         if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "v" {
             return handlePaste()
+        }
+        // 回车：发送消息；Option/Shift+回车：换行
+        let isReturn = (event.keyCode == 36) || (event.charactersIgnoringModifiers == "\r") || (event.charactersIgnoringModifiers == "\n")
+        if isReturn {
+            if event.modifierFlags.contains(.option) || event.modifierFlags.contains(.shift) {
+                // 允许换行，走系统默认行为
+                return false
+            } else {
+                // 发送消息，不插入换行
+                onSubmit?()
+                return true
+            }
         }
         return super.performKeyEquivalent(with: event)
     }
@@ -1829,6 +1842,17 @@ struct ChatShortcutHorizontalRow: View {
                     viewModel.sendMessage()
                     onDismiss()
                 }
+                // 写作与 PPT 入口
+                shortcutChip(title: "写作", icon: "pencil", tint: .pink) {
+                    viewModel.inputText = "我想写一篇文章，请根据我的主题帮我规划大纲并起草内容。"
+                    viewModel.sendMessage()
+                    onDismiss()
+                }
+                shortcutChip(title: "PPT", icon: "rectangle.stack.badge.play.fill", tint: .cyan) {
+                    viewModel.inputText = "请帮我根据下面的主题生成一份 PPT 提纲，并说明每一页的要点。"
+                    viewModel.sendMessage()
+                    onDismiss()
+                }
                 Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title3)
@@ -1905,6 +1929,17 @@ struct ChatShortcutPopoverContent: View {
                 }
                 shortcutRow(title: "会议纪要", subtitle: "结构化输出", icon: "quote.bubble", tint: .indigo) {
                     viewModel.inputText = "请帮我生成一份会议纪要模板。"
+                    viewModel.sendMessage()
+                    onDismiss()
+                }
+                // 写作与 PPT 入口
+                shortcutRow(title: "写作", subtitle: "长文、文案、邮件", icon: "pencil", tint: .pink) {
+                    viewModel.inputText = "我想写一篇文章，请根据我的主题帮我规划结构并起草内容。"
+                    viewModel.sendMessage()
+                    onDismiss()
+                }
+                shortcutRow(title: "PPT", subtitle: "生成演示提纲", icon: "rectangle.stack.badge.play.fill", tint: .cyan) {
+                    viewModel.inputText = "请帮我生成一份 PPT 提纲，并为每一页给出要点。"
                     viewModel.sendMessage()
                     onDismiss()
                 }
