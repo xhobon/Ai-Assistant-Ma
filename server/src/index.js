@@ -44,7 +44,9 @@ const PORT = Number(process.env.PORT || 8080);
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 
 function getGroqApiKey() {
-  return process.env.GROQ_API_KEY || null;
+  const raw = process.env.GROQ_API_KEY || "";
+  const key = raw.trim().replace(/^["']|["']$/g, "");
+  return key.length > 10 ? key : null;
 }
 
 async function llmChat(messages) {
@@ -104,6 +106,41 @@ async function extractMemoriesFromConversation(userMessage, assistantReply) {
     console.warn("extractMemoriesFromConversation error:", e?.message);
     return [];
   }
+}
+
+// 专用于翻译的模型调用：与聊天分开配置，温度更低，避免乱发挥
+async function llmTranslate(messages) {
+  const groqKey = getGroqApiKey();
+  if (!groqKey || groqKey.length <= 10) {
+    throw new Error(
+      "请配置 GROQ_API_KEY（免费）：访问 https://console.groq.com 注册，创建 API Key，在 Vercel 环境变量中添加 GROQ_API_KEY，并 Redeploy"
+    );
+  }
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${groqKey}`
+    },
+    body: JSON.stringify({
+      model: "llama-3.1-8b-instant",
+      messages,
+      temperature: 0 // 纯翻译，尽量减少生成花样
+    })
+  });
+  const raw = await res.text().catch(() => "");
+  const data = (() => {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  })();
+  if (!res.ok) {
+    const msg = data?.error?.message || data?.message || raw || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data?.choices?.[0]?.message?.content || "";
 }
 
 /// 支持图片的 AI 对话（使用 vision 模型）
@@ -253,7 +290,13 @@ function optionalAuthMiddleware(req, res, next) {
 }
 
 app.get("/health", async (req, res) => {
-  res.json({ status: "ok", time: new Date().toISOString() });
+  const groqKey = getGroqApiKey();
+  res.json({
+    status: "ok",
+    time: new Date().toISOString(),
+    groq_configured: !!groqKey,
+    hint: !groqKey ? "在 Vercel 项目 Settings → Environment Variables 添加 GROQ_API_KEY 并 Redeploy" : undefined
+  });
 });
 
 const registerSchema = z.object({
@@ -616,9 +659,11 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
   let systemParts = ["你是专业、可靠的AI助理，请用中文简洁回答。"];
   if (localExecution) {
     systemParts.push(
-      "【本机执行】当前对话已开启本机执行。你必须用以下方式响应，否则用户无法在电脑上执行操作：\n" +
-      "1) 当用户说「帮我打开 XXX」「打开 XXX」时，你必须且只能回复一行 [CMD]open -a \"XXX\"[/CMD]，不要给任何手动操作步骤。例如用户说「帮我打开 wps」则回复：[CMD]open -a \"WPS\"[/CMD]。常见应用名：WPS、Safari、Chrome、Notes、Calendar、Mail、Terminal。\n" +
-      "2) 当需要查看本机信息（目录、读文件、系统信息）时，用 [CMD]命令[/CMD] 格式输出一条安全命令（如 ls、pwd、date、whoami、df -h、cat 某文件），客户端会征得用户同意后执行并把结果发回，你再根据结果用中文回答。\n" +
+      "【本机执行】当前对话已开启本机执行，你要像一位真人助手一样，主动帮用户操作电脑、完成任务。请用以下能力（每次只输出一条 [CMD]...[/CMD]，执行结果会发回给你，你可继续发下一条）：\n" +
+      "1) 打开应用：用户说「打开 XXX」时回复 [CMD]OPEN_APP:XXX[/CMD]（如 打开 wps → OPEN_APP:wps，打开 QQ音乐 → OPEN_APP:QQ音乐）。\n" +
+      "2) 打开文件夹/文件：打开桌面/下载/文档等用 [CMD]OPEN_FOLDER:~/Desktop[/CMD]、[CMD]OPEN_FOLDER:~/Downloads[/CMD]、[CMD]OPEN_FOLDER:~/Documents[/CMD]；打开某文件用 [CMD]OPEN_FILE:路径[/CMD]（路径仅限用户目录或 /Applications 下）。\n" +
+      "3) 查看本机信息：用 [CMD]命令[/CMD] 输出一条安全命令（如 ls、ls ~/Downloads、pwd、date、whoami、df -h、cat 用户目录下的某文件），根据结果再决定下一步或直接回答。\n" +
+      "4) 多步任务：用户说「帮我整理下载」「看看桌面有什么」等，你先用 ls 查看，再根据结果用 OPEN_FOLDER/OPEN_FILE 打开或建议下一步，像真人助手一样一步步完成。\n" +
       "禁止：给出手动操作步骤代替 [CMD]；使用 rm、mv、sudo、格式化等危险命令。"
     );
   }
@@ -654,14 +699,19 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
     reply = `抱歉，AI 服务暂时不可用：${err.message}`;
   }
 
-  // 兜底：用户明确说「打开 XXX」且开启了本机执行，但 AI 没返回 [CMD] 时，强制返回 open -a
+  // 兜底：用户说「打开 XXX」且开启了本机执行时，按类型返回 OPEN_APP / OPEN_FOLDER
   if (localExecution && message && !/\[CMD\]/.test(reply)) {
     const openMatch = message.match(/(?:帮我)?打开\s+([^\s，。！？]+)/i);
     if (openMatch) {
-      const raw = openMatch[1].trim();
-      const appNames = { wps: "WPS", safari: "Safari", chrome: "Google Chrome", 日历: "Calendar", 邮件: "Mail", 备忘录: "Notes", 终端: "Terminal" };
-      const appName = appNames[raw.toLowerCase()] || raw.replace(/^(\S)/, (_, c) => c.toUpperCase() + raw.slice(1));
-      reply = `[CMD]open -a "${appName}"[/CMD]`;
+      const raw = openMatch[1].trim().toLowerCase();
+      const folderMap = { 桌面: "~/Desktop", 下载: "~/Downloads", 文档: "~/Documents", 音乐: "~/Music", 图片: "~/Pictures", 视频: "~/Movies" };
+      const path = folderMap[raw] || folderMap[raw.replace(/\s/g, "")];
+      if (path) {
+        reply = `[CMD]OPEN_FOLDER:${path}[/CMD]`;
+      } else {
+        const keyword = openMatch[1].trim().replace(/\s+/g, " ").slice(0, 50);
+        reply = `[CMD]OPEN_APP:${keyword}[/CMD]`;
+      }
     }
   }
 
@@ -715,10 +765,41 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
     const langNames = { "zh-CN": "中文", "id-ID": "印尼语", "en-US": "英语" };
     const s = langNames[sourceLang] || sourceLang;
     const t = langNames[targetLang] || targetLang;
-    translated = await llmChat([
-      { role: "system", content: `你只输出翻译结果，不要解释。将文本从${s}翻译为${t}。` },
+    const baseMessages = [
+      {
+        role: "system",
+        content:
+          `你现在是一个**纯翻译引擎**，严禁回答问题或补充说明。\n` +
+          `规则：\n` +
+          `1）只把用户给出的整段文本从${s}翻译为${t}，绝不输出多余句子。\n` +
+          `2）不要解释、不要润色、不要加入「我没看到……」「请你提供……」之类的话。\n` +
+          `3）如果原文是疑问句，只翻译这个疑问句本身，不要回答它。\n` +
+          `4）保持原有语气与礼貌程度。`
+      },
       { role: "user", content: text }
-    ]);
+    ];
+    translated = await llmTranslate(baseMessages);
+
+    // 简单校验：如果目标是印尼语却还有大量中文，或目标是中文却几乎没有中文，则再重试一次
+    const hasChinese = /[\u4e00-\u9fff]/.test(translated || "");
+    const hasLatin = /[A-Za-z]/.test(translated || "");
+    let needRetry = false;
+    if (targetLang === "id-ID" && hasChinese) {
+      needRetry = true;
+    } else if (targetLang === "zh-CN" && !hasChinese && hasLatin) {
+      needRetry = true;
+    }
+
+    if (needRetry) {
+      const retrySystem =
+        targetLang === "id-ID"
+          ? "你只负责把中文翻译成**印尼文**，输出必须全是印尼文拉丁字母，不能包含任何中文、英文解释或额外句子。"
+          : "你只负责把印尼文翻译成**中文**，输出必须全是简体中文，不能包含印尼文、英文解释或额外句子。";
+      translated = await llmTranslate([
+        { role: "system", content: retrySystem },
+        { role: "user", content: text }
+      ]);
+    }
   } catch (err) {
     translated = `翻译失败: ${err.message}`;
   }
