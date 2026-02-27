@@ -141,3 +141,16 @@ model SystemConfig {
   configVal String
   updatedAt DateTime @updatedAt
 }
+
+/// 邮箱验证码，用于登录/注册验证邮箱所有权
+model EmailVerificationCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  purpose   String   /// login | register 等
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([email, purpose, expiresAt])
+}

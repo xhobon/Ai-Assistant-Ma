@@ -2273,7 +2273,7 @@ struct ChatBubble: View {
                             if speechService.isPlaying {
                                 speechService.stopSpeaking()
                             } else {
-                                speechService.speak(message.content, language: "zh-CN")
+                                speechService.speakOnline(message.content, language: "zh-CN")
                             }
                         } label: {
                             Label(speechService.isPlaying ? "停止" : "朗读", systemImage: speechService.isPlaying ? "stop.fill" : "speaker.wave.2.fill")

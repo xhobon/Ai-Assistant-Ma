@@ -16,10 +16,10 @@ final class ServerConfigStore: ObservableObject {
     static let shared = ServerConfigStore()
 
     /// 注意：这里要与实际部署后端的 Vercel 域名保持一致
-    private static let builtInProductionURL = "https://ai-assistant-mac-b5ll.vercel.app"
+    private static let builtInProductionURL = "https://ai-assistant-ma.vercel.app"
 
     var baseURL: URL {
-        URL(string: Self.builtInProductionURL) ?? URL(string: "https://ai-assistant-mac-b5ll.vercel.app")!
+        URL(string: Self.builtInProductionURL) ?? URL(string: "https://ai-assistant-ma.vercel.app")!
     }
 
     var baseURLString: String { Self.builtInProductionURL }
@@ -169,9 +169,10 @@ final class SpeechSettingsStore: ObservableObject {
         }
     }
 
-    /// 语音质量：default / enhanced / premium
+    /// 语音质量：default / enhanced / premium / online（在线神经网络语音）
     var voiceQuality: String {
-        get { UserDefaults.standard.string(forKey: voiceQualityKey) ?? "premium" }
+        // 默认使用在线神经网络语音，更接近真人
+        get { UserDefaults.standard.string(forKey: voiceQualityKey) ?? "online" }
         set {
             UserDefaults.standard.set(newValue, forKey: voiceQualityKey)
             objectWillChange.send()
@@ -254,6 +255,38 @@ final class APIClient {
             body: [
                 "account": account,
                 "password": password
+            ]
+        )
+    }
+
+    func sendEmailCode(email: String, purpose: String) async throws {
+        struct Res: Codable { let ok: Bool }
+        let _: Res = try await request(
+            "api/auth/send-code",
+            method: "POST",
+            body: ["email": email, "purpose": purpose]
+        )
+    }
+
+    func registerWithEmailCode(email: String, code: String, displayName: String) async throws -> AuthResponse {
+        try await request(
+            "api/auth/register",
+            method: "POST",
+            body: [
+                "email": email,
+                "code": code,
+                "displayName": displayName.isEmpty ? "新用户" : displayName
+            ]
+        )
+    }
+
+    func loginWithEmailCode(email: String, code: String) async throws -> AuthResponse {
+        try await request(
+            "api/auth/login",
+            method: "POST",
+            body: [
+                "email": email,
+                "code": code
             ]
         )
     }
@@ -511,6 +544,15 @@ final class SpeechService: NSObject, ObservableObject {
         utterance.preUtteranceDelay = 0.08
         utterance.postUtteranceDelay = 0.05
         synthesizer.speak(utterance)
+    }
+
+    /// 强制在线 TTS（用于对话页：更像真人，且与本机语音无关）
+    func speakOnline(_ text: String, language: String) {
+        guard !text.isEmpty else { return }
+        if SpeechSettingsStore.shared.playbackMuted { return }
+        stopSpeaking()
+        isPlaying = true
+        playOnlineTTS(text: text, language: language)
     }
 
     /// 在线 TTS（Edge 免费语音，更自然）

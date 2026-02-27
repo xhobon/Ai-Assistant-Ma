@@ -563,6 +563,9 @@ struct ProfileMenuList: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    // 关键：让整行（含空白区域）都可点击
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -897,10 +900,8 @@ struct AppSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
     @ObservedObject private var appearance = AppearanceStore.shared
-    @State private var isTesting = false
-    @State private var alertMessage: String?
     @State private var showClearConfirm = false
-    @State private var showClearDone = false
+    @State private var toastMessage: String?
 
     private var speedLabel: String {
         let r = speechSettings.speechRate
@@ -910,197 +911,167 @@ struct AppSettingsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.surface)
-                            .clipShape(Circle())
-                    }
-                    Spacer()
-                    Text("设置")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Spacer()
-                    Color.clear
-                        .frame(width: 36, height: 36)
-                }
+        SettingsPage(title: "设置") {
+            SettingsCard(
+                title: "朗读与语音",
+                subtitle: "控制语音播报的语速、音质与是否静音，可用于对话朗读与翻译朗读。"
+            ) {
+                SettingsInlineToggleRow(
+                    systemImage: speechSettings.playbackMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                    title: "语音播报",
+                    subtitle: speechSettings.playbackMuted ? "已关闭" : "已开启",
+                    isOn: Binding(
+                        get: { !speechSettings.playbackMuted },
+                        set: { speechSettings.playbackMuted = !$0 }
+                    )
+                )
 
-                // MARK: 朗读设置
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("朗读设置")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
                             Text("语速")
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(AppTheme.textPrimary)
-                            Spacer()
                             Text(speedLabel)
                                 .font(.caption)
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
-                        Slider(value: Binding(
-                            get: { Double(speechSettings.speechRate) },
-                            set: { speechSettings.speechRate = Float($0) }
-                        ), in: 0.3...0.6, step: 0.02)
+                        Spacer()
+                        Button {
+                            SpeechService.shared.speak("这是一个示例播报，用来预览当前语音设置。", language: "zh-CN")
+                        } label: {
+                            Label("试听", systemImage: "play.circle.fill")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .buttonStyle(.borderedProminent)
                         .tint(AppTheme.primary)
                     }
-                    .padding(12)
-                    .background(AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(AppTheme.border, lineWidth: 1)
+                    Slider(
+                        value: Binding(
+                            get: { Double(speechSettings.speechRate) },
+                            set: { speechSettings.speechRate = Float($0) }
+                        ),
+                        in: 0.3...0.6,
+                        step: 0.02
                     )
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("语音质量")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(AppTheme.textPrimary)
+                    .tint(AppTheme.primary)
+                }
+                .padding(12)
+                .background(AppTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(AppTheme.border, lineWidth: 1)
+                )
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("语音质量")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Text("在线更自然；离线由系统语音决定。")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        Spacer()
                         Picker("语音质量", selection: Binding(
                             get: { speechSettings.voiceQuality },
                             set: { speechSettings.voiceQuality = $0 }
                         )) {
-                            Text("默认").tag("default")
-                            Text("增强").tag("enhanced")
-                            Text("优质").tag("premium")
                             Text("在线（更自然）").tag("online")
+                            Text("优质").tag("premium")
+                            Text("增强").tag("enhanced")
+                            Text("默认").tag("default")
                         }
                         .pickerStyle(.menu)
                     }
-                    .padding(12)
-                    .background(AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(AppTheme.border, lineWidth: 1)
-                    )
                 }
-                .glassCard()
-
-                // MARK: 通知
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("通知")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text("在系统「设置 → 通知」中管理本应用的通知权限与提醒。")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-                .glassCard()
-
-                // MARK: 隐私与数据
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("隐私与数据")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("• 未登录：数据仅保存在本机，卸载应用即清空。")
-                        Text("• 登录后：您的数据可同步至账号，多设备共享。")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-                }
-                .glassCard()
-
-                // MARK: 外观
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("外观")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Picker("深色模式", selection: Binding(
-                        get: { appearance.mode },
-                        set: { appearance.mode = $0 }
-                    )) {
-                        Text("跟随系统").tag(AppearanceStore.Mode.system)
-                        Text("浅色").tag(AppearanceStore.Mode.light)
-                        Text("深色").tag(AppearanceStore.Mode.dark)
-                    }
-                    .pickerStyle(.segmented)
-                }
-                .glassCard()
-
-                // MARK: 账户与安全
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("账户与安全")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    HStack {
-                        Image(systemName: TokenStore.shared.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark")
-                            .foregroundStyle(TokenStore.shared.isLoggedIn ? AppTheme.primary : AppTheme.textSecondary)
-                        Text(TokenStore.shared.isLoggedIn ? "已登录" : "未登录")
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Spacer()
-                    }
-                    .padding(12)
-                    .background(AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    Text("登录后数据将同步至您的账号；仅登录用户拥有跨设备持久数据。")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-                .glassCard()
-
-                // MARK: 清除本地数据
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("清除本地数据")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Button {
-                        showClearConfirm = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "trash")
-                            Text("清除所有记录（收藏、翻译历史等）")
-                                .font(.subheadline)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .padding(12)
-                        .background(AppTheme.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    Text("仅清除本机数据，卸载应用也会清空。登录后数据可同步至账号。")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-                .glassCard()
+                .padding(12)
+                .background(AppTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(AppTheme.border, lineWidth: 1)
+                )
             }
-            .padding(20)
+
+            SettingsCard(
+                title: "外观",
+                subtitle: "选择浅色/深色模式，或跟随系统。"
+            ) {
+                Picker("深色模式", selection: Binding(
+                    get: { appearance.mode },
+                    set: { appearance.mode = $0 }
+                )) {
+                    Text("跟随系统").tag(AppearanceStore.Mode.system)
+                    Text("浅色").tag(AppearanceStore.Mode.light)
+                    Text("深色").tag(AppearanceStore.Mode.dark)
+                }
+                .pickerStyle(.segmented)
+            }
+
+            SettingsCard(
+                title: "账户与数据",
+                subtitle: "登录后可同步聊天、翻译与学习记录，多设备共享。"
+            ) {
+                SettingsRow(
+                    systemImage: TokenStore.shared.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
+                    title: "登录状态",
+                    subtitle: TokenStore.shared.isLoggedIn ? "已登录" : "未登录",
+                    value: nil,
+                    tint: TokenStore.shared.isLoggedIn ? AppTheme.primary : AppTheme.textPrimary,
+                    showChevron: false,
+                    action: nil
+                )
+
+                SettingsRow(
+                    systemImage: "bell.badge",
+                    title: "通知权限",
+                    subtitle: "在系统设置中管理本应用的通知权限与提醒。",
+                    showChevron: false,
+                    action: nil
+                )
+
+                SettingsRow(
+                    systemImage: "hand.raised.fill",
+                    title: "隐私提示",
+                    subtitle: "未登录：数据仅保存在本机。登录后：数据可同步到账号。",
+                    showChevron: false,
+                    action: nil
+                )
+            }
+
+            SettingsCard(
+                title: "清除本地数据",
+                subtitle: "将清除本机上的收藏、翻译历史等本地数据，且无法恢复。"
+            ) {
+                SettingsRow(
+                    systemImage: "trash",
+                    title: "清除所有本地记录",
+                    subtitle: "收藏、翻译历史、部分偏好等",
+                    isDestructive: true,
+                    showChevron: true
+                ) {
+                    showClearConfirm = true
+                }
+            }
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
-        .alert("提示", isPresented: Binding(
-            get: { alertMessage != nil },
-            set: { if !$0 { alertMessage = nil } }
-        )) {
-            Button("确定", role: .cancel) {}
-        } message: {
-            Text(alertMessage ?? "")
-        }
-        .alert("清除所有记录", isPresented: $showClearConfirm) {
-            Button("取消", role: .cancel) {}
+        .toast(message: $toastMessage)
+        .confirmationDialog(
+            "清除所有本地记录？",
+            isPresented: $showClearConfirm,
+            titleVisibility: .visible
+        ) {
             Button("清除", role: .destructive) {
                 ClearDataStore.shared.clearAll()
-                showClearDone = true
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    toastMessage = "已清除本地记录"
+                }
             }
+            Button("取消", role: .cancel) {}
         } message: {
-            Text("将清除本机上的收藏、翻译历史等本地数据，且无法恢复。")
-        }
-        .alert("已清除", isPresented: $showClearDone) {
-            Button("确定", role: .cancel) {}
-        } message: {
-            Text("本地记录已清除。")
+            Text("该操作不可恢复。登录用户的云端数据不会被删除。")
         }
     }
 }
@@ -1332,11 +1303,12 @@ enum AuthMode: String, CaseIterable, Identifiable {
 struct AuthView: View {
     @Environment(\.dismiss) private var dismiss
     @State var mode: AuthMode
-    @State private var account = ""
     @State private var email = ""
-    @State private var phone = ""
     @State private var displayName = ""
-    @State private var password = ""
+    @State private var code = ""
+    @State private var isSubmitting = false
+    @State private var isSendingCode = false
+    @State private var message: String?
 
     var body: some View {
         NavigationStack {
@@ -1370,31 +1342,40 @@ struct AuthView: View {
                 }
 
                 VStack(spacing: 12) {
-                    if mode == .login {
-                        AuthTextField(title: "账号", placeholder: "邮箱或手机号", text: $account)
-                    } else {
-                        AuthTextField(title: "邮箱", placeholder: "name@email.com", text: $email)
-                        AuthTextField(title: "手机号", placeholder: "+62...", text: $phone)
+                    AuthTextField(title: "邮箱", placeholder: "name@email.com", text: $email)
+                    if mode == .register {
                         AuthTextField(title: "昵称", placeholder: "请输入昵称", text: $displayName)
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("密码")
+                        Text("验证码")
                             .font(.caption)
                             .foregroundStyle(AppTheme.textPrimary)
-                        SecureField("请输入密码", text: $password)
-                            .textFieldStyle(.plain)
-                            .foregroundStyle(AppTheme.inputText)
-                            .padding(12)
-                            .background(AppTheme.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(AppTheme.border, lineWidth: 1)
-                            )
+                        HStack(spacing: 8) {
+                            TextField("请输入邮箱验证码", text: $code)
+                                .textFieldStyle(.plain)
+                                .foregroundStyle(AppTheme.inputText)
+                                .padding(12)
+                                .background(AppTheme.surface)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(AppTheme.border, lineWidth: 1)
+                                )
+                            Button {
+                                Task { await sendCode() }
+                            } label: {
+                                Text(isSendingCode ? "发送中…" : "发送验证码")
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .disabled(isSendingCode || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .buttonStyle(.borderedProminent)
+                            .tint(AppTheme.primary)
+                        }
                     }
                 }
 
                 Button {
+                    Task { await submit() }
                 } label: {
                     Text(mode == .login ? "登录" : "注册")
                         .font(.headline)
@@ -1404,11 +1385,7 @@ struct AuthView: View {
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
-
-                HStack(spacing: 12) {
-                    AuthSocialButton(title: "Apple 登录", icon: "applelogo")
-                    AuthSocialButton(title: "Google 登录", icon: "g.circle")
-                }
+                .disabled(isSubmitting)
 
                 Spacer()
             }
@@ -1433,6 +1410,84 @@ struct AuthView: View {
                 #endif
             }
         }
+        .alert("提示", isPresented: Binding(
+            get: { message != nil },
+            set: { if !$0 { message = nil } }
+        )) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(message ?? "")
+        }
+    }
+
+    private func validateEmail() -> String? {
+        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return "请输入邮箱" }
+        if !trimmed.contains("@") { return "邮箱格式不正确" }
+        return nil
+    }
+
+    private func sendCode() async {
+        if let err = validateEmail() {
+            await MainActor.run { message = err }
+            return
+        }
+        await MainActor.run {
+            isSendingCode = true
+        }
+        do {
+            try await APIClient.shared.sendEmailCode(
+                email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                purpose: mode == .login ? "login" : "register"
+            )
+            await MainActor.run {
+                message = "验证码已发送，请在 10 分钟内完成验证。当前版本如未接入邮箱服务，可在后端日志中查看验证码。"
+            }
+        } catch {
+            await MainActor.run {
+                message = error.localizedDescription
+            }
+        }
+        await MainActor.run {
+            isSendingCode = false
+        }
+    }
+
+    private func submit() async {
+        if let err = validateEmail() {
+            await MainActor.run { message = err }
+            return
+        }
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedCode.isEmpty {
+            await MainActor.run { message = "请输入验证码" }
+            return
+        }
+        await MainActor.run { isSubmitting = true }
+        do {
+            let auth: AuthResponse
+            if mode == .login {
+                auth = try await APIClient.shared.loginWithEmailCode(
+                    email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                    code: trimmedCode
+                )
+            } else {
+                auth = try await APIClient.shared.registerWithEmailCode(
+                    email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                    code: trimmedCode,
+                    displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+            }
+            await MainActor.run {
+                TokenStore.shared.token = auth.token
+                dismiss()
+            }
+        } catch {
+            await MainActor.run {
+                message = error.localizedDescription
+            }
+        }
+        await MainActor.run { isSubmitting = false }
     }
 }
 
@@ -1740,40 +1795,43 @@ struct AccountSecurityView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.surface)
-                            .clipShape(Circle())
-                    }
-                    Spacer()
-                    Text("账户与安全")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Spacer()
-                    Color.clear.frame(width: 36, height: 36)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
-                VStack(spacing: 0) {
-                    ProfileMenuList(items: [
-                        ProfileMenuItem(id: "login", title: "登录状态", subtitle: "未登录", icon: "person.crop.circle"),
-                        ProfileMenuItem(id: "device", title: "登录设备管理", subtitle: "查看已登录设备", icon: "desktopcomputer"),
-                        ProfileMenuItem(id: "pwd", title: "修改密码", subtitle: "登录后可用", icon: "lock.rotation")
-                    ]) { _ in }
-                }
-                .padding(.horizontal, 20)
+        SettingsPage(title: "账户与安全") {
+            SettingsCard(
+                title: "登录状态",
+                subtitle: "登录后可同步数据，并启用云端长期记忆。"
+            ) {
+                SettingsRow(
+                    systemImage: TokenStore.shared.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
+                    title: TokenStore.shared.isLoggedIn ? "已登录" : "未登录",
+                    subtitle: TokenStore.shared.isLoggedIn ? "当前设备已授权访问你的云端数据" : "登录后可跨设备同步聊天、翻译与学习记录",
+                    tint: TokenStore.shared.isLoggedIn ? AppTheme.primary : AppTheme.textPrimary,
+                    showChevron: false,
+                    action: nil
+                )
             }
-            .padding(.bottom, 32)
+
+            SettingsCard(
+                title: "安全",
+                subtitle: "建议定期更新密码，避免在公共设备保存登录状态。"
+            ) {
+                SettingsRow(
+                    systemImage: "desktopcomputer",
+                    title: "登录设备管理",
+                    subtitle: "即将支持：查看与移除已登录设备",
+                    value: "即将支持",
+                    showChevron: false,
+                    action: nil
+                )
+                SettingsRow(
+                    systemImage: "lock.rotation",
+                    title: "修改密码",
+                    subtitle: "即将支持：登录后可修改密码",
+                    value: "即将支持",
+                    showChevron: false,
+                    action: nil
+                )
+            }
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
@@ -1859,40 +1917,19 @@ struct FAQView: View {
     ]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.surface)
-                            .clipShape(Circle())
-                    }
-                    Spacer()
-                    Text("常见问题")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Spacer()
-                    Color.clear.frame(width: 36, height: 36)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
-                ForEach(items) { item in
-                    FAQRow(question: item.question, answer: item.answer, isExpanded: expandedId == item.id) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            expandedId = expandedId == item.id ? nil : item.id
+        SettingsPage(title: "常见问题") {
+            SettingsCard(title: "快速帮助", subtitle: "点开问题查看答案。若仍未解决，可在「在线客服」联系我们。") {
+                VStack(spacing: 10) {
+                    ForEach(items) { item in
+                        FAQRow(question: item.question, answer: item.answer, isExpanded: expandedId == item.id) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                expandedId = expandedId == item.id ? nil : item.id
+                            }
                         }
                     }
                 }
-                .padding(.horizontal, 20)
             }
-            .padding(.bottom, 32)
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
@@ -1932,55 +1969,39 @@ struct FAQRow: View {
 
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
+    private var versionText: String {
+        let v = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
+        let b = (Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? ""
+        return b.isEmpty ? v : "\(v) (\(b))"
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.surface)
-                            .clipShape(Circle())
+        SettingsPage(title: "关于我们") {
+            SettingsCard(title: "AI 助理", subtitle: "智能对话、多语翻译与情景学习，帮助你更高效地沟通与成长。") {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(AppTheme.accentStrong.opacity(0.12))
+                            .frame(width: 72, height: 72)
+                        Image(systemName: "app.badge.fill")
+                            .font(.system(size: 34))
+                            .foregroundStyle(AppTheme.accentStrong)
                     }
-                    Spacer()
-                    Text("关于我们")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Spacer()
-                    Color.clear.frame(width: 36, height: 36)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("AI 助理")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text("版本 \(versionText)")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        Text("让 AI 更懂你，也让你更高效。")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
-                VStack(spacing: 12) {
-                    Image(systemName: "app.badge.fill")
-                        .font(.system(size: 64))
-                        .foregroundStyle(AppTheme.accentStrong)
-                    Text("AI 助理")
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text("版本 1.0.0")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                    Text("AI 助理致力于用智能对话、多语翻译与情景学习，帮助你更高效地沟通与成长。")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 8)
-                }
-                .padding(24)
-                .frame(maxWidth: .infinity)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .padding(.horizontal, 20)
             }
-            .padding(.bottom, 32)
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
@@ -2029,40 +2050,30 @@ struct DocView: View {
     let content: String
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.surface)
-                            .clipShape(Circle())
-                    }
-                    Spacer()
-                    Text(title)
-                        .font(.headline)
+        SettingsPage(
+            title: title,
+            trailing: AnyView(
+                Button {
+                    ClipboardService.copy(content)
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Spacer()
-                    Color.clear.frame(width: 36, height: 36)
+                        .frame(width: 36, height: 36)
+                        .background(AppTheme.surface)
+                        .clipShape(Circle())
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
+                .buttonStyle(.plain)
+            )
+        ) {
+            SettingsCard(title: "内容", subtitle: "可长按/选择文本，或使用右上角复制按钮。") {
                 Text(content)
                     .font(.caption)
                     .foregroundStyle(AppTheme.textPrimary)
-                    .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .padding(.horizontal, 20)
+                    .textSelection(.enabled)
             }
-            .padding(.bottom, 32)
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
@@ -2072,66 +2083,37 @@ struct SupportView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.surface)
-                            .clipShape(Circle())
+        SettingsPage(title: "在线客服") {
+            SettingsCard(title: "联系我们", subtitle: "我们会尽快回复你。建议先查看常见问题，通常能更快解决。") {
+                SettingsRow(
+                    systemImage: "clock",
+                    title: "服务时间",
+                    subtitle: "工作日 9:00 — 18:00",
+                    showChevron: false,
+                    action: nil
+                )
+                SettingsRow(
+                    systemImage: "envelope",
+                    title: "客服邮箱",
+                    subtitle: "support@ai-assistant.example.com",
+                    showChevron: true
+                ) {
+                    if let url = URL(string: "mailto:support@ai-assistant.example.com") {
+                        #if os(iOS)
+                        UIApplication.shared.open(url)
+                        #elseif os(macOS)
+                        NSWorkspace.shared.open(url)
+                        #endif
                     }
-                    Spacer()
-                    Text("在线客服")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Spacer()
-                    Color.clear.frame(width: 36, height: 36)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
-                VStack(spacing: 16) {
-                    Label("服务时间", systemImage: "clock")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text("工作日 9:00 — 18:00")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-
-                    Label("客服邮箱", systemImage: "envelope")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Button("support@ai-assistant.example.com") {
-                        if let url = URL(string: "mailto:support@ai-assistant.example.com") {
-                            #if os(iOS)
-                            UIApplication.shared.open(url)
-                            #elseif os(macOS)
-                            NSWorkspace.shared.open(url)
-                            #endif
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.accentStrong)
-
-                    Label("常见问题", systemImage: "questionmark.circle")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text("建议先查看「常见问题」页，可更快得到解答。")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-                .padding(24)
-                .frame(maxWidth: .infinity)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .padding(.horizontal, 20)
+                SettingsRow(
+                    systemImage: "questionmark.circle",
+                    title: "常见问题",
+                    subtitle: "点开查看常见问题与解决方法",
+                    showChevron: false,
+                    action: nil
+                )
             }
-            .padding(.bottom, 32)
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
