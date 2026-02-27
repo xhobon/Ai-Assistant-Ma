@@ -14,6 +14,7 @@ dotenv.config();
 
 const TTS_MAX_LENGTH = 2000;
 const TTS_VOICES = {
+  // 更自然的中文神经网络音色（可按需替换：zh-CN-YunxiNeural / zh-CN-XiaoyiNeural 等）
   "zh-CN": "zh-CN-XiaoxiaoNeural",
   "id-ID": "id-ID-GadisNeural",
   "en-US": "en-US-JennyNeural"
@@ -25,6 +26,17 @@ function getTTSVoice(lang) {
   if (prefix === "id") return TTS_VOICES["id-ID"];
   return TTS_VOICES["zh-CN"];
 }
+
+function normalizeLang(lang) {
+  if (!lang || typeof lang !== "string") return "zh-CN";
+  const s = lang.trim();
+  if (!s) return "zh-CN";
+  // 常见兼容：zh / zh-cn / zh_CN
+  if (s.toLowerCase() === "zh" || s.toLowerCase() === "zh-cn" || s.toLowerCase() === "zh_cn") return "zh-CN";
+  if (s.toLowerCase() === "id" || s.toLowerCase() === "id-id" || s.toLowerCase() === "id_id") return "id-ID";
+  return s;
+}
+
 function escapeTTS(s) {
   if (typeof s !== "string") return "";
   return s
@@ -33,6 +45,45 @@ function escapeTTS(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function addNaturalPausesForZh(escapedText) {
+  // 在不改变语义的情况下增加轻微停顿，降低“播报感”
+  if (!escapedText) return "";
+  return escapedText
+    .replace(/([，,])/g, "$1<break time=\"140ms\"/>")
+    .replace(/([。！？!?\n])/g, "$1<break time=\"220ms\"/>");
+}
+
+function clampNumber(n, min, max) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return null;
+  return Math.min(max, Math.max(min, x));
+}
+
+function buildSSML({ textEscaped, lang, voice, style, ratePct, pitchPct }) {
+  const xmlLang = normalizeLang(lang);
+  const safeVoice = (voice || "").trim();
+  const safeStyle = (style || "").trim();
+  const rate = typeof ratePct === "number" ? `${ratePct >= 0 ? "+" : ""}${ratePct}%` : null;
+  const pitch = typeof pitchPct === "number" ? `${pitchPct >= 0 ? "+" : ""}${pitchPct}%` : null;
+
+  const core = (() => {
+    const base = xmlLang.startsWith("zh") ? addNaturalPausesForZh(textEscaped) : textEscaped;
+    const prosodyAttrs = [
+      rate ? ` rate="${rate}"` : "",
+      pitch ? ` pitch="${pitch}"` : ""
+    ].join("");
+    const withProsody = prosodyAttrs.trim()
+      ? `<prosody${prosodyAttrs}>${base}</prosody>`
+      : base;
+    if (safeStyle) {
+      return `<mstts:express-as style="${safeStyle}">${withProsody}</mstts:express-as>`;
+    }
+    return withProsody;
+  })();
+
+  return `<speak xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="https://www.w3.org/2001/mstts" version="1.0" xml:lang="${xmlLang}"><voice name="${safeVoice}">${core}</voice></speak>`;
 }
 
 const app = express();
@@ -882,20 +933,52 @@ app.get("/api/translations", authMiddleware, async (req, res) => {
 app.post("/api/tts", async (req, res) => {
   const schema = z.object({
     text: z.string().min(1).max(TTS_MAX_LENGTH),
-    lang: z.string().min(2).max(10).optional()
+    lang: z.string().min(2).max(10).optional(),
+    // 可选：自定义音色/情感与韵律（都免费，走 Edge 神经网络语音）
+    voice: z.string().min(3).max(80).optional(),
+    style: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/).optional(),
+    // -30 ~ +30（百分比），越大越快/越高
+    rate: z.number().min(-30).max(30).optional(),
+    pitch: z.number().min(-30).max(30).optional()
   });
   const parseResult = schema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({ error: parseResult.error.flatten() });
   }
-  const { text, lang } = parseResult.data;
-  const voice = getTTSVoice(lang || "zh-CN");
+  const { text, lang, voice: voiceOverride, style, rate, pitch } = parseResult.data;
+  const langNorm = normalizeLang(lang || "zh-CN");
+  const voice = (voiceOverride && String(voiceOverride).trim()) ? String(voiceOverride).trim() : getTTSVoice(langNorm);
   const safeText = escapeTTS(text);
   if (!safeText) return res.status(400).json({ error: "text required" });
+
+  // 默认策略：中文使用更“聊天感”的风格（若不支持会自动回退）
+  const defaultStyle = (() => {
+    if (style) return style;
+    if (langNorm.startsWith("zh") && voice === "zh-CN-XiaoxiaoNeural") return "chat";
+    return "";
+  })();
+
+  const ratePct = clampNumber(rate, -30, 30);
+  const pitchPct = clampNumber(pitch, -30, 30);
+  const ssml = buildSSML({
+    textEscaped: safeText,
+    lang: langNorm,
+    voice,
+    style: defaultStyle,
+    ratePct: ratePct ?? undefined,
+    pitchPct: pitchPct ?? undefined
+  });
   try {
     const tts = new MsEdgeTTS({});
     await tts.setMetadata(voice, OUTPUT_FORMAT.WEBM_24KHZ_16BIT_MONO_OPUS);
-    const readable = tts.toStream(safeText);
+    let readable;
+    try {
+      // 优先走 SSML（更自然：停顿/语气/韵律）
+      readable = tts.toStream(ssml);
+    } catch (e) {
+      // 若风格/SSML 不被该音色支持，则回退为纯文本
+      readable = tts.toStream(safeText);
+    }
     res.setHeader("Content-Type", "audio/webm");
     res.setHeader("Cache-Control", "no-store");
     readable.pipe(res);
