@@ -355,10 +355,63 @@ app.get("/health", async (req, res) => {
 });
 
 const registerSchema = z.object({
-  email: z.string().email().optional(),
-  phone: z.string().min(6).optional(),
-  password: z.string().min(6),
+  email: z.string().email(),
+  code: z.string().min(4).max(10),
+  // 密码改为可选：主要使用邮箱验证码登录，后续如需密码可扩展
+  password: z.string().min(6).optional(),
   displayName: z.string().min(1)
+});
+
+const emailCodeSchema = z.object({
+  email: z.string().email(),
+  purpose: z.enum(["login", "register"])
+});
+
+async function verifyEmailCode(email, code, purpose) {
+  const now = new Date();
+  const record = await prisma.emailVerificationCode.findFirst({
+    where: {
+      email: email.toLowerCase(),
+      purpose,
+      expiresAt: { gt: now },
+      usedAt: null
+    },
+    orderBy: { createdAt: "desc" }
+  });
+  if (!record) return false;
+  if (record.code !== code) return false;
+  await prisma.emailVerificationCode.update({
+    where: { id: record.id },
+    data: { usedAt: now }
+  });
+  return true;
+}
+
+app.post("/api/auth/send-code", async (req, res) => {
+  const parseResult = emailCodeSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+  const { email, purpose } = parseResult.data;
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 分钟有效
+
+  await prisma.emailVerificationCode.create({
+    data: {
+      email: email.toLowerCase(),
+      code,
+      purpose,
+      expiresAt
+    }
+  });
+
+  // 这里本应发送邮件。当前版本为了方便测试，在开发环境直接返回验证码。
+  // 上线时建议接入邮件服务（如 Resend、SendGrid 等），并移除响应中的 code 字段。
+  const isProd = process.env.NODE_ENV === "production";
+  if (!isProd) {
+    console.log(`[auth] send-code ${purpose} to ${email}: ${code}`);
+  }
+  return res.json({ ok: true, code: isProd ? undefined : code });
 });
 
 app.post("/api/auth/register", async (req, res) => {
@@ -367,25 +420,27 @@ app.post("/api/auth/register", async (req, res) => {
     return res.status(400).json({ error: parseResult.error.flatten() });
   }
 
-  const { email, phone, password, displayName } = parseResult.data;
-  if (!email && !phone) {
-    return res.status(400).json({ error: "EMAIL_OR_PHONE_REQUIRED" });
+  const { email, password, displayName, code } = parseResult.data;
+
+  const ok = await verifyEmailCode(email, code, "register");
+  if (!ok) {
+    return res.status(400).json({ error: "INVALID_OR_EXPIRED_CODE" });
   }
 
   const existingUser = await prisma.user.findFirst({
     where: {
-      OR: [{ email: email || undefined }, { phone: phone || undefined }]
+      email
     }
   });
   if (existingUser) {
     return res.status(409).json({ error: "USER_EXISTS" });
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = password ? await bcrypt.hash(password, 10) : null;
   const user = await prisma.user.create({
     data: {
-      email: email || null,
-      phone: phone || null,
+      email,
+      phone: null,
       passwordHash,
       displayName
     }
@@ -395,8 +450,10 @@ app.post("/api/auth/register", async (req, res) => {
 });
 
 const loginSchema = z.object({
-  account: z.string().min(3),
-  password: z.string().min(6)
+  account: z.string().min(3).optional(),
+  password: z.string().min(6).optional(),
+  email: z.string().email().optional(),
+  code: z.string().min(4).max(10).optional()
 });
 
 app.post("/api/auth/login", async (req, res) => {
@@ -405,7 +462,39 @@ app.post("/api/auth/login", async (req, res) => {
     return res.status(400).json({ error: parseResult.error.flatten() });
   }
 
-  const { account, password } = parseResult.data;
+  const { account, password, email, code } = parseResult.data;
+
+  // 优先邮箱 + 验证码登录
+  if (email && code) {
+    const okCode = await verifyEmailCode(email, code, "login");
+    if (!okCode) {
+      return res.status(400).json({ error: "INVALID_OR_EXPIRED_CODE" });
+    }
+    let user = await prisma.user.findFirst({
+      where: { email }
+    });
+    if (!user) {
+      // 首次登录，自动创建账号
+      const nameFromEmail = email.split("@")[0] || "新用户";
+      user = await prisma.user.create({
+        data: {
+          email,
+          displayName: nameFromEmail.slice(0, 20)
+        }
+      });
+    }
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() }
+    });
+    return res.json({ token: signToken(updated), user: updated });
+  }
+
+  // 兼容旧版：账号 + 密码登录（邮箱或手机号）
+  if (!account || !password) {
+    return res.status(400).json({ error: "ACCOUNT_OR_CODE_REQUIRED" });
+  }
+
   const user = await prisma.user.findFirst({
     where: {
       OR: [{ email: account }, { phone: account }]
