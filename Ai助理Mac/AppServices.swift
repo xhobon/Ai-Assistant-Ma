@@ -16,10 +16,10 @@ final class ServerConfigStore: ObservableObject {
     static let shared = ServerConfigStore()
 
     /// 注意：这里要与实际部署后端的 Vercel 域名保持一致
-    private static let builtInProductionURL = "https://ai-assistant-mac.vercel.app"
+    private static let builtInProductionURL = "https://ai-assistant-mac-b5ll.vercel.app"
 
     var baseURL: URL {
-        URL(string: Self.builtInProductionURL) ?? URL(string: "https://ai-assistant-mac.vercel.app")!
+        URL(string: Self.builtInProductionURL) ?? URL(string: "https://ai-assistant-mac-b5ll.vercel.app")!
     }
 
     var baseURLString: String { Self.builtInProductionURL }
