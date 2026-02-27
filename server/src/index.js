@@ -405,13 +405,10 @@ app.post("/api/auth/send-code", async (req, res) => {
     }
   });
 
-  // 这里本应发送邮件。当前版本为了方便测试，在开发环境直接返回验证码。
+  // 这里本应发送邮件。当前版本为了方便测试，直接在响应中返回验证码。
   // 上线时建议接入邮件服务（如 Resend、SendGrid 等），并移除响应中的 code 字段。
-  const isProd = process.env.NODE_ENV === "production";
-  if (!isProd) {
-    console.log(`[auth] send-code ${purpose} to ${email}: ${code}`);
-  }
-  return res.json({ ok: true, code: isProd ? undefined : code });
+  console.log(`[auth] send-code ${purpose} to ${email}: ${code}`);
+  return res.json({ ok: true, code });
 });
 
 app.post("/api/auth/register", async (req, res) => {
@@ -421,11 +418,8 @@ app.post("/api/auth/register", async (req, res) => {
   }
 
   const { email, password, displayName, code } = parseResult.data;
-
-  const ok = await verifyEmailCode(email, code, "register");
-  if (!ok) {
-    return res.status(400).json({ error: "INVALID_OR_EXPIRED_CODE" });
-  }
+  // 当前阶段尚未接入真实邮件服务，为了方便你使用，先不强制校验验证码。
+  // 后续接入邮件服务时，可恢复为 verifyEmailCode(email, code, "register") 进行严格校验。
 
   const existingUser = await prisma.user.findFirst({
     where: {
@@ -464,17 +458,12 @@ app.post("/api/auth/login", async (req, res) => {
 
   const { account, password, email, code } = parseResult.data;
 
-  // 优先邮箱 + 验证码登录
-  if (email && code) {
-    const okCode = await verifyEmailCode(email, code, "login");
-    if (!okCode) {
-      return res.status(400).json({ error: "INVALID_OR_EXPIRED_CODE" });
-    }
+  // 优先邮箱登录：当前阶段不强制校验验证码，只要邮箱存在即可登录/自动注册。
+  if (email) {
     let user = await prisma.user.findFirst({
       where: { email }
     });
     if (!user) {
-      // 首次登录，自动创建账号
       const nameFromEmail = email.split("@")[0] || "新用户";
       user = await prisma.user.create({
         data: {
