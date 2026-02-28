@@ -1,0 +1,608 @@
+{
+  "source": "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/AIAssistantViews.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "搜索AI服务...",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "没有找到匹配的服务",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "试试其他关键词或分类",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "在线",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 206
+        }
+      },
+      {
+        "comment": "",
+        "key": "AI助理",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 196
+        }
+      },
+      {
+        "comment": "",
+        "key": "随时待命，支持多场景协作",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 199
+        }
+      },
+      {
+        "comment": "",
+        "key": "为你安排高效的一天",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 216
+        }
+      },
+      {
+        "comment": "",
+        "key": "快速进入对话、翻译与学习场景",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 219
+        }
+      },
+      {
+        "comment": "",
+        "key": "搜索服务/场景/关键词",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 240
+        }
+      },
+      {
+        "comment": "",
+        "key": "立即进入",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 325
+        }
+      },
+      {
+        "comment": "",
+        "key": "建议",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 366
+        }
+      },
+      {
+        "comment": "",
+        "key": "推荐",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 463
+        }
+      },
+      {
+        "comment": "",
+        "key": "立即%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 492
+        }
+      },
+      {
+        "comment": "",
+        "key": "立即%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 656
+        }
+      },
+      {
+        "comment": "",
+        "key": "更多操作",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 847
+        }
+      },
+      {
+        "comment": "",
+        "key": "执行命令",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 856
+        }
+      },
+      {
+        "comment": "",
+        "key": "发送执行结果",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 871
+        }
+      },
+      {
+        "comment": "",
+        "key": "提示",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 884
+        }
+      },
+      {
+        "comment": "",
+        "key": "新对话",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 848
+        }
+      },
+      {
+        "comment": "",
+        "key": "清空对话",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 851
+        }
+      },
+      {
+        "comment": "",
+        "key": "取消",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 854
+        }
+      },
+      {
+        "comment": "",
+        "key": "允许",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 860
+        }
+      },
+      {
+        "comment": "",
+        "key": "拒绝",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 863
+        }
+      },
+      {
+        "comment": "",
+        "key": "助理请求在本机执行：\n%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 868
+        }
+      },
+      {
+        "comment": "",
+        "key": "继续",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 875
+        }
+      },
+      {
+        "comment": "",
+        "key": "取消",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 878
+        }
+      },
+      {
+        "comment": "",
+        "key": "执行结果将发送至服务器以生成回复。请确认结果中无敏感信息后再继续，保护您的隐私。",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 882
+        }
+      },
+      {
+        "comment": "",
+        "key": "确定",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 888
+        }
+      },
+      {
+        "comment": "",
+        "key": "内容由 AI 生成",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1074
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音通话",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 955
+        }
+      },
+      {
+        "comment": "",
+        "key": "切换到文字",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 971
+        }
+      },
+      {
+        "comment": "",
+        "key": "字",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 967
+        }
+      },
+      {
+        "comment": "",
+        "key": "暂停",
+        "location": {
+          "startingColumn": 65,
+          "startingLine": 1036
+        }
+      },
+      {
+        "comment": "",
+        "key": "麦克风",
+        "location": {
+          "startingColumn": 76,
+          "startingLine": 1036
+        }
+      },
+      {
+        "comment": "",
+        "key": "分享",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 1045
+        }
+      },
+      {
+        "comment": "",
+        "key": "打开摄像头",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 1056
+        }
+      },
+      {
+        "comment": "",
+        "key": "结束通话",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 1070
+        }
+      },
+      {
+        "comment": "",
+        "key": "选择图片",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1192
+        }
+      },
+      {
+        "comment": "",
+        "key": "从相册或文件夹选择一张图片发送给助理识别",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1195
+        }
+      },
+      {
+        "comment": "",
+        "key": "取消",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1200
+        }
+      },
+      {
+        "comment": "",
+        "key": "选择图片",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1204
+        }
+      },
+      {
+        "comment": "",
+        "key": "取消",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1255
+        }
+      },
+      {
+        "comment": "",
+        "key": "拍照并发送给助理",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1260
+        }
+      },
+      {
+        "comment": "",
+        "key": "视频通话",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1480
+        }
+      },
+      {
+        "comment": "",
+        "key": "正在听…",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1537
+        }
+      },
+      {
+        "comment": "",
+        "key": "点击说话",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 1537
+        }
+      },
+      {
+        "comment": "",
+        "key": "取消静音",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 1611
+        }
+      },
+      {
+        "comment": "",
+        "key": "静音",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 1611
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音通话",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1616
+        }
+      },
+      {
+        "comment": "",
+        "key": "内容由AI生成",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1600
+        }
+      },
+      {
+        "comment": "",
+        "key": "帮我写一份年度总结",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1637
+        }
+      },
+      {
+        "comment": "",
+        "key": "xxxx年，对我来说是一个不平凡的一年。它给我考验、带来挑战，也让我幸运地获得成功。\n\n一方面，在2019年我坚持完成了自己的学习计划，取得了进步，提高了自己的能力，得到了老师的认可和肯定。我参加了一系列的考试，如期末考试、中考和高考，取得了优异的成绩，非常满意。我对自己已经可以承担起学习与责任感到很开心。",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1657
+        }
+      },
+      {
+        "comment": "",
+        "key": "拍照或相册",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1692
+        }
+      },
+      {
+        "comment": "",
+        "key": "上传文件",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1697
+        }
+      },
+      {
+        "comment": "",
+        "key": "正在听",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 1729
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音输入",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 1729
+        }
+      },
+      {
+        "comment": "",
+        "key": "发送",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1735
+        }
+      },
+      {
+        "comment": "",
+        "key": "更多功能",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1740
+        }
+      },
+      {
+        "comment": "",
+        "key": "快捷功能",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2007
+        }
+      },
+      {
+        "comment": "",
+        "key": "停止",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 2388
+        }
+      },
+      {
+        "comment": "",
+        "key": "朗读",
+        "location": {
+          "startingColumn": 72,
+          "startingLine": 2388
+        }
+      },
+      {
+        "comment": "",
+        "key": "复制",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 2396
+        }
+      },
+      {
+        "comment": "",
+        "key": "能力与记忆",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 2424
+        }
+      },
+      {
+        "comment": "",
+        "key": "输入内容或使用语音",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 2455
+        }
+      },
+      {
+        "comment": "",
+        "key": "长期记忆",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2518
+        }
+      },
+      {
+        "comment": "",
+        "key": "记忆摘要",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2499
+        }
+      },
+      {
+        "comment": "",
+        "key": "智能建议",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2508
+        }
+      },
+      {
+        "comment": "",
+        "key": "- 建议每天至少完成 15 分钟口语或翻译练习\n- 多复习「旅行」「职场」等高频场景的短句",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2510
+        }
+      },
+      {
+        "comment": "",
+        "key": "搜索智能服务...",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 2553
+        }
+      },
+      {
+        "comment": "",
+        "key": "快速开始",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2588
+        }
+      },
+      {
+        "comment": "",
+        "key": "+%lld",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2850
+        }
+      },
+      {
+        "comment": "",
+        "key": "智能AI助手集合",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 3032
+        }
+      },
+      {
+        "comment": "",
+        "key": "AI助理",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 3019
+        }
+      },
+      {
+        "comment": "",
+        "key": "系统在线",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 3039
+        }
+      },
+      {
+        "comment": "",
+        "key": "最后更新: %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 3043
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,48 @@
+{
+  "source": "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/ProductivityViews.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "页数",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 121
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld 页",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 125
+        }
+      },
+      {
+        "comment": "",
+        "key": "复制大纲",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 140
+        }
+      },
+      {
+        "comment": "",
+        "key": "风格：%@ · 语气：%@ · 篇幅：%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 570
+        }
+      },
+      {
+        "comment": "",
+        "key": "•",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 597
+        }
+      }
+    ]
+  },
+  "version": 1
+}

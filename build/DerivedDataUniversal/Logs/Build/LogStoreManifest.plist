@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>logFormatVersion</key>
+	<integer>12</integer>
+	<key>logs</key>
+	<dict>
+		<key>1C740B62-F56C-4FCF-89F7-37B7C9F9EFCA</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>1C740B62-F56C-4FCF-89F7-37B7C9F9EFCA.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>6</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>Ai助理Mac project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>Ai助理Mac</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project Ai助理Mac with scheme Ai助理Mac and configuration Release</string>
+			<key>timeStartedRecording</key>
+			<real>793993832.69711804</real>
+			<key>timeStoppedRecording</key>
+			<real>793993859.86229002</real>
+			<key>title</key>
+			<string>Building project Ai助理Mac with scheme Ai助理Mac and configuration Release</string>
+			<key>uniqueIdentifier</key>
+			<string>1C740B62-F56C-4FCF-89F7-37B7C9F9EFCA</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

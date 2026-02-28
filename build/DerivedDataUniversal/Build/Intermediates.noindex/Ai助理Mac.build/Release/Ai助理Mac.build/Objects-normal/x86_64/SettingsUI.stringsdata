@@ -1,0 +1,24 @@
+{
+  "source": "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/SettingsUI.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "设置与偏好",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 213
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,96 @@
+{
+  "" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-primary.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-primary.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-primary.dia",
+    "emit-module-dependencies" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-primary-emit-module.dia",
+    "pch" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-primary.swiftdeps"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/AIAssistantViews.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AIAssistantViews.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AIAssistantViews.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AIAssistantViews.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/AccessibilityExtensions.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AccessibilityExtensions.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AccessibilityExtensions.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AccessibilityExtensions.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/Ai__App.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai__App.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai__App.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai__App.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/Ai__MacApp.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai__MacApp.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai__MacApp.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai__MacApp.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/AppModels.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AppModels.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AppModels.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AppModels.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/AppServices.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AppServices.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AppServices.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/AppServices.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/ContentView.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ContentView.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/Item.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Item.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Item.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Item.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/LearningViews.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/LearningViews.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/LearningViews.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/LearningViews.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/LocalDataStore.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/LocalDataStore.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/LocalDataStore.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/LocalDataStore.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/ProductivityViews.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ProductivityViews.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ProductivityViews.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ProductivityViews.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/ProfileViews.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ProfileViews.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ProfileViews.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ProfileViews.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/SettingsUI.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/SettingsUI.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/SettingsUI.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/SettingsUI.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/SharedUI.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/SharedUI.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/SharedUI.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/SharedUI.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/TranslateViews.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/TranslateViews.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/TranslateViews.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/TranslateViews.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/ViewModels.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ViewModels.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ViewModels.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/ViewModels.o"
+  },
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedDataUniversal/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/GeneratedAssetSymbols.o"
+  }
+}

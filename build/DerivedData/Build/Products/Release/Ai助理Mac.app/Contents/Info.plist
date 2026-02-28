@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BuildMachineOSBuild</key>
+	<string>25D125</string>
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>MacOSX</string>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.ai-assistant.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>aiassistant</string>
+			</array>
+		</dict>
+	</array>
+	<key>DTCompiler</key>
+	<string>com.apple.compilers.llvm.clang.1_0</string>
+	<key>DTPlatformBuild</key>
+	<string>25C57</string>
+	<key>DTPlatformName</key>
+	<string>macosx</string>
+	<key>DTPlatformVersion</key>
+	<string>26.2</string>
+	<key>DTSDKBuild</key>
+	<string>25C57</string>
+	<key>DTSDKName</key>
+	<string>macosx26.2</string>
+	<key>DTXcode</key>
+	<string>2620</string>
+	<key>DTXcodeBuild</key>
+	<string>17C52</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.7</string>
+	<key>NSAccentColorName</key>
+	<string>AccentColor</string>
+	<key>NSCameraUsageDescription</key>
+	<string>用于打开摄像头，让 AI 助理可以看到画面并识别</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>用于语音输入和语音识别</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>用于选择图片进行文字识别</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>用于识别语音内容并转成文字</string>
+	<key>UIBackgroundModes</key>
+	<array/>
+</dict>
+</plist>

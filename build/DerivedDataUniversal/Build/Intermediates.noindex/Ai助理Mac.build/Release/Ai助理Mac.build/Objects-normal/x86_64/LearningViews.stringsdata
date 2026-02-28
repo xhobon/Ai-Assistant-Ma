@@ -1,0 +1,144 @@
+{
+  "source": "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/LearningViews.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "开启高效学习节奏 · 高频词汇与场景短句",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "印尼语学习",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 125
+        }
+      },
+      {
+        "comment": "",
+        "key": "学习主题",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 258
+        }
+      },
+      {
+        "comment": "",
+        "key": "按主题浏览高频词汇与场景 · 共 %lld 类",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "仅看收藏",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 292
+        }
+      },
+      {
+        "comment": "",
+        "key": "搜索词汇/短句/例句",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 384
+        }
+      },
+      {
+        "comment": "",
+        "key": "难度筛选",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 410
+        }
+      },
+      {
+        "comment": "",
+        "key": "仅看收藏",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 435
+        }
+      },
+      {
+        "comment": "",
+        "key": "学习进度",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 458
+        }
+      },
+      {
+        "comment": "",
+        "key": "今日计划",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 504
+        }
+      },
+      {
+        "comment": "",
+        "key": "3 项",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 508
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld 条",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 598
+        }
+      },
+      {
+        "comment": "",
+        "key": "短句练习",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 590
+        }
+      },
+      {
+        "comment": "",
+        "key": "双语对照 · 语音播放/复制/收藏",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 593
+        }
+      },
+      {
+        "comment": "",
+        "key": "暂无匹配内容",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 607
+        }
+      },
+      {
+        "comment": "",
+        "key": "试试更换分类、难度或关键词",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 610
+        }
+      },
+      {
+        "comment": "",
+        "key": "已收藏",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 679
+        }
+      }
+    ]
+  },
+  "version": 1
+}

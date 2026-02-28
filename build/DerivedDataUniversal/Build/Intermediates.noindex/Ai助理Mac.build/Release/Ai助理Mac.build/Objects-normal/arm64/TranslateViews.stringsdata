@@ -1,0 +1,480 @@
+{
+  "source": "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/TranslateViews.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "提示",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "确定",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "输入文本或使用语音开始 · 支持实时语音与历史同步",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "AI翻译",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "切换",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 252
+        }
+      },
+      {
+        "comment": "",
+        "key": "翻译结果",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 322
+        }
+      },
+      {
+        "comment": "",
+        "key": "可播放",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 327
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音识别中",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 393
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音待机",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 393
+        }
+      },
+      {
+        "comment": "",
+        "key": "说完自动翻译，可点击停止",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 395
+        }
+      },
+      {
+        "comment": "",
+        "key": "说完自动识别语言并翻译，可手动停止",
+        "location": {
+          "startingColumn": 77,
+          "startingLine": 395
+        }
+      },
+      {
+        "comment": "",
+        "key": "停止",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 403
+        }
+      },
+      {
+        "comment": "",
+        "key": "开始",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 403
+        }
+      },
+      {
+        "comment": "",
+        "key": "翻译中...",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 446
+        }
+      },
+      {
+        "comment": "",
+        "key": "立即翻译",
+        "location": {
+          "startingColumn": 73,
+          "startingLine": 446
+        }
+      },
+      {
+        "comment": "",
+        "key": "暂无翻译记录",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 541
+        }
+      },
+      {
+        "comment": "",
+        "key": "翻译历史",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 531
+        }
+      },
+      {
+        "comment": "",
+        "key": "最近 10 条",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 535
+        }
+      },
+      {
+        "comment": "",
+        "key": "实时语音翻译",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 777
+        }
+      },
+      {
+        "comment": "",
+        "key": "提示",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 781
+        }
+      },
+      {
+        "comment": "",
+        "key": "确定",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 785
+        }
+      },
+      {
+        "comment": "",
+        "key": "录音中",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 837
+        }
+      },
+      {
+        "comment": "",
+        "key": "待机",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 837
+        }
+      },
+      {
+        "comment": "",
+        "key": "实时语音翻译",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 829
+        }
+      },
+      {
+        "comment": "",
+        "key": "双语对话实时输出",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 832
+        }
+      },
+      {
+        "comment": "",
+        "key": "实时中",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 878
+        }
+      },
+      {
+        "comment": "",
+        "key": "空闲",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 878
+        }
+      },
+      {
+        "comment": "",
+        "key": "当前主讲语言：%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 873
+        }
+      },
+      {
+        "comment": "",
+        "key": "正在监听语音输入",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 870
+        }
+      },
+      {
+        "comment": "",
+        "key": "等待语音输入",
+        "location": {
+          "startingColumn": 65,
+          "startingLine": 870
+        }
+      },
+      {
+        "comment": "",
+        "key": "正在输入",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 917
+        }
+      },
+      {
+        "comment": "",
+        "key": "待机中",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 917
+        }
+      },
+      {
+        "comment": "",
+        "key": "正在识别语音",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 909
+        }
+      },
+      {
+        "comment": "",
+        "key": "等待语音输入",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 909
+        }
+      },
+      {
+        "comment": "",
+        "key": "说话时请保持手机稳定",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 912
+        }
+      },
+      {
+        "comment": "",
+        "key": "点击任一语言按钮开始",
+        "location": {
+          "startingColumn": 71,
+          "startingLine": 912
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音波形监测",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 940
+        }
+      },
+      {
+        "comment": "",
+        "key": "正在识别",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 944
+        }
+      },
+      {
+        "comment": "",
+        "key": "等待语音",
+        "location": {
+          "startingColumn": 71,
+          "startingLine": 944
+        }
+      },
+      {
+        "comment": "",
+        "key": "朗读",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 1177
+        }
+      },
+      {
+        "comment": "",
+        "key": "复制",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 1185
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1326
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld/5000",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1420
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音播放",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 1457
+        }
+      },
+      {
+        "comment": "",
+        "key": "复制",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 1464
+        }
+      },
+      {
+        "comment": "",
+        "key": "停止录音",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 1471
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音输入",
+        "location": {
+          "startingColumn": 68,
+          "startingLine": 1471
+        }
+      },
+      {
+        "comment": "",
+        "key": "清空内容",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1614
+        }
+      },
+      {
+        "comment": "",
+        "key": "翻译",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1642
+        }
+      },
+      {
+        "comment": "",
+        "key": "收起",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 1693
+        }
+      },
+      {
+        "comment": "",
+        "key": "展开全文",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 1693
+        }
+      },
+      {
+        "comment": "",
+        "key": "翻译结果",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1667
+        }
+      },
+      {
+        "comment": "",
+        "key": "翻译记录",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1733
+        }
+      },
+      {
+        "comment": "",
+        "key": "收起",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 1806
+        }
+      },
+      {
+        "comment": "",
+        "key": "展开",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 1806
+        }
+      },
+      {
+        "comment": "",
+        "key": "翻译记录",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1826
+        }
+      },
+      {
+        "comment": "",
+        "key": "最近 10 条",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1830
+        }
+      },
+      {
+        "comment": "",
+        "key": "收起",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 1929
+        }
+      },
+      {
+        "comment": "",
+        "key": "展开",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 1929
+        }
+      }
+    ]
+  },
+  "version": 1
+}
