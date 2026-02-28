@@ -17,12 +17,9 @@ struct ProfileCenterView: View {
     @State private var showShareGift = false
     // 设置入口
     @State private var showAccount = false
-    @State private var showMemberExplain = false
-    @State private var showFAQ = false
     // 服务与支持
     @State private var showAbout = false
-    @State private var showAgreement = false
-    @State private var showTerms = false
+    @State private var showFAQ = false
     @State private var showSupport = false
     @State private var showAssistantMemory = false
 
@@ -34,19 +31,16 @@ struct ProfileCenterView: View {
     ]
 
     private let settingsItems: [ProfileMenuItem] = [
-        ProfileMenuItem(id: "settings", title: "设置", subtitle: "通知、隐私、深色模式", icon: "gearshape"),
-        ProfileMenuItem(id: "account", title: "账户与安全", subtitle: "登录信息、设备管理", icon: "shield.fill"),
-        ProfileMenuItem(id: "memory", title: "助理记忆", subtitle: "偏好与长期记忆，让助理更懂你", icon: "brain.head.profile"),
-        ProfileMenuItem(id: "member", title: "会员说明", subtitle: "权益、自动续费规则", icon: "doc.plaintext"),
-        ProfileMenuItem(id: "faq", title: "常见问题", subtitle: "快速获取帮助", icon: "questionmark.circle")
+        ProfileMenuItem(id: "settings", title: "通用设置", subtitle: "语音、外观、隐私与本地数据", icon: "gearshape"),
+        ProfileMenuItem(id: "account", title: "账户与安全", subtitle: "登录状态与设备安全", icon: "shield.fill"),
+        ProfileMenuItem(id: "memory", title: "助理记忆", subtitle: "偏好与长期记忆管理", icon: "brain.head.profile")
     ]
 
     private let helpItems: [ProfileMenuItem] = [
-        ProfileMenuItem(id: "clear", title: "清除所有记录", subtitle: "聊天、学习、翻译", icon: "trash"),
-        ProfileMenuItem(id: "about", title: "关于我们", subtitle: "品牌与版本信息", icon: "info.circle"),
-        ProfileMenuItem(id: "agreement", title: "用户协议", subtitle: "用户权利与责任", icon: "person.text.rectangle"),
-        ProfileMenuItem(id: "terms", title: "服务条款", subtitle: "服务与免责声明", icon: "doc.text"),
-        ProfileMenuItem(id: "support", title: "在线客服", subtitle: "工作日 9:00-18:00", icon: "headphones")
+        ProfileMenuItem(id: "faq", title: "常见问题", subtitle: "快速排查与使用说明", icon: "questionmark.circle"),
+        ProfileMenuItem(id: "support", title: "在线客服", subtitle: "工作日 9:00-18:00", icon: "headphones"),
+        ProfileMenuItem(id: "about", title: "关于与文档", subtitle: "版本信息、协议条款、会员规则", icon: "info.circle"),
+        ProfileMenuItem(id: "clear", title: "清除所有记录", subtitle: "聊天、学习、翻译", icon: "trash")
     ]
 
     var body: some View {
@@ -77,8 +71,6 @@ struct ProfileCenterView: View {
                     case "settings": showSettings = true
                     case "account": showAccount = true
                     case "memory": showAssistantMemory = true
-                    case "member": showMemberExplain = true
-                    case "faq": showFAQ = true
                     default: break
                     }
                 }
@@ -87,11 +79,10 @@ struct ProfileCenterView: View {
                 ProfileSectionHeader(title: "服务与支持")
                 ProfileMenuList(items: helpItems) { item in
                     switch item.id {
-                    case "clear": showClearConfirm = true
-                    case "about": showAbout = true
-                    case "agreement": showAgreement = true
-                    case "terms": showTerms = true
+                    case "faq": showFAQ = true
                     case "support": showSupport = true
+                    case "about": showAbout = true
+                    case "clear": showClearConfirm = true
                     default: break
                     }
                 }
@@ -120,20 +111,11 @@ struct ProfileCenterView: View {
             .navigationDestination(isPresented: $showAssistantMemory) {
                 AssistantMemoryView()
             }
-            .navigationDestination(isPresented: $showMemberExplain) {
-                MemberExplainView()
-            }
             .navigationDestination(isPresented: $showFAQ) {
                 FAQView()
             }
             .navigationDestination(isPresented: $showAbout) {
                 AboutView()
-            }
-            .navigationDestination(isPresented: $showAgreement) {
-                DocView(title: "用户协议", content: DocContent.userAgreement)
-            }
-            .navigationDestination(isPresented: $showTerms) {
-                DocView(title: "服务条款", content: DocContent.termsOfService)
             }
             .navigationDestination(isPresented: $showSupport) {
                 SupportView()
@@ -925,11 +907,13 @@ struct TaskRow: View {
 // MARK: - Settings
 
 struct AppSettingsView: View {
-    @Environment(\.dismiss) private var dismiss
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
     @ObservedObject private var appearance = AppearanceStore.shared
     @State private var showClearConfirm = false
     @State private var toastMessage: String?
+    @State private var showAccountSecurity = false
+    @State private var showFAQ = false
+    @State private var showSupport = false
 
     private var speedLabel: String {
         let r = speechSettings.speechRate
@@ -941,8 +925,38 @@ struct AppSettingsView: View {
     var body: some View {
         SettingsPage(title: "设置") {
             SettingsCard(
-                title: "朗读与语音",
-                subtitle: "控制语音播报的语速、音质与是否静音，可用于对话朗读与翻译朗读。"
+                title: "快捷入口",
+                subtitle: "常用设置与帮助集中在这里。"
+            ) {
+                SettingsRow(
+                    systemImage: "shield.lefthalf.filled",
+                    title: "账户与安全",
+                    subtitle: "查看登录状态与安全说明",
+                    showChevron: true
+                ) {
+                    showAccountSecurity = true
+                }
+                SettingsRow(
+                    systemImage: "questionmark.circle",
+                    title: "常见问题",
+                    subtitle: "快速排查使用问题",
+                    showChevron: true
+                ) {
+                    showFAQ = true
+                }
+                SettingsRow(
+                    systemImage: "headphones",
+                    title: "在线客服",
+                    subtitle: "工作日 9:00-18:00",
+                    showChevron: true
+                ) {
+                    showSupport = true
+                }
+            }
+
+            SettingsCard(
+                title: "语音与朗读",
+                subtitle: "控制语音播报开关、语速与音质。"
             ) {
                 SettingsInlineToggleRow(
                     systemImage: speechSettings.playbackMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
@@ -1025,7 +1039,7 @@ struct AppSettingsView: View {
             }
 
             SettingsCard(
-                title: "外观",
+                title: "外观与显示",
                 subtitle: "选择浅色/深色模式，或跟随系统。"
             ) {
                 Picker("深色模式", selection: Binding(
@@ -1037,11 +1051,19 @@ struct AppSettingsView: View {
                     Text("深色").tag(AppearanceStore.Mode.dark)
                 }
                 .pickerStyle(.segmented)
+
+                SettingsRow(
+                    systemImage: "circle.lefthalf.filled",
+                    title: "当前模式",
+                    subtitle: appearance.mode == .system ? "跟随系统" : (appearance.mode == .dark ? "深色模式" : "浅色模式"),
+                    showChevron: false,
+                    action: nil
+                )
             }
 
             SettingsCard(
-                title: "账户与数据",
-                subtitle: "登录后可同步聊天、翻译与学习记录，多设备共享。"
+                title: "隐私与数据",
+                subtitle: "管理本地数据与同步状态。"
             ) {
                 SettingsRow(
                     systemImage: TokenStore.shared.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
@@ -1054,26 +1076,20 @@ struct AppSettingsView: View {
                 )
 
                 SettingsRow(
-                    systemImage: "bell.badge",
-                    title: "通知权限",
-                    subtitle: "在系统设置中管理本应用的通知权限与提醒。",
+                    systemImage: "icloud",
+                    title: "数据同步",
+                    subtitle: TokenStore.shared.isLoggedIn ? "已启用账号同步（按功能逐步开放）" : "未登录，仅保存在本机",
                     showChevron: false,
                     action: nil
                 )
 
                 SettingsRow(
                     systemImage: "hand.raised.fill",
-                    title: "隐私提示",
-                    subtitle: "未登录：数据仅保存在本机。登录后：数据可同步到账号。",
+                    title: "隐私说明",
+                    subtitle: "我们不会在未经同意的情况下共享你的个人数据。",
                     showChevron: false,
                     action: nil
                 )
-            }
-
-            SettingsCard(
-                title: "清除本地数据",
-                subtitle: "将清除本机上的收藏、翻译历史等本地数据，且无法恢复。"
-            ) {
                 SettingsRow(
                     systemImage: "trash",
                     title: "清除所有本地记录",
@@ -1086,6 +1102,15 @@ struct AppSettingsView: View {
             }
         }
         .toast(message: $toastMessage)
+        .navigationDestination(isPresented: $showAccountSecurity) {
+            AccountSecurityView()
+        }
+        .navigationDestination(isPresented: $showFAQ) {
+            FAQView()
+        }
+        .navigationDestination(isPresented: $showSupport) {
+            SupportView()
+        }
         .confirmationDialog(
             "清除所有本地记录？",
             isPresented: $showClearConfirm,
@@ -1738,8 +1763,6 @@ struct ShareGiftView: View {
 // MARK: - 账户与安全
 
 struct AccountSecurityView: View {
-    @Environment(\.dismiss) private var dismiss
-
     var body: some View {
         SettingsPage(title: "账户与安全") {
             SettingsCard(
@@ -1757,25 +1780,12 @@ struct AccountSecurityView: View {
             }
 
             SettingsCard(
-                title: "安全",
-                subtitle: "建议定期更新密码，避免在公共设备保存登录状态。"
+                title: "安全建议",
+                subtitle: "以下建议可提升账号与数据安全。"
             ) {
-                SettingsRow(
-                    systemImage: "desktopcomputer",
-                    title: "登录设备管理",
-                    subtitle: "即将支持：查看与移除已登录设备",
-                    value: "即将支持",
-                    showChevron: false,
-                    action: nil
-                )
-                SettingsRow(
-                    systemImage: "lock.rotation",
-                    title: "修改密码",
-                    subtitle: "即将支持：登录后可修改密码",
-                    value: "即将支持",
-                    showChevron: false,
-                    action: nil
-                )
+                SecurityTipRow(systemImage: "checkmark.shield", text: "不要在公共设备上长期保持登录状态。")
+                SecurityTipRow(systemImage: "person.crop.circle.badge.exclamationmark", text: "账号异常时请立即联系客服处理。")
+                SecurityTipRow(systemImage: "externaldrive.badge.icloud", text: "登录后可获得更完整的数据同步能力。")
             }
         }
     }
@@ -1823,7 +1833,6 @@ struct FAQItem: Identifiable {
 }
 
 struct FAQView: View {
-    @Environment(\.dismiss) private var dismiss
     @State private var expandedId: String?
 
     private let items: [FAQItem] = [
@@ -1873,20 +1882,88 @@ struct FAQRow: View {
                     Text(answer)
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
+                        .lineSpacing(2)
                 }
             }
-            .padding(16)
-            .background(AppTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(12)
+            .background(AppTheme.surfaceMuted.opacity(0.65))
+            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .stroke(AppTheme.border, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct SecurityTipRow: View {
+    let systemImage: String
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.primary)
+                .padding(.top, 2)
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(12)
+        .background(AppTheme.surfaceMuted.opacity(0.65))
+        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+}
+
+private struct SettingsLinkRow: View {
+    let systemImage: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(AppTheme.primary.opacity(0.13))
+                    .frame(width: 32, height: 32)
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.textSecondary)
+        }
+        .padding(12)
+        .background(AppTheme.surfaceMuted.opacity(0.65))
+        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
     }
 }
 
 // MARK: - 关于我们
 
 struct AboutView: View {
-    @Environment(\.dismiss) private var dismiss
     private var versionText: String {
         let v = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
         let b = (Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? ""
@@ -1918,6 +1995,41 @@ struct AboutView: View {
                     }
                     Spacer(minLength: 0)
                 }
+            }
+
+            SettingsCard(title: "文档与规则", subtitle: "应用协议、服务条款与会员说明。") {
+                NavigationLink {
+                    DocView(title: "用户协议", content: DocContent.userAgreement)
+                } label: {
+                    SettingsLinkRow(
+                        systemImage: "person.text.rectangle",
+                        title: "用户协议",
+                        subtitle: "用户权利与责任说明"
+                    )
+                }
+                .buttonStyle(.plain)
+
+                NavigationLink {
+                    DocView(title: "服务条款", content: DocContent.termsOfService)
+                } label: {
+                    SettingsLinkRow(
+                        systemImage: "doc.text",
+                        title: "服务条款",
+                        subtitle: "服务范围与免责声明"
+                    )
+                }
+                .buttonStyle(.plain)
+
+                NavigationLink {
+                    MemberExplainView()
+                } label: {
+                    SettingsLinkRow(
+                        systemImage: "crown",
+                        title: "会员说明",
+                        subtitle: "权益、续费与退款规则"
+                    )
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -1963,7 +2075,6 @@ enum DocContent {
 }
 
 struct DocView: View {
-    @Environment(\.dismiss) private var dismiss
     let title: String
     let content: String
 
@@ -1998,7 +2109,7 @@ struct DocView: View {
 // MARK: - 在线客服
 
 struct SupportView: View {
-    @Environment(\.dismiss) private var dismiss
+    @State private var showFAQ = false
 
     var body: some View {
         SettingsPage(title: "在线客服") {
@@ -2028,10 +2139,14 @@ struct SupportView: View {
                     systemImage: "questionmark.circle",
                     title: "常见问题",
                     subtitle: "点开查看常见问题与解决方法",
-                    showChevron: false,
-                    action: nil
-                )
+                    showChevron: true
+                ) {
+                    showFAQ = true
+                }
             }
+        }
+        .navigationDestination(isPresented: $showFAQ) {
+            FAQView()
         }
     }
 }
