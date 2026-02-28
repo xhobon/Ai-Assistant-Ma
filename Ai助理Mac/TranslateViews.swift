@@ -639,14 +639,19 @@ struct RealTimeTranslationView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background
+            AppTheme.pageBackground
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
+            VStack(spacing: 12) {
                 RealTimeCompactHeader(isRecording: isRecording, onClose: { dismiss() })
                     .padding(.horizontal, 14)
-                    .padding(.top, 8)
-                    .padding(.bottom, 12)
+                    .padding(.top, 10)
+
+                RealTimeLiveBanner(
+                    isRecording: isRecording,
+                    sourceLanguage: viewModel.currentSourceLanguage == .chinese ? "中文" : "印度尼西亚语"
+                )
+                .padding(.horizontal, 14)
 
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -749,13 +754,21 @@ struct RealTimeTranslationView: View {
                             }
                             .id("current")
                         }
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 12)
                         .padding(.vertical, 12)
                     }
+                    .background(AppTheme.surface.opacity(0.82))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+                    .shadow(color: AppTheme.softShadow, radius: 10, x: 0, y: 4)
                     .onChange(of: viewModel.entries.count) { _, _ in
                         withAnimation { proxy.scrollTo("current", anchor: .bottom) }
                     }
                 }
+                .padding(.horizontal, 14)
 
                 VoiceControlBar(
                     isLeftRecording: viewModel.isLeftRecording,
@@ -764,7 +777,7 @@ struct RealTimeTranslationView: View {
                     onRight: viewModel.toggleRight
                 )
                 .padding(.horizontal, 14)
-                .padding(.bottom, 20)
+                .padding(.bottom, 14)
             }
         }
         .navigationTitle("实时语音翻译")
@@ -809,23 +822,80 @@ struct RealTimeCompactHeader: View {
         HStack(alignment: .center, spacing: 12) {
             Button(action: onClose) {
                 Image(systemName: "chevron.left")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.unifiedButtonBorder)
-                    .frame(width: 32, height: 32)
-                    .background(AppTheme.surface)
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(AppTheme.textOnPrimary)
+                    .frame(width: 34, height: 34)
+                    .background(AppTheme.primaryGradient)
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+                    .shadow(color: AppTheme.primary.opacity(0.24), radius: 8, x: 0, y: 4)
             }
             .buttonStyle(.plain)
-            Spacer(minLength: 0)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("实时语音翻译")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("双语对话实时输出")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer(minLength: 10)
             Text(isRecording ? "录音中" : "待机")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isRecording ? AppTheme.accentWarm : AppTheme.textSecondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(Capsule())
+        }
+        .padding(12)
+        .background(AppTheme.surface.opacity(0.9))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+        .shadow(color: AppTheme.softShadow, radius: 8, x: 0, y: 3)
+    }
+}
+
+private struct RealTimeLiveBanner: View {
+    let isRecording: Bool
+    let sourceLanguage: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: isRecording ? "waveform.badge.mic" : "mic.slash")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isRecording ? AppTheme.primary : AppTheme.textSecondary)
+                .frame(width: 30, height: 30)
+                .background((isRecording ? AppTheme.primary : AppTheme.textSecondary).opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isRecording ? "正在监听语音输入" : "等待语音输入")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("当前主讲语言：\(sourceLanguage)")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer(minLength: 8)
+            Text(isRecording ? "实时中" : "空闲")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(isRecording ? AppTheme.accentWarm : AppTheme.textTertiary)
+                .foregroundStyle(isRecording ? AppTheme.primary : AppTheme.textSecondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(AppTheme.surfaceMuted)
                 .clipShape(Capsule())
         }
+        .padding(10)
+        .background(AppTheme.surface.opacity(0.9))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
     }
 }
 
@@ -956,12 +1026,12 @@ struct VoiceControlBar: View {
                 action: onRight
             )
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .padding(.horizontal, 18)
-        .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
-        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+        .background(AppTheme.surface.opacity(0.94))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 8, x: 0, y: 3)
     }
 }
 
@@ -973,23 +1043,23 @@ struct VoiceRecordButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            VStack(spacing: 5) {
                 ZStack {
                     Circle()
                         .fill(isRecording ? tint : tint.opacity(0.14))
-                        .frame(width: 32, height: 32)
+                        .frame(width: 36, height: 36)
                         .overlay(Circle().stroke(isRecording ? Color.clear : tint.opacity(0.35), lineWidth: 1))
                     Image(systemName: isRecording ? "stop.fill" : "mic.fill")
-                        .font(.caption.weight(.medium))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(isRecording ? .white : tint)
                 }
                 Text(title)
-                    .font(.caption2.weight(.semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
             }
-            .frame(minWidth: 64)
+            .frame(minWidth: 76)
             .padding(.vertical, 8)
-            .padding(.horizontal, 6)
+            .padding(.horizontal, 8)
         }
         .buttonStyle(.plain)
     }
