@@ -1397,7 +1397,7 @@ struct AuthView: View {
             }
             .background(AppTheme.pageBackground.ignoresSafeArea())
             .navigationTitle("账户")
-            .toolbar { doneToolbarItem }
+            .toolbar { backToolbarItem }
         }
         .alert("提示", isPresented: Binding(
             get: { message != nil },
@@ -1410,22 +1410,21 @@ struct AuthView: View {
     }
 
     @ToolbarContentBuilder
-    private var doneToolbarItem: some ToolbarContent {
-        #if os(iOS)
-        ToolbarItem(placement: .topBarTrailing) {
-            Button("完成") {
+    private var backToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .cancellationAction) {
+            Button {
                 dismiss()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("返回")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundStyle(AppTheme.textPrimary)
             }
-            .foregroundStyle(AppTheme.textPrimary)
+            .buttonStyle(.plain)
         }
-        #else
-        ToolbarItem(placement: .automatic) {
-            Button("完成") {
-                dismiss()
-            }
-            .foregroundStyle(AppTheme.textPrimary)
-        }
-        #endif
     }
 
     private var modeSwitchSection: some View {
