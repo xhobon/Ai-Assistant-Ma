@@ -1536,28 +1536,53 @@ struct AuthView: View {
     }
 
     private var submitSection: some View {
-        Button {
-            onTapSubmit()
-        } label: {
-            HStack(spacing: 8) {
-                if isSubmitting {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(.white)
+        HStack(spacing: 10) {
+            Button {
+                onTapSubmit()
+            } label: {
+                HStack(spacing: 8) {
+                    if isSubmitting {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(.white)
+                    }
+                    Text(submitButtonTitle)
+                        .font(.headline)
                 }
-                Text(submitButtonTitle)
-                    .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(AppTheme.primaryGradient)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .shadow(color: AppTheme.primary.opacity(0.22), radius: 10, x: 0, y: 4)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 13)
-            .background(AppTheme.primaryGradient)
-            .foregroundStyle(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .shadow(color: AppTheme.primary.opacity(0.22), radius: 10, x: 0, y: 4)
+            .buttonStyle(.plain)
+            .disabled(isSubmitting || isSendingCode)
+            .opacity((isSubmitting || isSendingCode) ? 0.7 : 1)
+
+            Button {
+                onTapGoogleSignIn()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "globe")
+                    Text("Google")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .frame(minWidth: 118)
+                .padding(.vertical, 13)
+                .padding(.horizontal, 12)
+                .background(AppTheme.surface)
+                .foregroundStyle(AppTheme.textPrimary)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(AppTheme.borderStrong.opacity(0.75), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isSubmitting || isSendingCode)
+            .opacity((isSubmitting || isSendingCode) ? 0.65 : 1)
         }
-        .buttonStyle(.plain)
-        .disabled(isSubmitting || isSendingCode)
-        .opacity((isSubmitting || isSendingCode) ? 0.7 : 1)
     }
 
     private func validateEmail() -> String? {
@@ -1651,6 +1676,12 @@ struct AuthView: View {
                 isSubmitting = false
             }
         }
+    }
+
+    @MainActor
+    private func onTapGoogleSignIn() {
+        statusText = "正在准备 Google 登录..."
+        message = "Google 登录入口已添加。请在后端配置 OAuth 后，我可以继续帮你接通完整登录流程。"
     }
 }
 
