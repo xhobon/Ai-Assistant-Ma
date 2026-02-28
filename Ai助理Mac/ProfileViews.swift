@@ -204,19 +204,19 @@ struct VIPBannerCard: View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(Color.yellow.opacity(0.6))
+                    .fill(AppTheme.accentWarm.opacity(0.6))
                     .frame(width: 52, height: 52)
                 Image(systemName: "crown.fill")
-                    .foregroundStyle(Color.yellow)
+                    .foregroundStyle(AppTheme.accentWarm)
             }
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("VIP会员")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textOnPrimary)
                 Text("升级解锁全部功能")
                     .font(.caption)
-                    .foregroundStyle(Color.white.opacity(0.7))
+                    .foregroundStyle(AppTheme.textOnPrimary.opacity(0.7))
             }
 
             Spacer()
@@ -668,10 +668,10 @@ struct MemberRechargeHeader: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("VIP会员")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(AppTheme.textOnPrimary)
                         Text("升级解锁全部功能")
                             .font(.caption)
-                            .foregroundStyle(Color.white.opacity(0.7))
+                            .foregroundStyle(AppTheme.textOnPrimary.opacity(0.7))
                     }
 
                     Spacer()
@@ -682,7 +682,7 @@ struct MemberRechargeHeader: View {
                             .frame(width: 68, height: 68)
                         Image(systemName: "crown.fill")
                             .font(.title2)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(AppTheme.textOnPrimary)
                     }
                 }
                 .padding(16)

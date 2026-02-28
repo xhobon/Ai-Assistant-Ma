@@ -622,18 +622,9 @@ struct CircleSwapButton: View {
     var action: () -> Void = {}
 
     var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(AppTheme.surface)
-                    .frame(width: 36, height: 36)
-                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
-                Image(systemName: "arrow.left.arrow.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(AppTheme.unifiedButtonBorder)
-            }
+        UnifiedAppIconButton(systemImage: "arrow.left.arrow.right") {
+            action()
         }
-        .buttonStyle(.plain)
         .offset(y: 8)
     }
 }
@@ -1384,44 +1375,25 @@ struct TranslationInputBox: View {
             
             // 底部操作栏：语音播放/文档 + 录音（清空移动到底部操作条的统一按钮）
             HStack(spacing: 8) {
-                Button(action: onPlay) {
-                    Image(systemName: "speaker.wave.2.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(text.isEmpty ? AppTheme.textTertiary : AppTheme.unifiedButtonBorder)
-                        .frame(width: 32, height: 32)
-                        .background(AppTheme.surface)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+                UnifiedAppIconButton(systemImage: "speaker.wave.2.fill") {
+                    onPlay()
                 }
-                .buttonStyle(.plain)
                 .disabled(text.isEmpty)
+                .opacity(text.isEmpty ? 0.6 : 1)
                 .accessibilityLabel("语音播放")
                 
-                Button(action: onCopy) {
-                    Image(systemName: "doc.on.doc.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(text.isEmpty ? AppTheme.textTertiary : AppTheme.unifiedButtonBorder)
-                        .frame(width: 32, height: 32)
-                        .background(AppTheme.surface)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+                UnifiedAppIconButton(systemImage: "doc.on.doc.fill") {
+                    onCopy()
                 }
-                .buttonStyle(.plain)
                 .disabled(text.isEmpty)
+                .opacity(text.isEmpty ? 0.6 : 1)
                 .accessibilityLabel("复制")
                 
                 Spacer(minLength: 0)
 
-                Button(action: onVoice) {
-                    Image(systemName: isListening ? "stop.fill" : "mic.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(isListening ? .white : AppTheme.unifiedButtonBorder)
-                        .frame(width: 32, height: 32)
-                        .background(isListening ? AppTheme.unifiedButtonPrimary : AppTheme.surface)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(isListening ? Color.clear : AppTheme.unifiedButtonBorder, lineWidth: 1))
+                UnifiedAppIconButton(systemImage: isListening ? "stop.fill" : "mic.fill", isPrimary: isListening) {
+                    onVoice()
                 }
-                .buttonStyle(.plain)
                 .accessibilityLabel(isListening ? "停止录音" : "语音输入")
             }
             .padding(.top, 10)

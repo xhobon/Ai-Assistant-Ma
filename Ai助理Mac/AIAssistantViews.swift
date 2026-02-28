@@ -1089,7 +1089,7 @@ struct VoiceCallView: View {
                             .font(.title2.weight(.semibold))
                             .foregroundStyle(.white)
                             .frame(width: 56, height: 56)
-                            .background(Color.red)
+                            .background(AppTheme.error)
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
@@ -1631,28 +1631,14 @@ struct AIAssistantChatHeader: View {
 
             Spacer()
 
-            Button(action: onMute) {
-                Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.unifiedButtonBorder)
-                    .frame(width: 36, height: 36)
-                    .background(AppTheme.surface)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+            UnifiedAppIconButton(systemImage: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill") {
+                onMute()
             }
-            .buttonStyle(.plain)
             .accessibilityLabel(isMuted ? "取消静音" : "静音")
 
-            Button(action: onVoiceCall) {
-                Image(systemName: "phone.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.unifiedButtonBorder)
-                    .frame(width: 36, height: 36)
-                    .background(AppTheme.surface)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+            UnifiedAppIconButton(systemImage: "phone.fill") {
+                onVoiceCall()
             }
-            .buttonStyle(.plain)
             .accessibilityLabel("语音通话")
 
             CircleButton(systemImage: "ellipsis", action: onMore)
@@ -1728,28 +1714,14 @@ struct ChatComposerBar: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            Button(action: onAttach) {
-                Image(systemName: "camera.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.unifiedButtonBorder)
-                    .frame(width: 36, height: 36)
-                    .background(AppTheme.surface)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+            UnifiedAppIconButton(systemImage: "camera.fill") {
+                onAttach()
             }
-            .buttonStyle(.plain)
             .accessibilityLabel("拍照或相册")
             
-            Button(action: { onFileUpload?() }) {
-                Image(systemName: "doc.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.unifiedButtonBorder)
-                    .frame(width: 36, height: 36)
-                    .background(AppTheme.surface)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+            UnifiedAppIconButton(systemImage: "doc.fill") {
+                onFileUpload?()
             }
-            .buttonStyle(.plain)
             .accessibilityLabel("上传文件")
 
             #if os(macOS)
@@ -1779,41 +1751,20 @@ struct ChatComposerBar: View {
                 .onSubmit { onSend() }
             #endif
 
-            Button(action: onVoice) {
-                Image(systemName: isListening ? "waveform.circle.fill" : "mic.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(isListening ? .white : AppTheme.unifiedButtonBorder)
-                    .frame(width: 36, height: 36)
-                    .background(isListening ? AppTheme.unifiedButtonPrimary : AppTheme.surface)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(isListening ? Color.clear : AppTheme.unifiedButtonBorder, lineWidth: 1))
+            UnifiedAppIconButton(systemImage: isListening ? "waveform.circle.fill" : "mic.fill", isPrimary: isListening) {
+                onVoice()
             }
-            .buttonStyle(.plain)
             .accessibilityLabel(isListening ? "正在听" : "语音输入")
 
-            Button(action: onSend) {
-                Image(systemName: "paperplane.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(canSend ? .white : AppTheme.unifiedButtonBorder)
-                    .frame(width: 36, height: 36)
-                    .background(canSend ? AppTheme.unifiedButtonPrimary : AppTheme.surface)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(canSend ? Color.clear : AppTheme.unifiedButtonBorder, lineWidth: 1))
+            UnifiedAppIconButton(systemImage: "paperplane.fill", isPrimary: canSend) {
+                onSend()
             }
-            .buttonStyle(.plain)
             .disabled(!canSend)
             .accessibilityLabel("发送")
 
-            Button(action: onPlus) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(AppTheme.unifiedButtonBorder)
-                    .frame(width: 36, height: 36)
-                    .background(AppTheme.surface)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+            UnifiedAppIconButton(systemImage: "plus.circle.fill") {
+                onPlus()
             }
-            .buttonStyle(.plain)
             .accessibilityLabel("更多功能")
         }
         .padding(.horizontal, 12)
