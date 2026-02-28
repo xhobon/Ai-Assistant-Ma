@@ -847,6 +847,7 @@ struct TaskRow: View {
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer()
                     Button(task.actionTitle) {
+                        ClipboardService.copy("\(task.title)\n\(task.subtitle)")
                     }
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 12)

@@ -92,12 +92,12 @@ struct SettingsRow: View {
             HStack(spacing: 12) {
                 Image(systemName: systemImage)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(isDestructive ? Color.red : tint)
+                    .foregroundStyle(isDestructive ? AppTheme.error : tint)
                     .frame(width: 22)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(isDestructive ? Color.red : AppTheme.textPrimary)
+                        .foregroundStyle(isDestructive ? AppTheme.error : AppTheme.textPrimary)
                     if let subtitle, !subtitle.isEmpty {
                         Text(subtitle)
                             .font(.caption)
@@ -214,4 +214,3 @@ extension View {
         modifier(ToastPresenter(message: message, duration: duration))
     }
 }
-

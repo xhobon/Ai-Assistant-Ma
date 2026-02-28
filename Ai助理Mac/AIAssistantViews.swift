@@ -946,6 +946,7 @@ struct VoiceCallView: View {
     @State private var wasListening = false
     @State private var hasAutoStarted = false
     @State private var showCamera = false
+    @State private var toastMessage: String?
 
     private let softIndigo = Color(red: 0.97, green: 0.96, blue: 1.0)
     private let softViolet = Color(red: 0.96, green: 0.95, blue: 1.0)
@@ -963,7 +964,15 @@ struct VoiceCallView: View {
 
             VStack(spacing: 0) {
                 HStack {
-                    Button(action: {}) {
+                    Button(action: {
+                        if viewModel.isListening {
+                            viewModel.stopListening()
+                        }
+                        SpeechService.shared.stopSpeaking()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            toastMessage = "已暂停语音"
+                        }
+                    }) {
                         Image(systemName: "ellipsis")
                             .font(.title3.weight(.medium))
                             .foregroundStyle(controlGray)
@@ -977,7 +986,10 @@ struct VoiceCallView: View {
                         .background(Color.white.opacity(0.7))
                         .clipShape(Capsule())
                     Spacer()
-                    Button(action: {}) {
+                    Button(action: {
+                        viewModel.stopListening()
+                        onEnd()
+                    }) {
                         Text("字")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(controlGray)
@@ -1049,7 +1061,13 @@ struct VoiceCallView: View {
                     .disabled(isProcessing)
                     .accessibilityLabel(viewModel.isListening ? "暂停" : "麦克风")
 
-                    VoiceCallControlButton(systemImage: "square.and.arrow.up", tint: controlGray) {}
+                    VoiceCallControlButton(systemImage: "square.and.arrow.up", tint: controlGray) {
+                        let text = lastReplyText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        ClipboardService.copy(text.isEmpty ? "AI语音通话中" : text)
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            toastMessage = "已复制内容"
+                        }
+                    }
                     .accessibilityLabel("分享")
 
                     Button(action: { showCamera = true }) {
@@ -1085,6 +1103,7 @@ struct VoiceCallView: View {
                     .padding(.bottom, 20)
             }
         }
+        .toast(message: $toastMessage)
         .onChange(of: viewModel.isListening) { _, isListening in
             if wasListening && !isListening && !viewModel.inputText.isEmpty {
                 let textToSend = viewModel.inputText
@@ -1617,7 +1636,7 @@ struct AIAssistantChatHeader: View {
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.unifiedButtonBorder)
                     .frame(width: 36, height: 36)
-                    .background(Color.white)
+                    .background(AppTheme.surface)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
             }
@@ -1629,7 +1648,7 @@ struct AIAssistantChatHeader: View {
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.unifiedButtonBorder)
                     .frame(width: 36, height: 36)
-                    .background(Color.white)
+                    .background(AppTheme.surface)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
             }
@@ -1714,7 +1733,7 @@ struct ChatComposerBar: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.unifiedButtonBorder)
                     .frame(width: 36, height: 36)
-                    .background(Color.white)
+                    .background(AppTheme.surface)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
             }
@@ -1726,7 +1745,7 @@ struct ChatComposerBar: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.unifiedButtonBorder)
                     .frame(width: 36, height: 36)
-                    .background(Color.white)
+                    .background(AppTheme.surface)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
             }
@@ -1765,7 +1784,7 @@ struct ChatComposerBar: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(isListening ? .white : AppTheme.unifiedButtonBorder)
                     .frame(width: 36, height: 36)
-                    .background(isListening ? AppTheme.unifiedButtonPrimary : Color.white)
+                    .background(isListening ? AppTheme.unifiedButtonPrimary : AppTheme.surface)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(isListening ? Color.clear : AppTheme.unifiedButtonBorder, lineWidth: 1))
             }
@@ -1777,7 +1796,7 @@ struct ChatComposerBar: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(canSend ? .white : AppTheme.unifiedButtonBorder)
                     .frame(width: 36, height: 36)
-                    .background(canSend ? AppTheme.unifiedButtonPrimary : Color.white)
+                    .background(canSend ? AppTheme.unifiedButtonPrimary : AppTheme.surface)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(canSend ? Color.clear : AppTheme.unifiedButtonBorder, lineWidth: 1))
             }
@@ -1790,7 +1809,7 @@ struct ChatComposerBar: View {
                     .font(.title2)
                     .foregroundStyle(AppTheme.unifiedButtonBorder)
                     .frame(width: 36, height: 36)
-                    .background(Color.white)
+                    .background(AppTheme.surface)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
             }
@@ -1799,7 +1818,7 @@ struct ChatComposerBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color.white)
+        .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -1825,7 +1844,7 @@ struct PasteableTextField: NSViewRepresentable {
         textField.delegate = context.coordinator
         textField.onPasteImage = onPasteImage
         textField.onSubmit = onSubmit
-        textField.textColor = NSColor.black
+        textField.textColor = NSColor.labelColor
         
         // 设置 cell 以支持多行
         if let cell = textField.cell as? NSTextFieldCell {
@@ -1833,7 +1852,7 @@ struct PasteableTextField: NSViewRepresentable {
             cell.isScrollable = false
             cell.placeholderAttributedString = NSAttributedString(
                 string: placeholder,
-                attributes: [.foregroundColor: NSColor(white: 0.42, alpha: 1)]
+                attributes: [.foregroundColor: NSColor.secondaryLabelColor]
             )
         }
         
@@ -1846,11 +1865,11 @@ struct PasteableTextField: NSViewRepresentable {
         }
         nsView.onPasteImage = onPasteImage
         nsView.onSubmit = onSubmit
-        nsView.textColor = NSColor.black
+        nsView.textColor = NSColor.labelColor
         if let cell = nsView.cell as? NSTextFieldCell {
             cell.placeholderAttributedString = NSAttributedString(
                 string: placeholder,
-                attributes: [.foregroundColor: NSColor(white: 0.42, alpha: 1)]
+                attributes: [.foregroundColor: NSColor.secondaryLabelColor]
             )
         }
     }
@@ -1949,7 +1968,7 @@ struct ChatPromptChip: View {
             .foregroundStyle(AppTheme.unifiedButtonBorder)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Color.white)
+            .background(AppTheme.surface)
             .clipShape(Capsule())
             .overlay(Capsule().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
     }
@@ -2241,7 +2260,7 @@ struct ChatQuickToggleButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(Color.white)
+            .background(AppTheme.surface)
             .clipShape(Capsule())
             .overlay(Capsule().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
         }
@@ -2271,7 +2290,7 @@ struct ChatQuickActionButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(Color.white)
+            .background(AppTheme.surface)
             .clipShape(Capsule())
             .overlay(Capsule().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
         }
@@ -2379,7 +2398,7 @@ struct CircleButton: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.unifiedButtonBorder)
                 .frame(width: 36, height: 36)
-                .background(Color.white)
+                .background(AppTheme.surface)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
         }
@@ -3186,4 +3205,3 @@ struct TechServiceCard: View {
         )
     }
 }
-

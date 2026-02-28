@@ -769,7 +769,7 @@ struct CircleIconButton: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(AppTheme.unifiedButtonBorder)
                 .frame(width: 36, height: 36)
-                .background(Color.white)
+                .background(AppTheme.surface)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
         }

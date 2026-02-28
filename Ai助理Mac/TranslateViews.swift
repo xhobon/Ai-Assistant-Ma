@@ -434,7 +434,7 @@ struct TranslationActionBar: View {
                     .foregroundStyle(AppTheme.unifiedButtonBorder)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
-                    .background(Color.white)
+                    .background(AppTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
                 }
@@ -514,7 +514,7 @@ struct TranslationActionTile: View {
             .foregroundStyle(AppTheme.unifiedButtonBorder)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(Color.white)
+            .background(AppTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
         }
@@ -625,7 +625,7 @@ struct CircleSwapButton: View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(Color.white)
+                    .fill(AppTheme.surface)
                     .frame(width: 36, height: 36)
                     .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
                 Image(systemName: "arrow.left.arrow.right")
@@ -821,7 +821,7 @@ struct RealTimeCompactHeader: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(AppTheme.unifiedButtonBorder)
                     .frame(width: 32, height: 32)
-                    .background(Color.white)
+                    .background(AppTheme.surface)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
             }
@@ -1389,7 +1389,7 @@ struct TranslationInputBox: View {
                         .font(.subheadline)
                         .foregroundStyle(text.isEmpty ? AppTheme.textTertiary : AppTheme.unifiedButtonBorder)
                         .frame(width: 32, height: 32)
-                        .background(Color.white)
+                        .background(AppTheme.surface)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
                 }
@@ -1402,7 +1402,7 @@ struct TranslationInputBox: View {
                         .font(.subheadline)
                         .foregroundStyle(text.isEmpty ? AppTheme.textTertiary : AppTheme.unifiedButtonBorder)
                         .frame(width: 32, height: 32)
-                        .background(Color.white)
+                        .background(AppTheme.surface)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
                 }
@@ -1417,7 +1417,7 @@ struct TranslationInputBox: View {
                         .font(.subheadline)
                         .foregroundStyle(isListening ? .white : AppTheme.unifiedButtonBorder)
                         .frame(width: 32, height: 32)
-                        .background(isListening ? AppTheme.unifiedButtonPrimary : Color.white)
+                        .background(isListening ? AppTheme.unifiedButtonPrimary : AppTheme.surface)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(isListening ? Color.clear : AppTheme.unifiedButtonBorder, lineWidth: 1))
                 }
@@ -1547,7 +1547,7 @@ struct ModernTranslationActionBar: View {
                 .padding(.horizontal, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white)
+                        .fill(AppTheme.surface)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -1573,7 +1573,7 @@ struct ModernTranslationActionBar: View {
                 .padding(.horizontal, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white)
+                        .fill(AppTheme.surface)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
