@@ -757,13 +757,13 @@ struct RealTimeTranslationView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 12)
                     }
-                    .background(AppTheme.surface.opacity(0.82))
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(AppTheme.border, lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(AppTheme.borderStrong.opacity(0.85), lineWidth: 1.1)
                     )
-                    .shadow(color: AppTheme.softShadow, radius: 10, x: 0, y: 4)
+                    .shadow(color: AppTheme.softShadow, radius: 12, x: 0, y: 5)
                     .onChange(of: viewModel.entries.count) { _, _ in
                         withAnimation { proxy.scrollTo("current", anchor: .bottom) }
                     }
@@ -890,11 +890,11 @@ private struct RealTimeLiveBanner: View {
                 .clipShape(Capsule())
         }
         .padding(10)
-        .background(AppTheme.surface.opacity(0.9))
+        .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(AppTheme.border, lineWidth: 1)
+                .stroke(AppTheme.borderStrong.opacity(0.75), lineWidth: 1)
         )
     }
 }
@@ -1028,9 +1028,9 @@ struct VoiceControlBar: View {
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 18)
-        .background(AppTheme.surface.opacity(0.94))
+        .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(AppTheme.borderStrong.opacity(0.75), lineWidth: 1))
         .shadow(color: AppTheme.softShadow, radius: 8, x: 0, y: 3)
     }
 }
@@ -1134,10 +1134,19 @@ struct RealtimeSpeechBubble: View {
 
     @ObservedObject private var speechService = SpeechService.shared
     private var bubbleBackground: Color {
-        isSource ? languageTint.opacity(0.9) : languageTint.opacity(0.08)
+        isSource ? AppTheme.primaryVariant : AppTheme.surface
     }
     private var bubbleTextColor: Color {
-        isSource ? .white : AppTheme.textPrimary
+        isSource ? AppTheme.textOnPrimary : AppTheme.textPrimary
+    }
+    private var bubbleMetaColor: Color {
+        isSource ? AppTheme.textOnPrimary.opacity(0.9) : languageTint
+    }
+    private var bubbleActionColor: Color {
+        isSource ? AppTheme.textOnPrimary.opacity(0.92) : AppTheme.textSecondary
+    }
+    private var bubbleStrokeColor: Color {
+        isSource ? AppTheme.primaryVariant.opacity(0.95) : AppTheme.borderStrong.opacity(0.55)
     }
 
     private var displayedText: String { text }
@@ -1155,12 +1164,12 @@ struct RealtimeSpeechBubble: View {
 
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(languageTint.opacity(0.6))
+                            .fill(bubbleMetaColor.opacity(0.8))
                             .frame(width: 6, height: 6)
                         Text(title)
                             .font(.caption2.weight(.semibold))
                     }
-                    .foregroundStyle(languageTint)
+                    .foregroundStyle(bubbleMetaColor)
 
                     if let lang = languageForSpeech, !displayedText.isEmpty {
                         HStack(spacing: 12) {
@@ -1185,31 +1194,32 @@ struct RealtimeSpeechBubble: View {
                             .buttonStyle(.plain)
                         }
                         .font(.caption)
-                        .foregroundStyle(isSource ? Color.white.opacity(0.9) : AppTheme.textSecondary)
+                        .foregroundStyle(bubbleActionColor)
                     }
 
                     if !alignTrailing { Spacer(minLength: 0) }
                 }
 
                 Text(displayedText.isEmpty ? placeholder : displayedText)
-                    .font(.subheadline)
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(
-                        bubbleTextColor.opacity(displayedText.isEmpty ? 0.72 : 1)
+                        bubbleTextColor.opacity(displayedText.isEmpty ? 0.86 : 1)
                     )
                     .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
                     .multilineTextAlignment(alignTrailing ? .trailing : .leading)
                     .lineLimit(10)
+                    .lineSpacing(2)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(bubbleBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(languageTint.opacity(isSource ? 0 : 0.25), lineWidth: isSource ? 0 : 1)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(bubbleStrokeColor, lineWidth: 1)
             )
-            .shadow(color: languageTint.opacity(isSource ? 0.28 : 0.12), radius: 6, x: 0, y: 2)
-            .frame(maxWidth: 380, alignment: alignTrailing ? .trailing : .leading)
+            .shadow(color: isSource ? AppTheme.primary.opacity(0.26) : AppTheme.softShadow.opacity(0.6), radius: 8, x: 0, y: 3)
+            .frame(maxWidth: 520, alignment: alignTrailing ? .trailing : .leading)
 
             if !alignTrailing { Spacer(minLength: 0) }
         }
@@ -1224,11 +1234,11 @@ private struct RealtimeTranslationAvatar: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(tint.opacity(isSource ? 0.18 : 0.22))
+                .fill(isSource ? AppTheme.primary.opacity(0.14) : tint.opacity(0.22))
                 .frame(width: 34, height: 34)
             Image(systemName: isSource ? "mic.fill" : "globe.asia.australia.fill")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(tint.opacity(0.9))
+                .foregroundStyle(isSource ? AppTheme.primary : tint.opacity(0.9))
         }
         .padding(.top, 2)
     }
