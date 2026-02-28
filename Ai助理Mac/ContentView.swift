@@ -104,6 +104,7 @@ struct SidebarRow: View {
 
 struct ContentView: View {
     @State private var selectedItem: SidebarItem? = .partner
+    @State private var detailResetSeed = 0
     @ObservedObject private var appearance = AppearanceStore.shared
     @State private var copyToastMessage: String?
     private var primarySidebarItems: [SidebarItem] {
@@ -145,7 +146,11 @@ struct ContentView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             ForEach(primarySidebarItems, id: \.rawValue) { item in
                                 Button {
-                                    selectedItem = item
+                                    if selectedItem == item {
+                                        detailResetSeed += 1
+                                    } else {
+                                        selectedItem = item
+                                    }
                                 } label: {
                                     SidebarRow(item: item, isSelected: selectedItem == item)
                                 }
@@ -160,7 +165,11 @@ struct ContentView: View {
                         .padding(.vertical, 4)
 
                     Button {
-                        selectedItem = .profile
+                        if selectedItem == .profile {
+                            detailResetSeed += 1
+                        } else {
+                            selectedItem = .profile
+                        }
                     } label: {
                         SidebarRow(item: .profile, isSelected: selectedItem == .profile)
                     }
@@ -195,6 +204,7 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle(currentWindowTitle)
+            .id("detail-\((selectedItem ?? Self.defaultSidebarItem).rawValue)-\(detailResetSeed)")
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
 #endif

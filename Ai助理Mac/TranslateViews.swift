@@ -647,12 +647,6 @@ struct RealTimeTranslationView: View {
                     .padding(.horizontal, 14)
                     .padding(.top, 10)
 
-                RealTimeLiveBanner(
-                    isRecording: isRecording,
-                    sourceLanguage: viewModel.currentSourceLanguage == .chinese ? "中文" : "印度尼西亚语"
-                )
-                .padding(.horizontal, 14)
-
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 12) {
