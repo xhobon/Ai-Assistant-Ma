@@ -661,7 +661,7 @@ struct VocabularyCard: View {
 
                 Spacer(minLength: 0)
 
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     CircleIconButton(systemImage: "speaker.wave.2") {
                         SpeechService.shared.speak(item.textId, language: "id-ID")
                     }
@@ -731,7 +731,7 @@ struct ExampleSentenceRow: View {
 
             Spacer()
 
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 CircleIconButton(systemImage: "speaker.wave.2") {
                     SpeechService.shared.speak(text, language: language)
                 }
@@ -766,12 +766,12 @@ struct CircleIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.footnote.weight(.semibold))
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.unifiedButtonBorder)
-                .frame(width: 36, height: 36)
+                .frame(width: 32, height: 32)
                 .background(AppTheme.surface)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+                .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 0.9))
         }
         .buttonStyle(.plain)
     }
