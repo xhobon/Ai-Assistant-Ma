@@ -103,7 +103,7 @@ struct SidebarRow: View {
 }
 
 struct ContentView: View {
-    @State private var selectedItem: SidebarItem? = .partner
+    @State private var selectedItem: SidebarItem = .partner
     @State private var detailResetSeed = 0
     @ObservedObject private var appearance = AppearanceStore.shared
     @State private var copyToastMessage: String?
@@ -112,12 +112,9 @@ struct ContentView: View {
         SidebarItem.allCases.filter { ![.profile, .writing, .ppt].contains($0) }
     }
 
-    private static var defaultSidebarItem: SidebarItem { .partner }
-
     /// 根据当前选中的页面返回窗口标题
     private var currentWindowTitle: String {
-        let item = selectedItem ?? .partner
-        switch item {
+        switch selectedItem {
         case .partner: return "AI助理"
         case .writing: return "写作"
         case .ppt: return "PPT"
@@ -126,6 +123,16 @@ struct ContentView: View {
         case .translate: return "AI翻译"
         case .learning: return "印尼语学习"
         case .profile: return "设置"
+        }
+    }
+
+    private func forceResetCurrentDetail(for item: SidebarItem) {
+        // 先切到一个临时模块，再切回当前模块，强制销毁二级导航栈
+        let temporary: SidebarItem = (item == .notes) ? .learning : .notes
+        selectedItem = temporary
+        DispatchQueue.main.async {
+            selectedItem = item
+            detailResetSeed += 1
         }
     }
 
@@ -147,7 +154,7 @@ struct ContentView: View {
                             ForEach(primarySidebarItems, id: \.rawValue) { item in
                                 Button {
                                     if selectedItem == item {
-                                        detailResetSeed += 1
+                                        forceResetCurrentDetail(for: item)
                                     } else {
                                         selectedItem = item
                                     }
@@ -166,7 +173,7 @@ struct ContentView: View {
 
                     Button {
                         if selectedItem == .profile {
-                            detailResetSeed += 1
+                            forceResetCurrentDetail(for: .profile)
                         } else {
                             selectedItem = .profile
                         }
@@ -183,7 +190,7 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 250)
         } detail: {
             Group {
-                switch selectedItem ?? Self.defaultSidebarItem {
+                switch selectedItem {
                 case .partner:
                     AIAssistantChatView(title: "AI助理", allowLocalExecution: false)
                 case .writing:
@@ -204,7 +211,7 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle(currentWindowTitle)
-            .id("detail-\((selectedItem ?? Self.defaultSidebarItem).rawValue)-\(detailResetSeed)")
+            .id("detail-\(selectedItem.rawValue)-\(detailResetSeed)")
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
 #endif
