@@ -699,7 +699,6 @@ struct AIAssistantChatView: View {
     @State private var showVideoCall = false
     @State private var showShortcutRow = false
 
-    private let quickPrompts = ["总结这段对话", "生成学习计划", "润色为商务语气", "翻译成印尼语", "写一封邮件", "整理要点"]
     private let threads: [ChatThread] = [
         ChatThread(id: "c1", title: "电商数据分析", preview: "上周转化率降低的原因是什么？", time: "10:24", systemImage: "chart.line.uptrend.xyaxis", tint: .blue, tags: ["置顶", "1 未读"]),
         ChatThread(id: "c2", title: "法律咨询", preview: "关于合同解除的注意事项", time: "昨天", systemImage: "doc.text.magnifyingglass", tint: .purple, tags: ["已归档"]),
@@ -722,29 +721,6 @@ struct AIAssistantChatView: View {
             )
 
             VStack(spacing: 0) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(quickPrompts, id: \.self) { prompt in
-                            Button {
-                                viewModel.inputText = prompt
-                                viewModel.sendMessage()
-                            } label: {
-                                Text(prompt)
-                                    .font(.caption)
-                                    .foregroundStyle(AppTheme.textPrimary)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 10)
-                                    .background(AppTheme.surfaceMuted)
-                                    .clipShape(Capsule())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                }
-                .background(AppTheme.surface)
-
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
@@ -790,10 +766,8 @@ struct AIAssistantChatView: View {
                 HStack(alignment: .bottom, spacing: 0) {
                     ChatComposerBar(
                         text: $viewModel.inputText,
-                        quickPrompts: quickPrompts,
                         isListening: viewModel.isListening,
                         isSending: viewModel.isSending,
-                        onQuickPrompt: { viewModel.inputText = $0; viewModel.sendMessage() },
                         onAttach: {
                             showPhotoPicker = true
                             viewModel.togglePhotoMode()
@@ -1697,10 +1671,8 @@ struct ChatReplyBubble: View {
 /// 参考图：相机 | 发消息或按住说话 | 语音输入 | 发送 | 加号
 struct ChatComposerBar: View {
     @Binding var text: String
-    let quickPrompts: [String]
     let isListening: Bool
     let isSending: Bool
-    var onQuickPrompt: (String) -> Void
     var onAttach: () -> Void
     var onVoice: () -> Void
     var onSend: () -> Void
