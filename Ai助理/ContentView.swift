@@ -48,6 +48,8 @@ struct ContentView: View {
                 .tabItem { Label(MainTab.settings.title, systemImage: MainTab.settings.icon) }
                 .tag(MainTab.settings)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(AppTheme.pageBackground.ignoresSafeArea())
         .onChange(of: selectedTab) { _, _ in
             SpeechService.shared.stopSpeaking()
         }

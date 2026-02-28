@@ -36,6 +36,7 @@ struct MyDesignedView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
+                motivationBanner
                 headerCard
                 statsRow
                 vipCard
@@ -44,7 +45,7 @@ struct MyDesignedView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 10)
-            .padding(.bottom, 24)
+            .padding(.bottom, 36)
             .frame(maxWidth: pageMaxWidth)
             .frame(maxWidth: .infinity)
         }
@@ -91,6 +92,35 @@ struct MyDesignedView: View {
         }
     }
 
+    private var motivationBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Hi，又是充满干劲的一天")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color(red: 0.35, green: 0.45, blue: 0.95), Color(red: 0.84, green: 0.35, blue: 0.72)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+            Text("近30天已完成 17 条任务，接待 11 次咨询")
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.93, green: 0.95, blue: 1.0), Color(red: 0.98, green: 0.94, blue: 1.0)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+    }
+
     private var headerCard: some View {
         HStack(spacing: 12) {
             ZStack {
@@ -98,13 +128,13 @@ struct MyDesignedView: View {
                     .fill(LinearGradient(colors: [Color(red: 0.78, green: 0.86, blue: 1.0), Color(red: 0.89, green: 0.82, blue: 1.0)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: 62, height: 62)
                 Image(systemName: "person.crop.circle.badge.sparkles")
-                    .font(.title2.weight(.semibold))
+                    .font(.title3.weight(.semibold))
                     .foregroundStyle(Color.white)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(tokenStore.isLoggedIn ? "已登录账号" : "未登录账号")
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                 Text(tokenStore.isLoggedIn ? "账号同步已开启" : "登录后可同步收藏与历史")
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.textSecondary)
@@ -163,9 +193,9 @@ struct MyDesignedView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("会员中心")
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.system(size: 22, weight: .bold))
                     Text("解锁更长上下文、更快响应与高级工具")
-                        .font(.subheadline)
+                    .font(.subheadline)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
                 Spacer()
@@ -196,7 +226,7 @@ struct MyDesignedView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         VStack(alignment: .leading, spacing: 3) {
                             Text(item.title)
-                                .font(.system(size: 19, weight: .bold))
+                                .font(.system(size: 17, weight: .bold))
                                 .foregroundStyle(AppTheme.textPrimary)
                             Text(item.subtitle)
                                 .font(.caption)

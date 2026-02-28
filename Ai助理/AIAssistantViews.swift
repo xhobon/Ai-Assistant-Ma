@@ -759,6 +759,12 @@ struct AIAssistantChatView: View {
             }
 
             VStack(spacing: 0) {
+                ChatPromptChips { prompt in
+                    viewModel.inputText = prompt
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+
                 if showShortcutRow {
                     ChatShortcutHorizontalRow(
                         viewModel: viewModel,
@@ -795,6 +801,7 @@ struct AIAssistantChatView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .padding(.horizontal, 12)
+                .padding(.top, 8)
                 .padding(.bottom, 10)
             }
             .padding(.bottom, 2)
@@ -1715,12 +1722,12 @@ struct ChatComposerBar: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            UnifiedAppIconButton(systemImage: "camera.fill") {
+            iconButton("camera.fill", isPrimary: false) {
                 onAttach()
             }
             .accessibilityLabel("拍照或相册")
             
-            UnifiedAppIconButton(systemImage: "doc.fill") {
+            iconButton("doc.fill", isPrimary: false) {
                 onFileUpload?()
             }
             .accessibilityLabel("上传文件")
@@ -1734,12 +1741,14 @@ struct ChatComposerBar: View {
             )
             .font(.subheadline)
             .textFieldStyle(.plain)
-            .foregroundStyle(AppTheme.inputText)
-            .tint(AppTheme.primary)
-            .lineLimit(1...4)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
-            .onSubmit { onSend() }
+                .foregroundStyle(AppTheme.inputText)
+                .tint(AppTheme.primary)
+                .lineLimit(1...4)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .onSubmit { onSend() }
             #else
             TextField("发消息或按住说话...", text: $text, axis: .vertical)
                 .font(.subheadline)
@@ -1749,21 +1758,23 @@ struct ChatComposerBar: View {
                 .lineLimit(1...4)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .onSubmit { onSend() }
             #endif
 
-            UnifiedAppIconButton(systemImage: isListening ? "waveform.circle.fill" : "mic.fill", isPrimary: isListening) {
+            iconButton(isListening ? "waveform.circle.fill" : "mic.fill", isPrimary: isListening) {
                 onVoice()
             }
             .accessibilityLabel(isListening ? "正在听" : "语音输入")
 
-            UnifiedAppIconButton(systemImage: "paperplane.fill", isPrimary: canSend) {
+            iconButton("paperplane.fill", isPrimary: canSend) {
                 onSend()
             }
             .disabled(!canSend)
             .accessibilityLabel("发送")
 
-            UnifiedAppIconButton(systemImage: "plus.circle.fill") {
+            iconButton("plus.circle.fill", isPrimary: false) {
                 onPlus()
             }
             .accessibilityLabel("更多功能")
@@ -1771,11 +1782,65 @@ struct ChatComposerBar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(AppTheme.unifiedButtonBorder.opacity(0.3), lineWidth: 1)
         )
+        .shadow(color: AppTheme.softShadow.opacity(0.6), radius: 8, x: 0, y: 3)
+    }
+
+    private func iconButton(_ systemName: String, isPrimary: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(isPrimary ? .white : AppTheme.primary)
+                .frame(width: 34, height: 34)
+                .background(
+                    isPrimary
+                    ? AnyShapeStyle(AppTheme.primary)
+                    : AnyShapeStyle(Color(red: 0.92, green: 0.95, blue: 1.0))
+                )
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct ChatPromptChips: View {
+    var onPick: (String) -> Void
+
+    private let items: [(String, String)] = [
+        ("发现", "帮我梳理今天的重点工作，按优先级排序。"),
+        ("帮我写作", "请根据这个主题写一段简洁有力的文案。"),
+        ("图片生成", "帮我写一个适合生成海报图的提示词。"),
+        ("群发收集", "请生成一条群发消息模板，语气礼貌简洁。")
+    ]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(items, id: \.0) { item in
+                    Button {
+                        onPick(item.1)
+                    } label: {
+                        Text(item.0)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(AppTheme.surface)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(AppTheme.border, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
     }
 }
 
@@ -2400,7 +2465,7 @@ struct DesignedAssistantIntroPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("在这里，勾点工作给AI吧")
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(AppTheme.textPrimary)
                 .padding(.horizontal, 2)
 
@@ -2413,23 +2478,27 @@ struct DesignedAssistantIntroPanel: View {
                             Image(systemName: item.1)
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(AppTheme.primary)
-                                .frame(width: 28, height: 28)
-                                .background(Color(red: 0.93, green: 0.95, blue: 1.0))
+                                .frame(width: 30, height: 30)
+                                .background(Color(red: 0.90, green: 0.94, blue: 1.0))
                                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                             Text(item.0)
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+                        .frame(maxWidth: .infinity, minHeight: 74, alignment: .leading)
                         .padding(10)
                         .background(AppTheme.surface)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(AppTheme.border, lineWidth: 1)
+                        )
                     }
                     .buttonStyle(.plain)
                 }
             }
             .padding(10)
-            .background(AppTheme.surface.opacity(0.75))
+            .background(AppTheme.surface.opacity(0.9))
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
