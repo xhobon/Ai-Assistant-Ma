@@ -4,6 +4,7 @@ import AppKit
 #endif
 
 struct ProfileCenterView: View {
+    @StateObject private var tokenStore = TokenStore.shared
     @State private var showAuthSheet = false
     @State private var authMode: AuthMode = .login
     @State private var showMemberRecharge = false
@@ -50,6 +51,7 @@ struct ProfileCenterView: View {
                     authMode = .login
                     showAuthSheet = true
                 }
+                .environmentObject(tokenStore)
 
                 VIPBannerCard {
                     showMemberRecharge = true
@@ -142,6 +144,7 @@ struct ProfileCenterView: View {
 }
 
 struct ProfileLoginCard: View {
+    @EnvironmentObject private var tokenStore: TokenStore
     var onLogin: () -> Void
 
     var body: some View {
@@ -156,10 +159,10 @@ struct ProfileLoginCard: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("未登录账号")
+                Text(tokenStore.isLoggedIn ? "已登录账号" : "未登录账号")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text("登录后可同步收藏、翻译和学习记录")
+                Text(tokenStore.isLoggedIn ? "当前设备已启用账号同步" : "登录后可同步收藏、翻译和学习记录")
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
                     .lineLimit(2)
@@ -168,10 +171,12 @@ struct ProfileLoginCard: View {
             Spacer(minLength: 10)
 
             HStack(spacing: 6) {
-                Text("去登录")
+                Text(tokenStore.isLoggedIn ? "已登录" : "去登录")
                     .font(.caption.weight(.semibold))
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
+                if !tokenStore.isLoggedIn {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                }
             }
             .foregroundStyle(AppTheme.primary)
         }
@@ -186,7 +191,9 @@ struct ProfileLoginCard: View {
         )
         .shadow(color: AppTheme.softShadow, radius: 10, x: 0, y: 4)
         .onTapGesture {
-            onLogin()
+            if !tokenStore.isLoggedIn {
+                onLogin()
+            }
         }
     }
 }
@@ -909,6 +916,7 @@ struct TaskRow: View {
 struct AppSettingsView: View {
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
     @ObservedObject private var appearance = AppearanceStore.shared
+    @ObservedObject private var tokenStore = TokenStore.shared
     @State private var showClearConfirm = false
     @State private var toastMessage: String?
     @State private var showAccountSecurity = false
@@ -1066,11 +1074,11 @@ struct AppSettingsView: View {
                 subtitle: "管理本地数据与同步状态。"
             ) {
                 SettingsRow(
-                    systemImage: TokenStore.shared.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
+                    systemImage: tokenStore.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
                     title: "登录状态",
-                    subtitle: TokenStore.shared.isLoggedIn ? "已登录" : "未登录",
+                    subtitle: tokenStore.isLoggedIn ? "已登录" : "未登录",
                     value: nil,
-                    tint: TokenStore.shared.isLoggedIn ? AppTheme.primary : AppTheme.textPrimary,
+                    tint: tokenStore.isLoggedIn ? AppTheme.primary : AppTheme.textPrimary,
                     showChevron: false,
                     action: nil
                 )
@@ -1078,7 +1086,7 @@ struct AppSettingsView: View {
                 SettingsRow(
                     systemImage: "icloud",
                     title: "数据同步",
-                    subtitle: TokenStore.shared.isLoggedIn ? "已启用账号同步（按功能逐步开放）" : "未登录，仅保存在本机",
+                    subtitle: tokenStore.isLoggedIn ? "已启用账号同步（按功能逐步开放）" : "未登录，仅保存在本机",
                     showChevron: false,
                     action: nil
                 )
@@ -1927,6 +1935,8 @@ struct ShareGiftView: View {
 // MARK: - 账户与安全
 
 struct AccountSecurityView: View {
+    @ObservedObject private var tokenStore = TokenStore.shared
+
     var body: some View {
         SettingsPage(title: "账户与安全") {
             SettingsCard(
@@ -1934,10 +1944,10 @@ struct AccountSecurityView: View {
                 subtitle: "登录后可同步数据，并启用云端长期记忆。"
             ) {
                 SettingsRow(
-                    systemImage: TokenStore.shared.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
-                    title: TokenStore.shared.isLoggedIn ? "已登录" : "未登录",
-                    subtitle: TokenStore.shared.isLoggedIn ? "当前设备已授权访问你的云端数据" : "登录后可跨设备同步聊天、翻译与学习记录",
-                    tint: TokenStore.shared.isLoggedIn ? AppTheme.primary : AppTheme.textPrimary,
+                    systemImage: tokenStore.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
+                    title: tokenStore.isLoggedIn ? "已登录" : "未登录",
+                    subtitle: tokenStore.isLoggedIn ? "当前设备已授权访问你的云端数据" : "登录后可跨设备同步聊天、翻译与学习记录",
+                    tint: tokenStore.isLoggedIn ? AppTheme.primary : AppTheme.textPrimary,
                     showChevron: false,
                     action: nil
                 )

@@ -86,16 +86,26 @@ func userFacingMessage(for error: Error) -> String {
     return desc.isEmpty ? "请求失败，请稍后重试" : desc
 }
 
-final class TokenStore {
+final class TokenStore: ObservableObject {
     static let shared = TokenStore()
     private let key = "ai_assistant_token"
-
-    var token: String? {
-        get { UserDefaults.standard.string(forKey: key) }
-        set { UserDefaults.standard.setValue(newValue, forKey: key) }
+    
+    @Published var token: String? {
+        didSet {
+            guard token != oldValue else { return }
+            if let t = token, !t.isEmpty {
+                UserDefaults.standard.setValue(t, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+    }
+    
+    private init() {
+        token = UserDefaults.standard.string(forKey: key)
     }
 
-    var isLoggedIn: Bool { token != nil && !(token ?? "").isEmpty }
+    var isLoggedIn: Bool { !(token ?? "").isEmpty }
 }
 
 /// 清除本地数据时发送，各页可监听并清空内存数据
