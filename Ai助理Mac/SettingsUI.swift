@@ -14,7 +14,7 @@ struct SettingsPage<Content: View>: View {
                 SettingsHeader(title: title, trailing: trailing, onBack: { dismiss() })
                 content()
             }
-            .frame(maxWidth: 920, alignment: .topLeading)
+            .frame(maxWidth: 980, alignment: .topLeading)
             .padding(.horizontal, 20)
             .padding(.top, 16)
             .padding(.bottom, 32)
@@ -32,24 +32,69 @@ struct SettingsHeader: View {
     var onBack: () -> Void
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.unifiedButtonBorder)
-                    .frame(width: 36, height: 36)
-                    .background(AppTheme.surface)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(AppTheme.textOnPrimary)
+                    .frame(width: 38, height: 38)
+                    .background(AppTheme.primaryGradient)
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
+                    .shadow(color: AppTheme.primary.opacity(0.25), radius: 8, x: 0, y: 4)
             }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("设置与偏好")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
             Spacer()
+
+            if let trailing {
+                trailing
+            } else {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(AppTheme.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+                    .frame(width: 38, height: 38)
+                    .opacity(0.001)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(AppTheme.surface.opacity(0.92))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+        .shadow(color: AppTheme.softShadow, radius: 10, x: 0, y: 4)
+    }
+}
+
+private struct SettingsSectionTitle: View {
+    let title: String
+    let subtitle: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
-            Spacer()
-            Group {
-                if let trailing { trailing }
-                else { Color.clear.frame(width: 36, height: 36) }
+            if let subtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .lineSpacing(1)
             }
         }
     }
@@ -62,19 +107,19 @@ struct SettingsCard<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.textPrimary)
-                if let subtitle, !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-            }
+            SettingsSectionTitle(title: title, subtitle: subtitle)
             content()
         }
-        .modernCard(style: .elevated)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(AppTheme.surface.opacity(0.94))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+        .shadow(color: AppTheme.softShadow, radius: 10, x: 0, y: 4)
     }
 }
 
@@ -93,10 +138,14 @@ struct SettingsRow: View {
             action?()
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(isDestructive ? AppTheme.error : tint)
-                    .frame(width: 22)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill((isDestructive ? AppTheme.error : tint).opacity(0.13))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: systemImage)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isDestructive ? AppTheme.error : tint)
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.subheadline.weight(.medium))
@@ -121,10 +170,10 @@ struct SettingsRow: View {
                 }
             }
             .padding(12)
-            .background(AppTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(AppTheme.surfaceMuted.opacity(0.65))
+            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
                     .stroke(AppTheme.border, lineWidth: 1)
             )
         }
@@ -142,10 +191,14 @@ struct SettingsInlineToggleRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.textPrimary)
-                .frame(width: 22)
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(AppTheme.primary.opacity(0.12))
+                    .frame(width: 32, height: 32)
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.subheadline.weight(.medium))
@@ -162,10 +215,10 @@ struct SettingsInlineToggleRow: View {
                 .labelsHidden()
         }
         .padding(12)
-        .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(AppTheme.surfaceMuted.opacity(0.65))
+        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
                 .stroke(AppTheme.border, lineWidth: 1)
         )
     }

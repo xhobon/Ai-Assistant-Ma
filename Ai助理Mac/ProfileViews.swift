@@ -163,34 +163,46 @@ struct ProfileLoginCard: View {
     var onLogin: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             ZStack {
-                Circle()
-                    .fill(AppTheme.accentWarm.opacity(0.25))
-                    .frame(width: 64, height: 64)
-                Image(systemName: "face.smiling")
-                    .font(.system(size: 28))
-                    .foregroundStyle(AppTheme.textPrimary.opacity(0.8))
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(AppTheme.primaryGradient.opacity(0.16))
+                    .frame(width: 56, height: 56)
+                Image(systemName: "person.crop.circle.badge.sparkles")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(AppTheme.primary)
             }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("点击登录")
-                    .font(.headline)
+            VStack(alignment: .leading, spacing: 5) {
+                Text("未登录账号")
+                    .font(.headline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text("您还没登录呢～")
+                Text("登录后可同步收藏、翻译和学习记录")
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .lineLimit(2)
             }
 
-            Spacer()
+            Spacer(minLength: 10)
 
-            Image(systemName: "chevron.right")
-                .foregroundStyle(AppTheme.textSecondary)
+            HStack(spacing: 6) {
+                Text("去登录")
+                    .font(.caption.weight(.semibold))
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+            }
+            .foregroundStyle(AppTheme.primary)
         }
         .padding(16)
-        .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: AppTheme.softShadow, radius: 8, x: 0, y: 4)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(AppTheme.surface.opacity(0.94))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+        .shadow(color: AppTheme.softShadow, radius: 10, x: 0, y: 4)
         .onTapGesture {
             onLogin()
         }
@@ -204,42 +216,49 @@ struct VIPBannerCard: View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(AppTheme.accentWarm.opacity(0.6))
+                    .fill(Color.white.opacity(0.22))
                     .frame(width: 52, height: 52)
                 Image(systemName: "crown.fill")
-                    .foregroundStyle(AppTheme.accentWarm)
+                    .foregroundStyle(Color.white)
             }
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("VIP会员")
-                    .font(.headline)
+                    .font(.headline.weight(.bold))
                     .foregroundStyle(AppTheme.textOnPrimary)
-                Text("升级解锁全部功能")
+                Text("升级解锁全部功能与更高额度")
                     .font(.caption)
-                    .foregroundStyle(AppTheme.textOnPrimary.opacity(0.7))
+                    .foregroundStyle(AppTheme.textOnPrimary.opacity(0.82))
             }
 
             Spacer()
 
-            Button(action: onUnlock) {
-                Text("立即解锁")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(AppTheme.surface)
-                    .foregroundStyle(AppTheme.accentStrong)
-                    .clipShape(Capsule())
-            }
+            UnifiedAppButton(
+                title: "立即解锁",
+                systemImage: nil,
+                style: .outline,
+                action: onUnlock
+            )
+            .frame(width: 102)
         }
         .padding(16)
         .background(
             LinearGradient(
-                colors: [AppTheme.primary, AppTheme.secondary],
-                startPoint: .leading,
-                endPoint: .trailing
+                colors: [
+                    AppTheme.primary,
+                    AppTheme.secondary,
+                    AppTheme.primary.opacity(0.9)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.white.opacity(0.28), lineWidth: 1)
+        )
+        .shadow(color: AppTheme.primary.opacity(0.22), radius: 12, x: 0, y: 5)
     }
 }
 
@@ -248,14 +267,17 @@ struct ProfileSectionHeader: View {
     var subtitle: String? = nil
 
     var body: some View {
-        HStack {
+        HStack(spacing: 8) {
+            Capsule()
+                .fill(AppTheme.primaryGradient)
+                .frame(width: 8, height: 22)
             Text(title)
-                .font(.headline)
+                .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             if let subtitle {
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.textSecondary)
             }
             Spacer()
         }
@@ -478,14 +500,18 @@ struct ProfileHintCard: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "info.circle.fill")
-                .foregroundStyle(AppTheme.accentWarm)
+                .foregroundStyle(AppTheme.primary)
             Text(text)
                 .font(.caption)
                 .foregroundStyle(AppTheme.textSecondary)
         }
         .padding(14)
-        .background(AppTheme.surface)
+        .background(AppTheme.surface.opacity(0.95))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
     }
 }
 
@@ -499,26 +525,38 @@ struct ProfileQuickActionRow: View {
                 Button {
                     onAction(action)
                 } label: {
-                    VStack(spacing: 8) {
-                        Circle()
-                            .fill(AppTheme.accentWarm.opacity(0.16))
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Image(systemName: action.icon)
-                                    .foregroundStyle(AppTheme.accentWarm)
-                            )
+                    VStack(spacing: 10) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(AppTheme.primaryGradient.opacity(0.15))
+                                .frame(width: 46, height: 46)
+                            Image(systemName: action.icon)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppTheme.primary)
+                        }
                         Text(action.title)
                             .font(.caption)
                             .foregroundStyle(AppTheme.textPrimary)
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.surfaceMuted.opacity(0.58))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(16)
-        .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(AppTheme.surface.opacity(0.95))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
     }
 }
 
@@ -533,13 +571,18 @@ struct ProfileMenuList: View {
                     onItemTap(item)
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: item.icon)
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 24)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(AppTheme.primary.opacity(0.12))
+                                .frame(width: 32, height: 32)
+                            Image(systemName: item.icon)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppTheme.primary)
+                        }
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.title)
-                                .font(.subheadline)
+                                .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
                             if let subtitle = item.subtitle {
                                 Text(subtitle)
@@ -553,8 +596,8 @@ struct ProfileMenuList: View {
                         Image(systemName: "chevron.right")
                             .foregroundStyle(AppTheme.textSecondary)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     // 关键：让整行（含空白区域）都可点击
                     .contentShape(Rectangle())
@@ -562,12 +605,17 @@ struct ProfileMenuList: View {
                 .buttonStyle(.plain)
 
                 if item.id != items.last?.id {
-                    Divider().padding(.leading, 52)
+                    Divider().padding(.leading, 58)
                 }
             }
         }
-        .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(6)
+        .background(AppTheme.surface.opacity(0.95))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
     }
 }
 
@@ -846,15 +894,14 @@ struct TaskRow: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer()
-                    Button(task.actionTitle) {
+                    UnifiedAppButton(
+                        title: task.actionTitle,
+                        systemImage: nil,
+                        style: .primary
+                    ) {
                         ClipboardService.copy("\(task.title)\n\(task.subtitle)")
                     }
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(AppTheme.unifiedButtonPrimary)
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
+                    .frame(width: 88)
                 }
 
                 Text(task.subtitle)
@@ -918,14 +965,14 @@ struct AppSettingsView: View {
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
                         Spacer()
-                        Button {
+                        UnifiedAppButton(
+                            title: "试听",
+                            systemImage: "play.circle.fill",
+                            style: .primary
+                        ) {
                             SpeechService.shared.speak("这是一个示例播报，用来预览当前语音设置。", language: "zh-CN")
-                        } label: {
-                            Label("试听", systemImage: "play.circle.fill")
-                                .font(.caption.weight(.semibold))
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primary)
+                        .frame(width: 96)
                     }
                     Slider(
                         value: Binding(
@@ -1347,10 +1394,15 @@ struct AuthView: View {
                             } label: {
                                 Text(isSendingCode ? "发送中…" : "发送验证码")
                                     .font(.caption.weight(.semibold))
+                                    .frame(minWidth: 94)
+                                    .padding(.vertical, 8)
+                                    .background(AppTheme.primaryGradient)
+                                    .foregroundStyle(AppTheme.textOnPrimary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             }
                             .disabled(isSendingCode || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            .buttonStyle(.borderedProminent)
-                            .tint(AppTheme.primary)
+                            .buttonStyle(.plain)
+                            .opacity((isSendingCode || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.55 : 1)
                         }
                     }
                 }
