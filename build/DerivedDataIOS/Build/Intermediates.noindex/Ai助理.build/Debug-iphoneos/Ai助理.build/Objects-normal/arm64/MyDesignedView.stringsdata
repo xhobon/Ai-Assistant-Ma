@@ -1,0 +1,136 @@
+{
+  "source": "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/MyDesignedView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "清除所有记录",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "",
+        "key": "已清除",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "取消",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "清除",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "将清除本机上的收藏、翻译历史等本地数据，且无法恢复。",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "确定",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "",
+        "key": "本地记录已清除。",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "已登录账号",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "未登录账号",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "账号同步已开启",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "登录后可同步收藏与历史",
+        "location": {
+          "startingColumn": 72,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "个人中心",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "",
+        "key": "去登录",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "",
+        "key": "会员中心",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "",
+        "key": "解锁更长上下文、更快响应与高级工具",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "",
+        "key": "清除本地记录",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 219
+        }
+      }
+    ]
+  },
+  "version": 1
+}

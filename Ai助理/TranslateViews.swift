@@ -7,38 +7,56 @@ import AppKit
 
 struct AITranslateHomeView: View {
     @StateObject private var viewModel = TranslateViewModel()
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    private let quickPhrases = [
+        "你好，很高兴认识你",
+        "请问洗手间在哪里？",
+        "谢谢你的帮助",
+        "我想预订一个房间"
+    ]
+    private var pageMaxWidth: CGFloat {
+        horizontalSizeClass == .compact ? .infinity : 760
+    }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    // 快速入口：语音翻译 + 翻译记录
-                    ModernTranslationQuickLinksRow(history: viewModel.history)
-                        .padding(.horizontal, 14)
-                    
-                    // 左右双输入框布局
-                    DualTranslationInputCard(viewModel: viewModel)
-                        .padding(.horizontal, 14)
-                    
-                    // 翻译按钮（支持 Cmd+Enter 快捷键）
-                    ModernTranslationActionBar(viewModel: viewModel)
-                        .padding(.horizontal, 14)
-                    
-                    // 历史记录
-                    ModernTranslationHistorySection(history: viewModel.history)
-                        .padding(.horizontal, 14)
-                        .padding(.bottom, 32)
-                }
-                .padding(.top, 8)
-                .frame(maxWidth: 980, alignment: .top)
-                .frame(maxWidth: .infinity)
+        ScrollView {
+            LazyVStack(spacing: 14) {
+                TranslateShowcaseCard(viewModel: viewModel)
+                    .padding(.horizontal, 16)
+
+                ModernTranslationQuickLinksRow(history: viewModel.history)
+                    .padding(.horizontal, 16)
+
+                DualTranslationInputCard(viewModel: viewModel)
+                    .padding(.horizontal, 16)
+
+                ModernTranslationActionBar(viewModel: viewModel)
+                    .padding(.horizontal, 16)
+
+                TranslateQuickPhraseSection(
+                    phrases: quickPhrases,
+                    onSelect: { phrase in
+                        viewModel.sourceText = phrase
+                        viewModel.translatedText = ""
+                        viewModel.scheduleAutoTranslate()
+                    }
+                )
+                .padding(.horizontal, 16)
+
+                ModernTranslationHistorySection(history: viewModel.history)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 28)
             }
-            .scrollIndicators(.automatic)
-            .background(AppTheme.pageBackground.ignoresSafeArea())
-            .hideNavigationBarOnMac()
-            .onTapGesture {
-                hideKeyboard()
-            }
+            .padding(.top, 10)
+            .frame(maxWidth: pageMaxWidth, alignment: .top)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .scrollIndicators(.automatic)
+        .background(AppTheme.pageBackground.ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
+        .onTapGesture {
+            hideKeyboard()
         }
         .alert("提示", isPresented: Binding(
             get: { viewModel.alertMessage != nil },
@@ -47,6 +65,125 @@ struct AITranslateHomeView: View {
             Button("确定", role: .cancel) {}
         } message: {
             Text(viewModel.alertMessage ?? "")
+        }
+    }
+}
+
+private struct TranslateShowcaseCard: View {
+    @ObservedObject var viewModel: TranslateViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("AI翻译")
+                        .font(.system(size: 27, weight: .bold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text("文本 · 语音 · 双向翻译")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                Spacer()
+                Button {
+                    viewModel.clearHistory()
+                } label: {
+                    Text("清空记录")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppTheme.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.85))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(spacing: 10) {
+                featurePill(
+                    title: "实时语音",
+                    subtitle: "边说边译",
+                    systemImage: "waveform.circle.fill",
+                    tint: AppTheme.primary
+                )
+                featurePill(
+                    title: "历史同步",
+                    subtitle: "本地可回看",
+                    systemImage: "clock.arrow.circlepath",
+                    tint: AppTheme.accentWarm
+                )
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.87, green: 0.93, blue: 1.0),
+                            Color(red: 0.94, green: 0.96, blue: 1.0)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+    }
+
+    private func featurePill(title: String, subtitle: String, systemImage: String, tint: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(0.14))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(Color.white.opacity(0.78))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+private struct TranslateQuickPhraseSection: View {
+    let phrases: [String]
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("常用短句")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(phrases, id: \.self) { phrase in
+                        Button {
+                            onSelect(phrase)
+                        } label: {
+                            Text(phrase)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(AppTheme.textPrimary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(AppTheme.surface)
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        .stroke(AppTheme.border, lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
         }
     }
 }
@@ -96,33 +233,50 @@ struct TranslateHeroHeader: View {
 
 struct ModernTranslationQuickLinksRow: View {
     let history: [TranslationEntry]
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     var body: some View {
-        HStack(spacing: 10) {
-            NavigationLink {
-                RealTimeTranslationView()
-            } label: {
-                ModernTranslationQuickLinkCard(
-                    title: "实时语音翻译",
-                    subtitle: "双语对话实时输出",
-                    systemImage: "waveform.circle.fill",
-                    accent: AppTheme.primary
-                )
+        Group {
+            if horizontalSizeClass == .compact {
+                VStack(spacing: 10) {
+                    quickVoiceEntry
+                    quickHistoryEntry
+                }
+            } else {
+                HStack(spacing: 10) {
+                    quickVoiceEntry
+                    quickHistoryEntry
+                }
             }
-            .buttonStyle(.plain)
-
-            NavigationLink {
-                AllTranslationRecordsView(history: history)
-            } label: {
-                ModernTranslationQuickInfoCard(
-                    title: "翻译记录",
-                    subtitle: "点击查看全部",
-                    systemImage: "clock.arrow.circlepath",
-                    count: history.count
-                )
-            }
-            .buttonStyle(.plain)
         }
+    }
+
+    private var quickVoiceEntry: some View {
+        NavigationLink {
+            RealTimeTranslationView()
+        } label: {
+            ModernTranslationQuickLinkCard(
+                title: "实时语音翻译",
+                subtitle: "双语对话实时输出",
+                systemImage: "waveform.circle.fill",
+                accent: AppTheme.primary
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var quickHistoryEntry: some View {
+        NavigationLink {
+            AllTranslationRecordsView(history: history)
+        } label: {
+            ModernTranslationQuickInfoCard(
+                title: "翻译记录",
+                subtitle: "点击查看全部",
+                systemImage: "clock.arrow.circlepath",
+                count: history.count
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -775,9 +929,6 @@ struct RealTimeTranslationView: View {
             }
         }
         .navigationTitle("实时语音翻译")
-        #if os(iOS)
-        .toolbar(.hidden, for: .tabBar)
-        #endif
         .alert("提示", isPresented: Binding(
             get: { viewModel.alertMessage != nil },
             set: { if !$0 { viewModel.alertMessage = nil } }
@@ -1733,7 +1884,6 @@ struct AllTranslationRecordsView: View {
         .navigationTitle("翻译记录")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
         #endif
     }
 }

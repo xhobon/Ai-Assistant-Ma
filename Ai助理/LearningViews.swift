@@ -5,58 +5,81 @@ import AppKit
 
 struct IndonesianLearningView: View {
     @StateObject private var viewModel = LearningViewModel()
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var searchText = ""
     @State private var selectedDifficulty = "全部"
     @State private var showFavoritesOnly = false
 
     private let difficulties = ["全部", "入门", "进阶", "高级"]
+    private let quickTiles: [LearningQuickTile] = [
+        .init(title: "AI解题", subtitle: "有解析，有步骤", icon: "checkmark.seal.fill", tint: Color(red: 0.85, green: 0.93, blue: 1.0)),
+        .init(title: "AI写作文", subtitle: "每一篇都不一样", icon: "square.and.pencil", tint: Color(red: 1.0, green: 0.93, blue: 0.86)),
+        .init(title: "英语写作", subtitle: "中英对照，句句精彩", icon: "character.book.closed.fill", tint: Color(red: 0.98, green: 0.90, blue: 0.96)),
+        .init(title: "话题/游戏", subtitle: "和AI伙伴边学边玩", icon: "gamecontroller.fill", tint: Color(red: 0.85, green: 0.97, blue: 1.0)),
+        .init(title: "作业批改", subtitle: "错题有讲解，不懂接着问", icon: "doc.text.magnifyingglass", tint: Color(red: 0.85, green: 0.98, blue: 0.92)),
+        .init(title: "英语翻译", subtitle: "不用打字，一拍就翻", icon: "globe.asia.australia.fill", tint: Color(red: 0.92, green: 0.90, blue: 0.99))
+    ]
 
     private let horizontalPadding: CGFloat = 14
     private let sectionSpacing: CGFloat = 12
+    private var pageMaxWidth: CGFloat {
+        horizontalSizeClass == .compact ? .infinity : 760
+    }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: sectionSpacing) {
-                    LearningSearchPanel(
-                        searchText: $searchText,
-                        selectedDifficulty: $selectedDifficulty,
-                        showFavoritesOnly: $showFavoritesOnly,
-                        difficulties: difficulties
-                    )
+        ScrollView {
+            LazyVStack(spacing: sectionSpacing) {
+                LearningDiscoverHero()
                     .padding(.horizontal, horizontalPadding)
 
-                    LearningOverviewRow(viewModel: viewModel)
-                        .padding(.horizontal, horizontalPadding)
+                LearningQuickTilesGrid(
+                    tiles: quickTiles,
+                    onTap: { tile in
+                        searchText = tile.title
+                        selectedCategoryIdFromTile(tile.title)
+                    }
+                )
+                .padding(.horizontal, horizontalPadding)
 
-                    LearningResourceSection(
-                        categories: viewModel.categories,
-                        selectedCategoryId: $viewModel.selectedCategoryId,
-                        difficulties: difficulties,
-                        selectedDifficulty: $selectedDifficulty,
-                        showFavoritesOnly: $showFavoritesOnly
-                    )
+                LearningSearchPanel(
+                    searchText: $searchText,
+                    selectedDifficulty: $selectedDifficulty,
+                    showFavoritesOnly: $showFavoritesOnly,
+                    difficulties: difficulties
+                )
+                .padding(.horizontal, horizontalPadding)
+
+                LearningOverviewRow(viewModel: viewModel)
                     .padding(.horizontal, horizontalPadding)
 
-                    VocabularyListSection(
-                        items: filteredItems,
-                        viewModel: viewModel,
-                        difficultyProvider: difficultyForItem
-                    )
-                    .padding(.horizontal, horizontalPadding)
-                }
-                .padding(.top, 8)
-                .padding(.bottom, 32)
-                .frame(maxWidth: 980, alignment: .top)
-                .frame(maxWidth: .infinity)
+                LearningResourceSection(
+                    categories: viewModel.categories,
+                    selectedCategoryId: $viewModel.selectedCategoryId,
+                    difficulties: difficulties,
+                    selectedDifficulty: $selectedDifficulty,
+                    showFavoritesOnly: $showFavoritesOnly
+                )
+                .padding(.horizontal, horizontalPadding)
+
+                VocabularyListSection(
+                    items: filteredItems,
+                    viewModel: viewModel,
+                    difficultyProvider: difficultyForItem
+                )
+                .padding(.horizontal, horizontalPadding)
             }
-            .scrollIndicators(.automatic)
-            .background(
-                AppTheme.pageBackground
-                    .ignoresSafeArea(edges: .top)
-            )
-            .hideNavigationBarOnMac()
+            .padding(.top, 10)
+            .padding(.bottom, 28)
+            .frame(maxWidth: pageMaxWidth, alignment: .top)
+            .frame(maxWidth: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .scrollIndicators(.automatic)
+        .background(
+            AppTheme.pageBackground
+                .ignoresSafeArea(edges: .top)
+        )
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var filteredItems: [VocabItem] {
@@ -91,6 +114,95 @@ struct IndonesianLearningView: View {
         }
         return "高级"
     }
+
+    private func selectedCategoryIdFromTile(_ keyword: String) {
+        if let matched = viewModel.categories.first(where: { category in
+            category.nameZh.localizedCaseInsensitiveContains(keyword)
+        }) {
+            viewModel.selectedCategoryId = matched.id
+        }
+    }
+}
+
+private struct LearningDiscoverHero: View {
+    var body: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("有问题，快问AI")
+                    .font(.system(size: 28, weight: .heavy))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("学习助手 · 词汇/短句/场景练习")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer(minLength: 0)
+            ZStack {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.72))
+                    .frame(width: 48, height: 48)
+                Image(systemName: "sparkles")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.90, green: 0.97, blue: 1.0), Color(red: 0.96, green: 0.95, blue: 1.0)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+    }
+}
+
+private struct LearningQuickTilesGrid: View {
+    let tiles: [LearningQuickTile]
+    let onTap: (LearningQuickTile) -> Void
+
+    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(tiles) { tile in
+                Button {
+                    onTap(tile)
+                } label: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Image(systemName: tile.icon)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(AppTheme.primary)
+                            .frame(width: 34, height: 34)
+                            .background(Color.white.opacity(0.72))
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        Text(tile.title)
+                            .font(.system(size: 21, weight: .bold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text(tile.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 130, alignment: .leading)
+                    .padding(12)
+                    .background(tile.tint)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+private struct LearningQuickTile: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let icon: String
+    let tint: Color
 }
 
 struct LearningHeroHeader: View {

@@ -708,6 +708,9 @@ struct AIAssistantChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            #if os(iOS)
+            EmptyView()
+            #else
             AIAssistantChatHeader(
                 title: title,
                 unreadCount: 0,
@@ -719,18 +722,25 @@ struct AIAssistantChatView: View {
                 onVoiceCall: { showVoiceCall = true },
                 onMore: { showChatMenu = true }
             )
+            #endif
 
             VStack(spacing: 0) {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
+                            if viewModel.messages.isEmpty {
+                                DesignedAssistantIntroPanel { prompt in
+                                    viewModel.inputText = prompt
+                                    viewModel.sendMessage()
+                                }
+                            }
                             ChatMessageSection(messages: viewModel.messages, onClear: viewModel.resetConversation)
                             Color.clear
                                 .frame(height: 1)
                                 .id("assistantChatBottom")
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 8)
                         .padding(.bottom, 24)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -784,11 +794,10 @@ struct AIAssistantChatView: View {
                     )
                     .frame(maxWidth: .infinity)
                 }
-                .padding(.leading, 16)
-                .padding(.trailing, 16)
-                .padding(.bottom, 12)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 10)
             }
-            .padding(.bottom, 8)
+            .padding(.bottom, 2)
         }
         #if os(iOS)
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
@@ -900,8 +909,28 @@ struct AIAssistantChatView: View {
         }
         .background(AppTheme.pageBackground.ignoresSafeArea())
         #if os(iOS)
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .tabBar)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    speechSettings.playbackMuted.toggle()
+                    if speechSettings.playbackMuted { viewModel.stopSpeaking() }
+                } label: {
+                    Image(systemName: speechSettings.playbackMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                }
+                Button {
+                    showVoiceCall = true
+                } label: {
+                    Image(systemName: "phone.fill")
+                }
+                Button {
+                    showChatMenu = true
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+        }
         #elseif os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
             // 窗口失焦时停止播放
@@ -2355,6 +2384,54 @@ struct AIStatusCard: View {
             GlassTinyButton(systemImage: "bolt")
         }
         .glassCard()
+    }
+}
+
+struct DesignedAssistantIntroPanel: View {
+    var onPick: (String) -> Void
+
+    private let quickItems: [(String, String, String)] = [
+        ("闪记录音", "waveform", "请把这段会议内容整理成要点和行动项。"),
+        ("工作总结", "doc.text", "请帮我生成本周工作总结，分为完成事项、问题、下周计划。"),
+        ("AI祝福", "heart", "请写一段适合发给同事的生日祝福，真诚简短。"),
+        ("助理推荐", "person.2", "根据我今天的任务，推荐3个提高效率的方法。")
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("在这里，勾点工作给AI吧")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(AppTheme.textPrimary)
+                .padding(.horizontal, 2)
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                ForEach(quickItems, id: \.0) { item in
+                    Button {
+                        onPick(item.2)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Image(systemName: item.1)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(AppTheme.primary)
+                                .frame(width: 28, height: 28)
+                                .background(Color(red: 0.93, green: 0.95, blue: 1.0))
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            Text(item.0)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+                        .padding(10)
+                        .background(AppTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(10)
+            .background(AppTheme.surface.opacity(0.75))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
     }
 }
 

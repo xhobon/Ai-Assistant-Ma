@@ -2781,11 +2781,7 @@ extension View {
 extension View {
     @ViewBuilder
     func hideNavigationBarOnMac() -> some View {
-        #if os(iOS)
-        self.navigationBarHidden(true)
-        #else
         self
-        #endif
     }
     
     @ViewBuilder

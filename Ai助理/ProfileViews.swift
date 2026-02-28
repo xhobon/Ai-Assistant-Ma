@@ -46,88 +46,87 @@ struct ProfileCenterView: View {
     ]
 
     var body: some View {
-        NavigationStack {
-            AppPageScaffold(maxWidth: 960, spacing: 18) {
-                ProfileLoginCard {
-                    authMode = .login
-                    showAuthSheet = true
-                } onOpenCenter: {
-                    showAccountCenter = true
-                }
-                .environmentObject(tokenStore)
+        AppPageScaffold(maxWidth: 760, spacing: 16) {
+            ProfileLoginCard {
+                authMode = .login
+                showAuthSheet = true
+            } onOpenCenter: {
+                showAccountCenter = true
+            }
+            .environmentObject(tokenStore)
 
-                VIPBannerCard {
-                    showMemberRecharge = true
-                }
+            VIPBannerCard {
+                showMemberRecharge = true
+            }
 
-                ProfileQuickActionRow(actions: quickActions) { action in
-                    switch action.id {
-                    case "fav": showFavorites = true
-                    case "wallet": showWallet = true
-                    case "task": showTaskCenter = true
-                    case "gift": showShareGift = true
-                    default: break
-                    }
+            ProfileQuickActionRow(actions: quickActions) { action in
+                switch action.id {
+                case "fav": showFavorites = true
+                case "wallet": showWallet = true
+                case "task": showTaskCenter = true
+                case "gift": showShareGift = true
+                default: break
                 }
+            }
 
-                ProfileSectionHeader(title: "设置入口")
-                ProfileMenuList(items: settingsItems) { item in
-                    switch item.id {
-                    case "settings": showSettings = true
-                    case "account": showAccount = true
-                    case "memory": showAssistantMemory = true
-                    default: break
-                    }
+            ProfileSectionHeader(title: "设置入口")
+            ProfileMenuList(items: settingsItems) { item in
+                switch item.id {
+                case "settings": showSettings = true
+                case "account": showAccount = true
+                case "memory": showAssistantMemory = true
+                default: break
                 }
-                ProfileHintCard(text: "在设置中可管理通知、隐私与语言等选项，确保你的对话记录与个人信息安全。")
+            }
+            ProfileHintCard(text: "在设置中可管理通知、隐私与语言等选项，确保你的对话记录与个人信息安全。")
 
-                ProfileSectionHeader(title: "服务与支持")
-                ProfileMenuList(items: helpItems) { item in
-                    switch item.id {
-                    case "faq": showFAQ = true
-                    case "support": showSupport = true
-                    case "about": showAbout = true
-                    case "clear": showClearConfirm = true
-                    default: break
-                    }
+            ProfileSectionHeader(title: "服务与支持")
+            ProfileMenuList(items: helpItems) { item in
+                switch item.id {
+                case "faq": showFAQ = true
+                case "support": showSupport = true
+                case "about": showAbout = true
+                case "clear": showClearConfirm = true
+                default: break
                 }
             }
-            .navigationDestination(isPresented: $showMemberRecharge) {
-                MemberRechargeView()
-            }
-            .navigationDestination(isPresented: $showTaskCenter) {
-                TaskCenterView()
-            }
-            .navigationDestination(isPresented: $showSettings) {
-                AppSettingsView()
-            }
-            .navigationDestination(isPresented: $showFavorites) {
-                MyFavoritesView()
-            }
-            .navigationDestination(isPresented: $showWallet) {
-                MyWalletView()
-            }
-            .navigationDestination(isPresented: $showShareGift) {
-                ShareGiftView()
-            }
-            .navigationDestination(isPresented: $showAccount) {
-                AccountSecurityView()
-            }
-            .navigationDestination(isPresented: $showAccountCenter) {
-                AccountProfileCenterView()
-            }
-            .navigationDestination(isPresented: $showAssistantMemory) {
-                AssistantMemoryView()
-            }
-            .navigationDestination(isPresented: $showFAQ) {
-                FAQView()
-            }
-            .navigationDestination(isPresented: $showAbout) {
-                AboutView()
-            }
-            .navigationDestination(isPresented: $showSupport) {
-                SupportView()
-            }
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: $showMemberRecharge) {
+            MemberRechargeView()
+        }
+        .navigationDestination(isPresented: $showTaskCenter) {
+            TaskCenterView()
+        }
+        .navigationDestination(isPresented: $showSettings) {
+            AppSettingsView()
+        }
+        .navigationDestination(isPresented: $showFavorites) {
+            MyFavoritesView()
+        }
+        .navigationDestination(isPresented: $showWallet) {
+            MyWalletView()
+        }
+        .navigationDestination(isPresented: $showShareGift) {
+            ShareGiftView()
+        }
+        .navigationDestination(isPresented: $showAccount) {
+            AccountSecurityView()
+        }
+        .navigationDestination(isPresented: $showAccountCenter) {
+            AccountProfileCenterView()
+        }
+        .navigationDestination(isPresented: $showAssistantMemory) {
+            AssistantMemoryView()
+        }
+        .navigationDestination(isPresented: $showFAQ) {
+            FAQView()
+        }
+        .navigationDestination(isPresented: $showAbout) {
+            AboutView()
+        }
+        .navigationDestination(isPresented: $showSupport) {
+            SupportView()
         }
         .sheet(isPresented: $showAuthSheet) {
             AuthView(mode: authMode)
