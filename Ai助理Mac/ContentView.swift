@@ -105,6 +105,7 @@ struct SidebarRow: View {
 struct ContentView: View {
     @State private var selectedItem: SidebarItem = .partner
     @State private var detailResetSeed = 0
+    @State private var detailMounted = true
     @ObservedObject private var appearance = AppearanceStore.shared
     @State private var copyToastMessage: String?
     private var primarySidebarItems: [SidebarItem] {
@@ -127,11 +128,11 @@ struct ContentView: View {
     }
 
     private func forceResetCurrentDetail(for item: SidebarItem) {
-        // 先切到一个临时模块，再切回当前模块，强制销毁二级导航栈
-        let temporary: SidebarItem = (item == .notes) ? .learning : .notes
-        selectedItem = temporary
+        // 强制卸载并重建 detail 子树，确保二级页面被关闭
+        detailMounted = false
         DispatchQueue.main.async {
             selectedItem = item
+            detailMounted = true
             detailResetSeed += 1
         }
     }
@@ -190,23 +191,27 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 250)
         } detail: {
             Group {
-                switch selectedItem {
-                case .partner:
-                    AIAssistantChatView(title: "AI助理", allowLocalExecution: false)
-                case .writing:
-                    WritingStudioView()
-                case .ppt:
-                    PPTStudioView()
-                case .notes:
-                    NotesWorkspaceView()
-                case .summary:
-                    SummaryWorkspaceView()
-                case .translate:
-                    AITranslateHomeView()
-                case .learning:
-                    IndonesianLearningView()
-                case .profile:
-                    ProfileCenterView()
+                if detailMounted {
+                    switch selectedItem {
+                    case .partner:
+                        AIAssistantChatView(title: "AI助理", allowLocalExecution: false)
+                    case .writing:
+                        WritingStudioView()
+                    case .ppt:
+                        PPTStudioView()
+                    case .notes:
+                        NotesWorkspaceView()
+                    case .summary:
+                        SummaryWorkspaceView()
+                    case .translate:
+                        AITranslateHomeView()
+                    case .learning:
+                        IndonesianLearningView()
+                    case .profile:
+                        ProfileCenterView()
+                    }
+                } else {
+                    Color.clear
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

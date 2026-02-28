@@ -1362,111 +1362,42 @@ struct AuthView: View {
     @State private var isSubmitting = false
     @State private var isSendingCode = false
     @State private var message: String?
+    @State private var statusText: String?
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable {
+        case email
+        case displayName
+        case code
+    }
+
+    private var isSendCodeDisabled: Bool {
+        isSendingCode || isSubmitting || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var submitButtonTitle: String {
+        isSubmitting ? "提交中..." : (mode == .login ? "登录" : "注册")
+    }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 18) {
-                AuthHeaderCard()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("模式")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    HStack(spacing: 0) {
-                        ForEach(AuthMode.allCases) { item in
-                            Button {
-                                mode = item
-                            } label: {
-                                Text(item.rawValue)
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(mode == item ? Color.white : AppTheme.textPrimary)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                            }
-                            .buttonStyle(.plain)
-                            .background(mode == item ? AppTheme.accentWarm : AppTheme.surface)
-                        }
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 18) {
+                        AuthHeaderCard(mode: mode)
+                        modeSwitchSection
+                        formSection
+                        statusSection
+                        submitSection
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(AppTheme.border, lineWidth: 1)
-                    )
+                    .frame(maxWidth: 860)
+                    .padding(20)
+                    .frame(maxWidth: .infinity)
                 }
-
-                VStack(spacing: 12) {
-                    AuthTextField(title: "邮箱", placeholder: "name@email.com", text: $email)
-                    if mode == .register {
-                        AuthTextField(title: "昵称", placeholder: "请输入昵称", text: $displayName)
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("验证码")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textPrimary)
-                        HStack(spacing: 8) {
-                            TextField("请输入邮箱验证码", text: $code)
-                                .textFieldStyle(.plain)
-                                .foregroundStyle(AppTheme.inputText)
-                                .padding(12)
-                                .background(AppTheme.surface)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .stroke(AppTheme.border, lineWidth: 1)
-                                )
-                            Button {
-                                Task { await sendCode() }
-                            } label: {
-                                Text(isSendingCode ? "发送中…" : "发送验证码")
-                                    .font(.caption.weight(.semibold))
-                                    .frame(minWidth: 94)
-                                    .padding(.vertical, 8)
-                                    .background(AppTheme.primaryGradient)
-                                    .foregroundStyle(AppTheme.textOnPrimary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            }
-                            .disabled(isSendingCode || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            .buttonStyle(.plain)
-                            .opacity((isSendingCode || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.55 : 1)
-                        }
-                    }
-                }
-
-                Button {
-                    Task { await submit() }
-                } label: {
-                    Text(mode == .login ? "登录" : "注册")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(AppTheme.unifiedButtonPrimary)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                .disabled(isSubmitting)
-
-                Spacer()
             }
-            .padding(20)
             .background(AppTheme.pageBackground.ignoresSafeArea())
             .navigationTitle("账户")
-            .toolbar {
-                #if os(iOS)
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") {
-                        dismiss()
-                    }
-                    .foregroundStyle(AppTheme.textPrimary)
-                }
-                #else
-                ToolbarItem(placement: .automatic) {
-                    Button("完成") {
-                        dismiss()
-                    }
-                    .foregroundStyle(AppTheme.textPrimary)
-                }
-                #endif
-            }
+            .toolbar { doneToolbarItem }
         }
         .alert("提示", isPresented: Binding(
             get: { message != nil },
@@ -1478,6 +1409,157 @@ struct AuthView: View {
         }
     }
 
+    @ToolbarContentBuilder
+    private var doneToolbarItem: some ToolbarContent {
+        #if os(iOS)
+        ToolbarItem(placement: .topBarTrailing) {
+            Button("完成") {
+                dismiss()
+            }
+            .foregroundStyle(AppTheme.textPrimary)
+        }
+        #else
+        ToolbarItem(placement: .automatic) {
+            Button("完成") {
+                dismiss()
+            }
+            .foregroundStyle(AppTheme.textPrimary)
+        }
+        #endif
+    }
+
+    private var modeSwitchSection: some View {
+        HStack(spacing: 8) {
+            ForEach(AuthMode.allCases) { item in
+                modePill(item)
+            }
+        }
+        .padding(6)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+
+    private func modePill(_ item: AuthMode) -> some View {
+        Button {
+            mode = item
+            statusText = nil
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(mode == item ? AnyShapeStyle(AppTheme.primaryGradient) : AnyShapeStyle(AppTheme.surface))
+                Text(item.rawValue)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(mode == item ? AppTheme.textOnPrimary : AppTheme.textPrimary)
+                    .padding(.vertical, 11)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var formSection: some View {
+        VStack(spacing: 12) {
+            AuthTextField(title: "邮箱", placeholder: "name@email.com", text: $email)
+                .focused($focusedField, equals: .email)
+
+            if mode == .register {
+                AuthTextField(title: "昵称", placeholder: "请输入昵称", text: $displayName)
+                    .focused($focusedField, equals: .displayName)
+            }
+
+            codeFieldSection
+        }
+    }
+
+    private var codeFieldSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("验证码")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+            HStack(spacing: 10) {
+                TextField("请输入邮箱验证码", text: $code)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(AppTheme.inputText)
+                    .padding(12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+                    .focused($focusedField, equals: .code)
+
+                Button {
+                    onTapSendCode()
+                } label: {
+                    HStack(spacing: 6) {
+                        if isSendingCode {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(AppTheme.textOnPrimary)
+                        }
+                        Text(isSendingCode ? "发送中" : "发送验证码")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .frame(minWidth: 110)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.primaryGradient)
+                    .foregroundStyle(AppTheme.textOnPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(isSendCodeDisabled)
+                .opacity(isSendCodeDisabled ? 0.55 : 1)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var statusSection: some View {
+        if let statusText, !statusText.isEmpty {
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(AppTheme.primary)
+                Text(statusText)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .background(AppTheme.surfaceMuted)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+    }
+
+    private var submitSection: some View {
+        Button {
+            onTapSubmit()
+        } label: {
+            HStack(spacing: 8) {
+                if isSubmitting {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.white)
+                }
+                Text(submitButtonTitle)
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 13)
+            .background(AppTheme.primaryGradient)
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: AppTheme.primary.opacity(0.22), radius: 10, x: 0, y: 4)
+        }
+        .buttonStyle(.plain)
+        .disabled(isSubmitting || isSendingCode)
+        .opacity((isSubmitting || isSendingCode) ? 0.7 : 1)
+    }
+
     private func validateEmail() -> String? {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return "请输入邮箱" }
@@ -1485,97 +1567,124 @@ struct AuthView: View {
         return nil
     }
 
-    private func sendCode() async {
+    @MainActor
+    private func onTapSendCode() {
+        guard !isSendingCode, !isSubmitting else { return }
         if let err = validateEmail() {
-            await MainActor.run { message = err }
+            message = err
             return
         }
-        await MainActor.run {
-            isSendingCode = true
-        }
-        do {
-            let codeReturned = try await APIClient.shared.sendEmailCode(
-                email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                purpose: mode == .login ? "login" : "register"
-            )
-            await MainActor.run {
-                if let c = codeReturned, !c.isEmpty {
-                    message = "验证码已发送，请在 10 分钟内完成验证。\n\n当前测试环境，本次验证码为：\(c)"
-                } else {
-                    message = "验证码已发送，请在 10 分钟内完成验证。"
+        isSendingCode = true
+        statusText = "正在发送验证码..."
+        let targetEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let purpose = mode == .login ? "login" : "register"
+
+        Task {
+            do {
+                let codeReturned = try await APIClient.shared.sendEmailCode(email: targetEmail, purpose: purpose)
+                await MainActor.run {
+                    statusText = "验证码已发送，请在 10 分钟内完成验证"
+                    if let c = codeReturned, !c.isEmpty {
+                        message = "验证码已发送，请在 10 分钟内完成验证。\n\n当前测试环境，本次验证码为：\(c)"
+                    } else {
+                        message = "验证码已发送，请在 10 分钟内完成验证。"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    statusText = "发送失败，请重试"
+                    message = userFacingMessage(for: error)
                 }
             }
-        } catch {
             await MainActor.run {
-                message = error.localizedDescription
+                isSendingCode = false
             }
-        }
-        await MainActor.run {
-            isSendingCode = false
         }
     }
 
-    private func submit() async {
+    @MainActor
+    private func onTapSubmit() {
+        guard !isSubmitting, !isSendingCode else { return }
         if let err = validateEmail() {
-            await MainActor.run { message = err }
+            message = err
             return
         }
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedCode.isEmpty {
-            await MainActor.run { message = "请输入验证码" }
+            message = "请输入验证码"
             return
         }
-        await MainActor.run { isSubmitting = true }
-        do {
-            let auth: AuthResponse
-            if mode == .login {
-                auth = try await APIClient.shared.loginWithEmailCode(
-                    email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    code: trimmedCode
-                )
-            } else {
-                auth = try await APIClient.shared.registerWithEmailCode(
-                    email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    code: trimmedCode,
-                    displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-                )
+        if mode == .register && displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            message = "请输入昵称"
+            return
+        }
+
+        isSubmitting = true
+        statusText = "正在验证账号信息..."
+        let targetEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let targetName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        Task {
+            do {
+                let auth: AuthResponse
+                if mode == .login {
+                    auth = try await APIClient.shared.loginWithEmailCode(email: targetEmail, code: trimmedCode)
+                } else {
+                    auth = try await APIClient.shared.registerWithEmailCode(
+                        email: targetEmail,
+                        code: trimmedCode,
+                        displayName: targetName
+                    )
+                }
+                await MainActor.run {
+                    TokenStore.shared.token = auth.token
+                    statusText = "登录成功"
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    statusText = "提交失败，请检查验证码或网络"
+                    message = userFacingMessage(for: error)
+                }
             }
             await MainActor.run {
-                TokenStore.shared.token = auth.token
-                dismiss()
-            }
-        } catch {
-            await MainActor.run {
-                message = error.localizedDescription
+                isSubmitting = false
             }
         }
-        await MainActor.run { isSubmitting = false }
     }
 }
 
 struct AuthHeaderCard: View {
+    let mode: AuthMode
+
     var body: some View {
-        HStack(spacing: 16) {
-            Circle()
-                .fill(AppTheme.accentWarm.opacity(0.25))
-                .frame(width: 52, height: 52)
-                .overlay(
-                    Image(systemName: "face.smiling")
-                        .foregroundStyle(AppTheme.textPrimary.opacity(0.8))
-                )
-            VStack(alignment: .leading, spacing: 6) {
-                Text("欢迎回来")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text("登录后即可同步您的数据")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textPrimary.opacity(0.85))
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(AppTheme.primaryGradient.opacity(0.16))
+                    .frame(width: 56, height: 56)
+                Image(systemName: mode == .login ? "person.crop.circle.badge.checkmark" : "person.crop.circle.badge.plus")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(AppTheme.primary)
             }
-            Spacer()
+            VStack(alignment: .leading, spacing: 5) {
+                Text(mode == .login ? "欢迎回来" : "创建新账号")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(mode == .login ? "登录后即可同步您的数据" : "注册后即可使用完整功能与数据同步")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer(minLength: 0)
         }
-        .padding(14)
+        .padding(16)
         .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(AppTheme.borderStrong.opacity(0.6), lineWidth: 1)
+        )
+        .shadow(color: AppTheme.softShadow, radius: 8, x: 0, y: 3)
     }
 }
 
@@ -1587,7 +1696,7 @@ struct AuthTextField: View {
     var body: some View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
-                    .font(.caption)
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 TextField(placeholder, text: $text)
                     .textFieldStyle(.plain)
@@ -1597,7 +1706,7 @@ struct AuthTextField: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(AppTheme.border, lineWidth: 1)
+                            .stroke(AppTheme.borderStrong.opacity(0.55), lineWidth: 1)
                     )
         }
     }
