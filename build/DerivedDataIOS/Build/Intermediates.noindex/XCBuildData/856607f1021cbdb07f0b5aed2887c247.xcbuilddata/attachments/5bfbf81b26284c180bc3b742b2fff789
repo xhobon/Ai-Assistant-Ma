@@ -1,0 +1,169 @@
+{
+  "" : {
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai助理-primary.dia",
+    "emit-module-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai助理-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai助理-primary-emit-module.dia",
+    "pch" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai助理-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai助理-primary.swiftdeps"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/AIAssistantViews.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AIAssistantViews.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AIAssistantViews.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AIAssistantViews.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AIAssistantViews.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AIAssistantViews.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AIAssistantViews.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AIAssistantViews.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AIAssistantViews~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/AccessibilityExtensions.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AccessibilityExtensions.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AccessibilityExtensions.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AccessibilityExtensions.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AccessibilityExtensions.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AccessibilityExtensions.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AccessibilityExtensions.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AccessibilityExtensions.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AccessibilityExtensions~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/Ai__App.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai__App.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai__App.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai__App.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai__App.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai__App.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai__App.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai__App.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Ai__App~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/AppModels.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppModels.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppModels.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppModels.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppModels.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppModels.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppModels.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppModels.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppModels~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/AppServices.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppServices.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppServices.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppServices.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppServices.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppServices.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppServices.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppServices.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/AppServices~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/ContentView.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ContentView.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ContentView~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/Item.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Item.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Item.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Item.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Item.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Item.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Item.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Item.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/Item~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/LearningViews.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LearningViews.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LearningViews.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LearningViews.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LearningViews.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LearningViews.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LearningViews.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LearningViews.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LearningViews~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/LocalDataStore.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LocalDataStore.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LocalDataStore.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LocalDataStore.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LocalDataStore.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LocalDataStore.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LocalDataStore.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LocalDataStore.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/LocalDataStore~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/ProductivityViews.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProductivityViews.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProductivityViews.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProductivityViews.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProductivityViews.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProductivityViews.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProductivityViews.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProductivityViews.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProductivityViews~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/ProfileViews.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProfileViews.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProfileViews.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProfileViews.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProfileViews.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProfileViews.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProfileViews.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProfileViews.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ProfileViews~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/SettingsUI.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SettingsUI.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SettingsUI.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SettingsUI.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SettingsUI.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SettingsUI.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SettingsUI.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SettingsUI.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SettingsUI~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/SharedUI.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SharedUI.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SharedUI.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SharedUI.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SharedUI.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SharedUI.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SharedUI.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SharedUI.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/SharedUI~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/TranslateViews.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/TranslateViews.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/TranslateViews.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/TranslateViews.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/TranslateViews.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/TranslateViews.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/TranslateViews.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/TranslateViews.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/TranslateViews~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/Ai助理/ViewModels.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ViewModels.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ViewModels.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ViewModels.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ViewModels.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ViewModels.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ViewModels.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ViewModels.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/ViewModels~partial.swiftmodule"
+  },
+  "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理/Ai助理/build/DerivedDataIOS/Build/Intermediates.noindex/Ai助理.build/Debug-iphoneos/Ai助理.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}
