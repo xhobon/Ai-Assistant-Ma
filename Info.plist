@@ -18,6 +18,14 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>用于语音输入和语音识别</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
