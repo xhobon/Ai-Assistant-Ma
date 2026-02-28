@@ -246,6 +246,12 @@ final class APIClient {
     func health() async throws -> HealthResponse {
         try await request("health", method: "GET")
     }
+    
+    func getProfile() async throws -> UserDTO {
+        struct Res: Codable { let user: UserDTO }
+        let res: Res = try await request("api/profile", method: "GET", authorized: true)
+        return res.user
+    }
 
     func register(email: String, phone: String, password: String, displayName: String) async throws -> AuthResponse {
         var body: [String: Any] = [

@@ -34,6 +34,7 @@ final class ChatViewModel: ObservableObject {
     private var lastVoiceText: String?
     private var isStoppingVoice = false
     private var pendingImageData: Data? = nil
+    private var cancellables = Set<AnyCancellable>()
     
     init(allowLocalExecution: Bool = false) {
         self.allowLocalExecution = allowLocalExecution
@@ -52,6 +53,25 @@ final class ChatViewModel: ObservableObject {
             Task {
                 await syncFromCloud()
             }
+        }
+        
+        TokenStore.shared.$token
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in
+                    self.handleAuthStateChanged()
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func handleAuthStateChanged() {
+        if TokenStore.shared.isLoggedIn {
+            Task { await syncFromCloud() }
+        } else {
+            // 退出登录后回到本地会话上下文
+            serverConversationId = nil
         }
     }
 
@@ -500,6 +520,7 @@ final class TranslateViewModel: ObservableObject {
     private let autoTranslateDelay: TimeInterval = 0.6
     private var autoStopWorkItem: DispatchWorkItem?
     private let silenceTimeout: TimeInterval = 1.2
+    private var cancellables = Set<AnyCancellable>()
 
     init() {
         // 加载本地翻译历史
@@ -517,6 +538,25 @@ final class TranslateViewModel: ObservableObject {
             Task { @MainActor in
                 viewModel.history.removeAll()
             }
+        }
+        
+        TokenStore.shared.$token
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in
+                    self.handleAuthStateChanged()
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func handleAuthStateChanged() {
+        if TokenStore.shared.isLoggedIn {
+            Task { await syncTranslationsFromCloud() }
+        } else {
+            // 退出登录后仅显示本地记录
+            history = LocalDataStore.shared.loadAllTranslations()
         }
     }
 

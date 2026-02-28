@@ -2469,12 +2469,13 @@ struct MessageInputBar: View {
 }
 
 struct MemoryDetailView: View {
+    @ObservedObject private var tokenStore = TokenStore.shared
     @StateObject private var statsViewModel = UserStatsViewModel()
 
     private var summaryText: String {
         if let s = statsViewModel.stats {
             return "已记录 \(s.totalConversations) 条对话、\(s.totalTranslations) 条翻译、\(s.learningSessions) 次学习记录。"
-        } else if !TokenStore.shared.isLoggedIn {
+        } else if !tokenStore.isLoggedIn {
             return "登录后可在云端记录你的对话、翻译与学习记录。"
         } else if statsViewModel.isLoading {
             return "正在统计你的对话、翻译与学习记录…"
@@ -2515,7 +2516,7 @@ struct MemoryDetailView: View {
                 .padding(20)
             }
             .navigationTitle("长期记忆")
-            .task {
+            .task(id: tokenStore.token) {
                 await statsViewModel.load()
             }
         }

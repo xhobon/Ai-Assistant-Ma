@@ -7,6 +7,7 @@ struct ProfileCenterView: View {
     @StateObject private var tokenStore = TokenStore.shared
     @State private var showAuthSheet = false
     @State private var authMode: AuthMode = .login
+    @State private var showAccountCenter = false
     @State private var showMemberRecharge = false
     @State private var showTaskCenter = false
     @State private var showSettings = false
@@ -50,6 +51,8 @@ struct ProfileCenterView: View {
                 ProfileLoginCard {
                     authMode = .login
                     showAuthSheet = true
+                } onOpenCenter: {
+                    showAccountCenter = true
                 }
                 .environmentObject(tokenStore)
 
@@ -110,6 +113,9 @@ struct ProfileCenterView: View {
             .navigationDestination(isPresented: $showAccount) {
                 AccountSecurityView()
             }
+            .navigationDestination(isPresented: $showAccountCenter) {
+                AccountProfileCenterView()
+            }
             .navigationDestination(isPresented: $showAssistantMemory) {
                 AssistantMemoryView()
             }
@@ -146,6 +152,7 @@ struct ProfileCenterView: View {
 struct ProfileLoginCard: View {
     @EnvironmentObject private var tokenStore: TokenStore
     var onLogin: () -> Void
+    var onOpenCenter: () -> Void
 
     var body: some View {
         HStack(spacing: 14) {
@@ -171,12 +178,10 @@ struct ProfileLoginCard: View {
             Spacer(minLength: 10)
 
             HStack(spacing: 6) {
-                Text(tokenStore.isLoggedIn ? "已登录" : "去登录")
+                Text(tokenStore.isLoggedIn ? "个人中心" : "去登录")
                     .font(.caption.weight(.semibold))
-                if !tokenStore.isLoggedIn {
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.bold))
-                }
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
             }
             .foregroundStyle(AppTheme.primary)
         }
@@ -191,8 +196,217 @@ struct ProfileLoginCard: View {
         )
         .shadow(color: AppTheme.softShadow, radius: 10, x: 0, y: 4)
         .onTapGesture {
-            if !tokenStore.isLoggedIn {
+            if tokenStore.isLoggedIn {
+                onOpenCenter()
+            } else {
                 onLogin()
+            }
+        }
+    }
+}
+
+struct AccountProfileCenterView: View {
+    @ObservedObject private var tokenStore = TokenStore.shared
+    @Environment(\.dismiss) private var dismiss
+    @State private var profile: UserDTO?
+    @State private var loading = false
+    @State private var message: String?
+    @State private var showAuthSheet = false
+    @State private var showEditProfile = false
+    @State private var avatarStyle = UserDefaults.standard.integer(forKey: "profile_avatar_style")
+
+    private var displayName: String {
+        let saved = UserDefaults.standard.string(forKey: "profile_name_override")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !saved.isEmpty { return saved }
+        if let p = profile, !p.displayName.isEmpty { return p.displayName }
+        return "用户"
+    }
+
+    private var emailText: String {
+        profile?.email ?? "未绑定邮箱"
+    }
+
+    private var avatarSymbol: String {
+        let symbols = ["person.fill", "person.crop.circle.fill", "sparkles", "star.fill", "crown.fill", "bolt.fill"]
+        return symbols[max(0, min(avatarStyle, symbols.count - 1))]
+    }
+
+    var body: some View {
+        SettingsPage(title: "个人中心") {
+            SettingsCard(title: "账号信息", subtitle: "管理头像、昵称与登录账号") {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(AppTheme.primaryGradient.opacity(0.18))
+                            .frame(width: 62, height: 62)
+                        Image(systemName: avatarSymbol)
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(AppTheme.primary)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(displayName)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text(emailText)
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    Spacer()
+                }
+                .padding(.vertical, 6)
+
+                SettingsRow(systemImage: "person.text.rectangle", title: "资料设置", subtitle: "编辑昵称与展示信息", showChevron: true) {
+                    showEditProfile = true
+                }
+                SettingsRow(systemImage: "person.crop.circle.badge.plus", title: "头像设置", subtitle: "切换头像样式", showChevron: true) {
+                    avatarStyle = (avatarStyle + 1) % 6
+                    UserDefaults.standard.set(avatarStyle, forKey: "profile_avatar_style")
+                }
+                SettingsRow(systemImage: "arrow.triangle.2.circlepath.circle", title: "切换账号", subtitle: "退出当前账号并重新登录", showChevron: true) {
+                    tokenStore.token = nil
+                    showAuthSheet = true
+                }
+            }
+
+            SettingsCard(title: "账户状态", subtitle: "当前登录状态与数据同步情况") {
+                SettingsRow(
+                    systemImage: tokenStore.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
+                    title: tokenStore.isLoggedIn ? "已登录" : "未登录",
+                    subtitle: tokenStore.isLoggedIn ? "当前设备已完成登录" : "请先登录账号",
+                    tint: tokenStore.isLoggedIn ? AppTheme.primary : AppTheme.textPrimary,
+                    showChevron: false,
+                    action: nil
+                )
+                SettingsRow(
+                    systemImage: "icloud",
+                    title: "数据同步",
+                    subtitle: tokenStore.isLoggedIn ? "已开启" : "未开启",
+                    showChevron: false,
+                    action: nil
+                )
+            }
+
+            SettingsCard(title: "登录管理", subtitle: "你可以随时退出当前账号") {
+                Button {
+                    tokenStore.token = nil
+                    message = "已退出登录"
+                    dismiss()
+                } label: {
+                    HStack {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                        Text("退出登录")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(AppTheme.surface)
+                    .foregroundStyle(.red)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.red.opacity(0.28), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .task(id: tokenStore.token) {
+            await loadProfile()
+        }
+        .sheet(isPresented: $showAuthSheet) {
+            AuthView(mode: .login)
+        }
+        .sheet(isPresented: $showEditProfile) {
+            ProfileEditSheet(defaultName: displayName) { name in
+                UserDefaults.standard.set(name.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "profile_name_override")
+            }
+        }
+        .alert("提示", isPresented: Binding(
+            get: { message != nil },
+            set: { if !$0 { message = nil } }
+        )) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(message ?? "")
+        }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button {
+                    dismiss()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("返回")
+                    }
+                    .foregroundStyle(AppTheme.textPrimary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func loadProfile() async {
+        guard tokenStore.isLoggedIn else {
+            await MainActor.run { profile = nil }
+            return
+        }
+        await MainActor.run { loading = true }
+        do {
+            let user = try await APIClient.shared.getProfile()
+            await MainActor.run {
+                profile = user
+                loading = false
+            }
+        } catch {
+            await MainActor.run {
+                loading = false
+                profile = nil
+            }
+        }
+    }
+}
+
+struct ProfileEditSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+    let onSave: (String) -> Void
+
+    init(defaultName: String, onSave: @escaping (String) -> Void) {
+        _name = State(initialValue: defaultName)
+        self.onSave = onSave
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 14) {
+                TextField("请输入昵称", text: $name)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(AppTheme.inputText)
+                    .padding(12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+                Spacer()
+            }
+            .padding(20)
+            .background(AppTheme.pageBackground.ignoresSafeArea())
+            .navigationTitle("资料设置")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        onSave(name)
+                        dismiss()
+                    }
+                    .foregroundStyle(AppTheme.primary)
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
             }
         }
     }
@@ -1140,6 +1354,7 @@ struct AppSettingsView: View {
 // MARK: - 助理记忆（长期记忆与自主学习）
 
 struct AssistantMemoryView: View {
+    @ObservedObject private var tokenStore = TokenStore.shared
     @State private var items: [UserMemoryItem] = []
     @State private var loading = false
     @State private var errorMessage: String?
@@ -1147,7 +1362,7 @@ struct AssistantMemoryView: View {
     @State private var newCategory = "fact"
     @State private var showAddSheet = false
 
-    private var isLoggedIn: Bool { TokenStore.shared.isLoggedIn }
+    private var isLoggedIn: Bool { tokenStore.isLoggedIn }
 
     var body: some View {
         ScrollView {
@@ -1224,6 +1439,9 @@ struct AssistantMemoryView: View {
             }
         }
         .onAppear { loadMemories() }
+        .onChange(of: tokenStore.token) { _, _ in
+            loadMemories()
+        }
         .sheet(isPresented: $showAddSheet) {
             addMemorySheet
         }
