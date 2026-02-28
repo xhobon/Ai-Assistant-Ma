@@ -14,9 +14,11 @@ struct SettingsPage<Content: View>: View {
                 SettingsHeader(title: title, trailing: trailing, onBack: { dismiss() })
                 content()
             }
+            .frame(maxWidth: 920, alignment: .topLeading)
             .padding(.horizontal, 20)
             .padding(.top, 16)
             .padding(.bottom, 32)
+            .frame(maxWidth: .infinity, alignment: .top)
         }
         .scrollIndicators(.automatic)
         .background(AppTheme.pageBackground.ignoresSafeArea())
@@ -34,14 +36,15 @@ struct SettingsHeader: View {
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .foregroundStyle(AppTheme.unifiedButtonBorder)
                     .frame(width: 36, height: 36)
                     .background(AppTheme.surface)
                     .clipShape(Circle())
+                    .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
             }
             Spacer()
             Text(title)
-                .font(.headline)
+                .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             Spacer()
             Group {
@@ -71,7 +74,7 @@ struct SettingsCard<Content: View>: View {
             }
             content()
         }
-        .glassCard()
+        .modernCard(style: .elevated)
     }
 }
 
@@ -119,9 +122,9 @@ struct SettingsRow: View {
             }
             .padding(12)
             .background(AppTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(AppTheme.border, lineWidth: 1)
             )
         }
@@ -160,9 +163,9 @@ struct SettingsInlineToggleRow: View {
         }
         .padding(12)
         .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(AppTheme.border, lineWidth: 1)
         )
     }

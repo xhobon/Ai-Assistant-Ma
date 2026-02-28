@@ -38,26 +38,38 @@ enum SidebarItem: Int, CaseIterable {
     }
 }
 
-/// AI全能助理 Logo：AI 亮绿 + 全能助理深色
-private let logoTeal = Color(red: 0.15, green: 0.45, blue: 0.45)
-private let accentGreen = Color(red: 0.25, green: 0.72, blue: 0.35)
-private let activeGreenBg = Color(red: 0.85, green: 0.95, blue: 0.88)
-private let activeGreenFg = Color(red: 0.15, green: 0.55, blue: 0.28)
-private let sidebarInactive = Color(red: 0.35, green: 0.35, blue: 0.38)
+private let sidebarActiveBg = Color(red: 0.11, green: 0.44, blue: 0.85).opacity(0.16)
+private let sidebarActiveFg = Color(red: 0.10, green: 0.43, blue: 0.86)
+private let sidebarInactive = Color(red: 0.35, green: 0.39, blue: 0.45)
 
 struct SidebarLogoView: View {
     var body: some View {
-        HStack(spacing: 6) {
-            Text("AI")
-                .font(.headline.weight(.bold))
-                .foregroundStyle(accentGreen)
-                .shadow(color: Color.black.opacity(0.06), radius: 1, x: 0, y: 1)
-            Text("全能助理")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(logoTeal)
-                .shadow(color: Color.black.opacity(0.06), radius: 1, x: 0, y: 1)
+        HStack(spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(AppTheme.primaryGradient)
+                    .frame(width: 34, height: 34)
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(AppTheme.textOnPrimary)
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text("AI 全能助理")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("Workspace")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer(minLength: 0)
         }
-        .padding(.bottom, 20)
+        .padding(10)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
     }
 }
 
@@ -69,20 +81,24 @@ struct SidebarRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: item.icon)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(isSelected ? activeGreenFg : sidebarInactive)
-                .frame(width: 22, height: 22)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(isSelected ? sidebarActiveFg : sidebarInactive)
+                .frame(width: 28, height: 28)
+                .background(isSelected ? sidebarActiveFg.opacity(0.12) : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             Text(item.title)
-                .font(.callout.weight(.medium))
-                .foregroundStyle(isSelected ? activeGreenFg : sidebarInactive)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isSelected ? AppTheme.textPrimary : sidebarInactive)
                 .lineLimit(1)
                 .minimumScaleFactor(0.9)
                 .layoutPriority(1)
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 9)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(isSelected ? sidebarActiveBg : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -118,6 +134,12 @@ struct ContentView: View {
                 SidebarLogoView()
                     .padding(.top, 16)
                     .padding(.horizontal, 12)
+                Text("导航")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 12)
+                    .padding(.bottom, 6)
                 VStack(spacing: 8) {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 6) {
@@ -128,11 +150,14 @@ struct ContentView: View {
                                     SidebarRow(item: item, isSelected: selectedItem == item)
                                 }
                                 .buttonStyle(.plain)
-                                .padding(.horizontal, 10)
+                                .padding(.horizontal, 8)
                             }
                         }
                         .padding(.top, 4)
                     }
+                    Divider()
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
 
                     Button {
                         selectedItem = .profile
@@ -141,12 +166,12 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 8)
                     .padding(.bottom, 10)
                 }
             }
             .background(AppTheme.pageBackground.ignoresSafeArea())
-            .navigationSplitViewColumnWidth(min: 100, ideal: 115, max: 140)
+            .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 250)
         } detail: {
             Group {
                 switch selectedItem ?? Self.defaultSidebarItem {

@@ -214,9 +214,9 @@ struct ModernColorSystem {
 
 // MARK: - 主题配色（AI 助理：专业·现代·可信）
 struct AppTheme {
-    static let primary = ModernColorSystem.AIPrimary.indigo
-    static let primaryVariant = ModernColorSystem.AIPrimary.indigoDark
-    static let secondary = ModernColorSystem.AIPrimary.violet
+    static let primary = Color(red: 0.10, green: 0.43, blue: 0.86)
+    static let primaryVariant = Color(red: 0.07, green: 0.32, blue: 0.72)
+    static let secondary = Color(red: 0.10, green: 0.63, blue: 0.67)
 
     private static var isDark: Bool {
         AppearanceStore.shared.mode == .dark
@@ -277,15 +277,15 @@ struct AppTheme {
     static let error = ModernColorSystem.Semantic.error
     static let info = ModernColorSystem.Semantic.info
 
-    static let accent = ModernColorSystem.AIPrimary.indigo
-    static let accentStrong = ModernColorSystem.AIPrimary.indigoDark
-    static let accentWarm = ModernColorSystem.AIPrimary.amber
-    static let accentPurple = ModernColorSystem.AIPrimary.violet
-    static let brandBlue = ModernColorSystem.AIPrimary.indigo
+    static let accent = primary
+    static let accentStrong = primaryVariant
+    static let accentWarm = Color(red: 0.92, green: 0.56, blue: 0.16)
+    static let accentPurple = Color(red: 0.18, green: 0.48, blue: 0.83)
+    static let brandBlue = primary
 
-    // 统一按钮样式（参考图：白底紫边 / 紫色填充）
-    static let unifiedButtonPrimary = Color(red: 0.43, green: 0.27, blue: 0.87)   // 主按钮填充 #6d45dd
-    static let unifiedButtonBorder = Color(red: 0.61, green: 0.52, blue: 0.90)    // 次要按钮描边/文字 #9b84e6
+    // 统一按钮样式：主按钮蓝色填充，次按钮清透蓝边
+    static let unifiedButtonPrimary = Color(red: 0.10, green: 0.43, blue: 0.86)
+    static let unifiedButtonBorder = Color(red: 0.23, green: 0.50, blue: 0.80)
 
     // 边框与阴影
     static var border: Color {
@@ -294,7 +294,7 @@ struct AppTheme {
     static var borderStrong: Color {
         isDark ? Color.white.opacity(0.15) : Color.black.opacity(0.10)
     }
-    static let neonGlow = ModernColorSystem.AIPrimary.indigo.opacity(0.25)
+    static let neonGlow = primary.opacity(0.25)
     static var softShadow: Color {
         isDark ? Color.black.opacity(0.6) : Color.black.opacity(0.05)
     }
@@ -305,11 +305,11 @@ struct AppTheme {
         isDark ? Color.black.opacity(0.9) : Color.black.opacity(0.06)
     }
     
-    // 渐变（靛蓝 → 紫）
+    // 渐变（品牌蓝 → 青）
     static let primaryGradient = LinearGradient(
         colors: [
-            ModernColorSystem.AIPrimary.indigo,
-            ModernColorSystem.AIPrimary.violet
+            primary,
+            secondary
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -319,7 +319,8 @@ struct AppTheme {
         LinearGradient(
             colors: [
                 isDark ? ModernColorSystem.DarkTheme.backgroundPrimary : ModernColorSystem.LightTheme.backgroundPrimary,
-                ModernColorSystem.AIPrimary.indigo.opacity(isDark ? 0.14 : 0.04),
+                primary.opacity(isDark ? 0.22 : 0.08),
+                secondary.opacity(isDark ? 0.18 : 0.06),
                 isDark ? ModernColorSystem.DarkTheme.backgroundSecondary : ModernColorSystem.LightTheme.backgroundSecondary
             ],
             startPoint: .topLeading,
@@ -342,9 +343,13 @@ struct AppTheme {
     /// 与 Tab 容器一致的页面背景，各子页面统一使用
     static var pageBackground: LinearGradient {
         LinearGradient(
-            colors: [background, backgroundSecondary],
-            startPoint: .top,
-            endPoint: .bottom
+            colors: [
+                isDark ? Color(red: 0.08, green: 0.10, blue: 0.14) : Color(red: 0.95, green: 0.97, blue: 0.995),
+                isDark ? Color(red: 0.09, green: 0.12, blue: 0.17) : Color(red: 0.93, green: 0.96, blue: 0.99),
+                isDark ? Color(red: 0.07, green: 0.10, blue: 0.15) : Color(red: 0.97, green: 0.98, blue: 1.0)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
         )
     }
     
@@ -359,14 +364,16 @@ struct AppTheme {
         )
     }
     
-    static let neonGradient = LinearGradient(
+    static var neonGradient: LinearGradient {
+        LinearGradient(
         colors: [
-            ModernColorSystem.AIPrimary.indigo,
-            ModernColorSystem.AIPrimary.violet
+            primary,
+            secondary
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
-    )
+        )
+    }
     
     static var glassGradient: LinearGradient {
         LinearGradient(
@@ -382,8 +389,8 @@ struct AppTheme {
     
     static let pulseGradient = LinearGradient(
         colors: [
-            ModernColorSystem.AIPrimary.indigo.opacity(0.4),
-            ModernColorSystem.AIPrimary.violet.opacity(0.3)
+            primary.opacity(0.35),
+            secondary.opacity(0.28)
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -492,6 +499,19 @@ struct ModernTextField: View {
                 )
         case .glass:
             AppTheme.glassBackground
+                .overlay(
+                    RoundedRectangle(cornerRadius: ModernDesignSystem.CornerRadius.medium)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.07),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
         case .cyber:
             AppTheme.surface
         case .hologram:
@@ -1037,6 +1057,16 @@ struct ModernCard<Content: View>: View {
             )
         case .elevated:
             AppTheme.surface
+                .overlay(
+                    RoundedRectangle(cornerRadius: cardCornerRadius)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.20), Color.clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
         case .minimal:
             Color.clear
         case .outlined:
@@ -1102,7 +1132,7 @@ struct ModernCard<Content: View>: View {
         case .neon:
             return ModernColorSystem.Neon.cyan.opacity(0.6)
         case .glass:
-            return Color.black.opacity(0.2)
+            return AppTheme.softShadow
         case .hologram:
             return ModernColorSystem.Neon.magenta.opacity(0.4)
         case .cyber:
@@ -1110,7 +1140,7 @@ struct ModernCard<Content: View>: View {
         case .electric:
             return ModernColorSystem.Neon.electricBlue.opacity(0.4)
         case .elevated:
-            return ModernDesignSystem.Shadow.medium.color
+            return AppTheme.softShadow
         default:
             return Color.clear
         }
@@ -1123,11 +1153,11 @@ struct ModernCard<Content: View>: View {
         case .hologram:
             return 25
         case .glass:
-            return 15
+            return 18
         case .cyber:
             return ModernDesignSystem.Shadow.large.radius
         case .elevated:
-            return ModernDesignSystem.Shadow.medium.radius
+            return 12
         default:
             return 0
         }
@@ -1138,11 +1168,11 @@ struct ModernCard<Content: View>: View {
         case .neon, .electric, .hologram:
             return 0
         case .glass:
-            return 8
+            return 10
         case .cyber:
             return ModernDesignSystem.Shadow.large.y
         case .elevated:
-            return ModernDesignSystem.Shadow.medium.y
+            return 4
         default:
             return 0
         }
@@ -1698,15 +1728,30 @@ struct UnifiedAppButton: View {
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 18)
-            .background(style == .primary ? AppTheme.unifiedButtonPrimary : AppTheme.surface)
-            .foregroundStyle(style == .primary ? Color.white : AppTheme.unifiedButtonBorder)
+            .background(buttonBackground)
+            .foregroundStyle(style == .primary ? AppTheme.textOnPrimary : AppTheme.unifiedButtonBorder)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(style == .outline ? AppTheme.unifiedButtonBorder : Color.clear, lineWidth: 1)
             )
+            .shadow(
+                color: style == .primary ? AppTheme.primary.opacity(0.24) : Color.clear,
+                radius: style == .primary ? 8 : 0,
+                x: 0,
+                y: style == .primary ? 4 : 0
+            )
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var buttonBackground: some View {
+        if style == .primary {
+            AppTheme.primaryGradient
+        } else {
+            AppTheme.surface
+        }
     }
 }
 
@@ -1722,11 +1767,23 @@ struct UnifiedAppIconButton: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isPrimary ? .white : AppTheme.unifiedButtonBorder)
                 .frame(width: 36, height: 36)
-                .background(isPrimary ? AppTheme.unifiedButtonPrimary : AppTheme.surface)
+                .background {
+                    if isPrimary {
+                        AppTheme.primaryGradient
+                    } else {
+                        AppTheme.surface
+                    }
+                }
                 .clipShape(Circle())
                 .overlay(
                     Circle()
                         .stroke(isPrimary ? Color.clear : AppTheme.unifiedButtonBorder, lineWidth: 1)
+                )
+                .shadow(
+                    color: isPrimary ? AppTheme.primary.opacity(0.22) : Color.clear,
+                    radius: isPrimary ? 6 : 0,
+                    x: 0,
+                    y: isPrimary ? 3 : 0
                 )
         }
         .buttonStyle(.plain)
@@ -2674,18 +2731,36 @@ struct AppPageScaffold<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: spacing) {
-                content()
+        ZStack {
+            AppTheme.pageBackground.ignoresSafeArea()
+            VStack {
+                Circle()
+                    .fill(AppTheme.primary.opacity(0.10))
+                    .frame(width: 380, height: 380)
+                    .blur(radius: 80)
+                    .offset(x: -220, y: -220)
+                Spacer()
             }
-            .frame(maxWidth: maxWidth, alignment: .topLeading)
-            .padding(.horizontal, horizontalPadding)
-            .padding(.top, topPadding)
-            .padding(.bottom, bottomPadding)
-            .frame(maxWidth: .infinity, alignment: .top)
+            VStack {
+                Spacer()
+                Circle()
+                    .fill(AppTheme.secondary.opacity(0.10))
+                    .frame(width: 320, height: 320)
+                    .blur(radius: 90)
+                    .offset(x: 210, y: 180)
+            }
+            ScrollView {
+                VStack(spacing: spacing) {
+                    content()
+                }
+                .frame(maxWidth: maxWidth, alignment: .topLeading)
+                .padding(.horizontal, horizontalPadding)
+                .padding(.top, topPadding)
+                .padding(.bottom, bottomPadding)
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
+            .scrollIndicators(.automatic)
         }
-        .scrollIndicators(.automatic)
-        .background(AppTheme.pageBackground.ignoresSafeArea())
         .hideNavigationBarOnMac()
     }
 }
