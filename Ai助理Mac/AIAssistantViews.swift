@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 import UIKit
 #elseif os(macOS)
 import AppKit
+import AVFoundation
+import Combine
 #endif
 
 struct AIAssistantHomeView: View {
@@ -219,11 +221,7 @@ struct AIAssistantHomeHeader: View {
                         .foregroundStyle(.white.opacity(0.9))
                 }
 
-                HStack(spacing: 12) {
-                    HomeStatBadge(title: "今日对话", value: "12")
-                    HomeStatBadge(title: "翻译次数", value: "28")
-                    HomeStatBadge(title: "学习分钟", value: "35")
-                }
+                // 保留组件但不再使用固定假数据（实际首页已使用新版 TechAIAssistantHeader）
             }
             .padding(.horizontal, 20)
             .padding(.top, safeTop + 10)
@@ -1124,13 +1122,12 @@ struct VoiceCallView: View {
                 Task { await viewModel.handleImageDataAndSend(data) }
             }
             #elseif os(macOS)
-            MacImagePicker { url in
+            MacCameraView(onCapture: { data in
                 showCamera = false
-                guard let data = try? Data(contentsOf: url) else { return }
                 Task { await viewModel.handleImageDataAndSend(data) }
-            } onCancel: {
+            }, onCancel: {
                 showCamera = false
-            }
+            })
             #endif
         }
     }
@@ -1192,27 +1189,222 @@ private struct VoiceCallControlButton: View {
 }
 
 #if os(macOS)
-/// macOS 图片选择器：使用 NSOpenPanel 选择本地图片
+/// macOS 图片选择器：先显示操作按钮，避免 onAppear 直接弹 NSOpenPanel 导致卡死
 struct MacImagePicker: View {
     var onImage: (URL) -> Void
     var onCancel: () -> Void
 
     var body: some View {
-        Color.clear
-            .onAppear {
-                let panel = NSOpenPanel()
-                panel.allowsMultipleSelection = false
-                panel.canChooseDirectories = false
-                panel.canChooseFiles = true
-                panel.allowedContentTypes = [.image]
-                panel.begin { response in
-                    if response == .OK, let url = panel.url {
-                        onImage(url)
-                    } else {
-                        onCancel()
+        VStack(spacing: 20) {
+            Text("选择图片")
+                .font(.headline)
+                .foregroundStyle(AppTheme.textPrimary)
+            Text("从相册或文件夹选择一张图片发送给助理识别")
+                .font(.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+                .multilineTextAlignment(.center)
+            HStack(spacing: 16) {
+                Button("取消") {
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+                Button("选择图片") {
+                    let panel = NSOpenPanel()
+                    panel.allowsMultipleSelection = false
+                    panel.canChooseDirectories = false
+                    panel.canChooseFiles = true
+                    panel.allowedContentTypes = [.image]
+                    panel.begin { response in
+                        if response == .OK, let url = panel.url {
+                            onImage(url)
+                        } else {
+                            onCancel()
+                        }
                     }
                 }
+                .keyboardShortcut(.defaultAction)
             }
+        }
+        .frame(minWidth: 280, minHeight: 140)
+        .padding(24)
+    }
+}
+
+/// macOS 摄像头实时预览 + 拍照发送给助理
+struct MacCameraView: View {
+    var onCapture: (Data) -> Void
+    var onCancel: () -> Void
+
+    @StateObject private var session = MacCameraSession()
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                MacCameraPreviewView(session: session.session)
+                    .background(Color.black)
+                if session.errorMessage != nil {
+                    VStack(spacing: 12) {
+                        Image(systemName: "video.slash")
+                            .font(.largeTitle)
+                            .foregroundStyle(.white.opacity(0.8))
+                        Text(session.errorMessage ?? "无法打开摄像头")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.9))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                }
+            }
+            .frame(minWidth: 400, minHeight: 300)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            HStack(spacing: 16) {
+                Button("取消") {
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("拍照并发送给助理") {
+                    session.capturePhoto { data in
+                        if let data = data {
+                            onCapture(data)
+                        }
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(session.session == nil || session.errorMessage != nil)
+            }
+            .padding(16)
+        }
+        .frame(minWidth: 420, minHeight: 360)
+        .onAppear { session.start() }
+        .onDisappear { session.stop() }
+    }
+}
+
+/// 封装 AVCaptureSession，支持预览与拍照
+private final class MacCameraSession: NSObject, ObservableObject {
+    @Published private(set) var session: AVCaptureSession?
+    @Published private(set) var errorMessage: String?
+
+    private let sessionQueue = DispatchQueue(label: "mac.camera.session")
+    private var photoOutput: AVCapturePhotoOutput?
+    private var captureCompletion: ((Data?) -> Void)?
+
+    override init() {
+        super.init()
+    }
+
+    func start() {
+        sessionQueue.async { [weak self] in
+            self?.configureSession()
+        }
+    }
+
+    func stop() {
+        sessionQueue.async { [weak self] in
+            self?.session?.stopRunning()
+        }
+    }
+
+    func capturePhoto(completion: @escaping (Data?) -> Void) {
+        sessionQueue.async { [weak self] in
+            guard let self = self, let session = self.session, let photoOutput = self.photoOutput else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            self.captureCompletion = completion
+            let settings = AVCapturePhotoSettings()
+            photoOutput.capturePhoto(with: settings, delegate: self)
+        }
+    }
+
+    private func configureSession() {
+        let s = AVCaptureSession()
+        s.sessionPreset = .high
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
+               ?? AVCaptureDevice.default(for: .video) else {
+            DispatchQueue.main.async { [weak self] in
+                self?.errorMessage = "未找到摄像头"
+            }
+            return
+        }
+        guard let input = try? AVCaptureDeviceInput(device: device) else {
+            DispatchQueue.main.async { [weak self] in
+                self?.errorMessage = "无法打开摄像头"
+            }
+            return
+        }
+        if s.canAddInput(input) { s.addInput(input) }
+        let output = AVCapturePhotoOutput()
+        if s.canAddOutput(output) {
+            s.addOutput(output)
+            photoOutput = output
+        }
+        session = s
+        DispatchQueue.main.async { [weak self] in
+            self?.session = s
+            self?.errorMessage = nil
+        }
+        s.startRunning()
+    }
+}
+
+extension MacCameraSession: AVCapturePhotoCaptureDelegate {
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        let completion = captureCompletion
+        captureCompletion = nil
+        if let error = error {
+            DispatchQueue.main.async { completion?(nil) }
+            return
+        }
+        guard let data = photo.fileDataRepresentation() else {
+            DispatchQueue.main.async { completion?(nil) }
+            return
+        }
+        DispatchQueue.main.async { completion?(data) }
+    }
+}
+
+/// 将 AVCaptureSession 预览层嵌入 SwiftUI（macOS）
+private struct MacCameraPreviewView: NSViewRepresentable {
+    let session: AVCaptureSession?
+
+    func makeNSView(context: Context) -> NSView {
+        let view = CameraPreviewNSView()
+        view.session = session
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? CameraPreviewNSView)?.session = session
+    }
+}
+
+private final class CameraPreviewNSView: NSView {
+    var session: AVCaptureSession? {
+        didSet {
+            previewLayer?.removeFromSuperlayer()
+            guard let session = session else { return }
+            let layer = AVCaptureVideoPreviewLayer(session: session)
+            layer.videoGravity = .resizeAspect
+            layer.frame = bounds
+            layer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+            self.layer = layer
+            self.previewLayer = layer
+        }
+    }
+    private var previewLayer: AVCaptureVideoPreviewLayer?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layout() {
+        super.layout()
+        previewLayer?.frame = bounds
     }
 }
 #endif
@@ -1399,34 +1591,9 @@ struct AIAssistantChatHeader: View {
     var onMute: () -> Void = {}
     var onVoiceCall: () -> Void
     var onMore: () -> Void
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         HStack(spacing: 12) {
-            Button {
-                dismiss()
-            } label: {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "chevron.left")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.unifiedButtonBorder)
-                        .frame(width: 36, height: 36)
-                        .background(Color.white)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
-                    if unreadCount > 0 {
-                        Text("\(min(unreadCount, 99))")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(.white)
-                            .padding(4)
-                            .background(Color.red)
-                            .clipShape(Circle())
-                            .offset(x: 6, y: -6)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
@@ -2360,6 +2527,20 @@ struct MessageInputBar: View {
 }
 
 struct MemoryDetailView: View {
+    @StateObject private var statsViewModel = UserStatsViewModel()
+
+    private var summaryText: String {
+        if let s = statsViewModel.stats {
+            return "已记录 \(s.totalConversations) 条对话、\(s.totalTranslations) 条翻译、\(s.learningSessions) 次学习记录。"
+        } else if !TokenStore.shared.isLoggedIn {
+            return "登录后可在云端记录你的对话、翻译与学习记录。"
+        } else if statsViewModel.isLoading {
+            return "正在统计你的对话、翻译与学习记录…"
+        } else {
+            return "暂时没有可用的统计数据。"
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -2374,10 +2555,8 @@ struct MemoryDetailView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("记忆摘要")
                             .font(.headline)
-                        Text("已记录 28 条对话、12 条翻译、7 天学习记录。")
+                        Text(summaryText)
                             .font(.subheadline)
-                        Text("你更偏爱语音交互，系统将自动优化响应速度。")
-                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     .glassCard()
@@ -2385,7 +2564,7 @@ struct MemoryDetailView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("智能建议")
                             .font(.headline)
-                        Text("- 今天完成 15 分钟口语练习\n- 复习旅行场景常用短句")
+                        Text("- 建议每天至少完成 15 分钟口语或翻译练习\n- 多复习「旅行」「职场」等高频场景的短句")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -2394,6 +2573,9 @@ struct MemoryDetailView: View {
                 .padding(20)
             }
             .navigationTitle("长期记忆")
+            .task {
+                await statsViewModel.load()
+            }
         }
         .glassNavigation()
     }

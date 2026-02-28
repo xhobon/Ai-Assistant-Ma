@@ -218,27 +218,59 @@ struct AppTheme {
     static let primaryVariant = ModernColorSystem.AIPrimary.indigoDark
     static let secondary = ModernColorSystem.AIPrimary.violet
 
-    // 浅色背景（微暖）
-    static let background = ModernColorSystem.LightTheme.backgroundPrimary
-    static let backgroundSecondary = ModernColorSystem.LightTheme.backgroundSecondary
-    static let backgroundTertiary = ModernColorSystem.LightTheme.backgroundTertiary
-    static let surface = ModernColorSystem.LightTheme.surfaceElevated
-    static let surfaceMuted = ModernColorSystem.LightTheme.backgroundSecondary
-    static let surfaceElevated = ModernColorSystem.LightTheme.surfaceElevated
+    private static var isDark: Bool {
+        AppearanceStore.shared.mode == .dark
+    }
 
-    static let glassBackground = ModernColorSystem.LightTheme.glassBackground
-    static let glassBorder = ModernColorSystem.LightTheme.glassBorder
+    // 浅色 / 深色背景
+    static var background: Color {
+        isDark ? ModernColorSystem.DarkTheme.backgroundPrimary : ModernColorSystem.LightTheme.backgroundPrimary
+    }
+    static var backgroundSecondary: Color {
+        isDark ? ModernColorSystem.DarkTheme.backgroundSecondary : ModernColorSystem.LightTheme.backgroundSecondary
+    }
+    static var backgroundTertiary: Color {
+        isDark ? ModernColorSystem.DarkTheme.backgroundTertiary : ModernColorSystem.LightTheme.backgroundTertiary
+    }
+    static var surface: Color {
+        isDark ? ModernColorSystem.DarkTheme.surfaceElevated : ModernColorSystem.LightTheme.surfaceElevated
+    }
+    static var surfaceMuted: Color {
+        isDark ? ModernColorSystem.DarkTheme.backgroundSecondary : ModernColorSystem.LightTheme.backgroundSecondary
+    }
+    static var surfaceElevated: Color {
+        isDark ? ModernColorSystem.DarkTheme.surfaceElevated : ModernColorSystem.LightTheme.surfaceElevated
+    }
+
+    static var glassBackground: Color {
+        isDark ? ModernColorSystem.DarkTheme.glassBackground : ModernColorSystem.LightTheme.glassBackground
+    }
+    static var glassBorder: Color {
+        isDark ? ModernColorSystem.DarkTheme.glassBorder : ModernColorSystem.LightTheme.glassBorder
+    }
 
     // 文字层级
-    static let textPrimary = ModernColorSystem.Neutral.gray900
-    static let textSecondary = ModernColorSystem.Neutral.gray600
-    static let textTertiary = ModernColorSystem.Neutral.gray500
-    static let textMuted = ModernColorSystem.Neutral.gray400
+    static var textPrimary: Color {
+        isDark ? ModernColorSystem.Neutral.gray50 : ModernColorSystem.Neutral.gray900
+    }
+    static var textSecondary: Color {
+        isDark ? ModernColorSystem.Neutral.gray300 : ModernColorSystem.Neutral.gray600
+    }
+    static var textTertiary: Color {
+        isDark ? ModernColorSystem.Neutral.gray400 : ModernColorSystem.Neutral.gray500
+    }
+    static var textMuted: Color {
+        isDark ? ModernColorSystem.Neutral.gray500 : ModernColorSystem.Neutral.gray400
+    }
     static let textOnPrimary = Color.white
-    /// 输入框内文字颜色（黑色），确保与浅色背景对比清晰，所有输入框统一使用
-    static let inputText = Color.black
-    /// 输入框占位符颜色（深灰），与背景区分明显
-    static let inputPlaceholder = Color(white: 0.42)
+    /// 输入框内文字颜色（黑色/白色），确保与背景对比清晰
+    static var inputText: Color {
+        isDark ? Color.white : Color.black
+    }
+    /// 输入框占位符颜色
+    static var inputPlaceholder: Color {
+        isDark ? ModernColorSystem.Neutral.gray500 : Color(white: 0.42)
+    }
 
     static let success = ModernColorSystem.Semantic.success
     static let warning = ModernColorSystem.Semantic.warning
@@ -256,12 +288,22 @@ struct AppTheme {
     static let unifiedButtonBorder = Color(red: 0.61, green: 0.52, blue: 0.90)    // 次要按钮描边/文字 #9b84e6
 
     // 边框与阴影
-    static let border = ModernColorSystem.LightTheme.glassBorder
-    static let borderStrong = Color.black.opacity(0.10)
+    static var border: Color {
+        isDark ? ModernColorSystem.DarkTheme.glassBorder : ModernColorSystem.LightTheme.glassBorder
+    }
+    static var borderStrong: Color {
+        isDark ? Color.white.opacity(0.15) : Color.black.opacity(0.10)
+    }
     static let neonGlow = ModernColorSystem.AIPrimary.indigo.opacity(0.25)
-    static let softShadow = Color.black.opacity(0.05)
-    static let mediumShadow = Color.black.opacity(0.10)
-    static let glowShadow = Color.black.opacity(0.06)
+    static var softShadow: Color {
+        isDark ? Color.black.opacity(0.6) : Color.black.opacity(0.05)
+    }
+    static var mediumShadow: Color {
+        isDark ? Color.black.opacity(0.8) : Color.black.opacity(0.10)
+    }
+    static var glowShadow: Color {
+        isDark ? Color.black.opacity(0.9) : Color.black.opacity(0.06)
+    }
     
     // 渐变（靛蓝 → 紫）
     static let primaryGradient = LinearGradient(
@@ -273,41 +315,49 @@ struct AppTheme {
         endPoint: .bottomTrailing
     )
 
-    static let heroGradient = LinearGradient(
-        colors: [
-            ModernColorSystem.LightTheme.backgroundPrimary,
-            ModernColorSystem.AIPrimary.indigo.opacity(0.04),
-            ModernColorSystem.LightTheme.backgroundSecondary
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var heroGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                isDark ? ModernColorSystem.DarkTheme.backgroundPrimary : ModernColorSystem.LightTheme.backgroundPrimary,
+                ModernColorSystem.AIPrimary.indigo.opacity(isDark ? 0.14 : 0.04),
+                isDark ? ModernColorSystem.DarkTheme.backgroundSecondary : ModernColorSystem.LightTheme.backgroundSecondary
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
     
-    static let backgroundGradient = LinearGradient(
-        colors: [
-            ModernColorSystem.LightTheme.backgroundPrimary,
-            ModernColorSystem.LightTheme.backgroundSecondary,
-            ModernColorSystem.LightTheme.backgroundTertiary
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var backgroundGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                background,
+                backgroundSecondary,
+                backgroundTertiary
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
     
     /// 与 Tab 容器一致的页面背景，各子页面统一使用
-    static let pageBackground = LinearGradient(
-        colors: [background, backgroundSecondary],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static var pageBackground: LinearGradient {
+        LinearGradient(
+            colors: [background, backgroundSecondary],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
     
-    static let cardGradient = LinearGradient(
-        colors: [
-            ModernColorSystem.LightTheme.surfaceElevated,
-            ModernColorSystem.LightTheme.backgroundTertiary
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static var cardGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                surfaceElevated,
+                backgroundTertiary
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
     
     static let neonGradient = LinearGradient(
         colors: [
@@ -318,15 +368,17 @@ struct AppTheme {
         endPoint: .bottomTrailing
     )
     
-    static let glassGradient = LinearGradient(
-        colors: [
-            Color.white.opacity(0.9),
-            ModernColorSystem.LightTheme.glassBackground,
-            Color.white.opacity(0.85)
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var glassGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                isDark ? Color.white.opacity(0.06) : Color.white.opacity(0.9),
+                glassBackground,
+                isDark ? Color.white.opacity(0.04) : Color.white.opacity(0.85)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
     
     static let pulseGradient = LinearGradient(
         colors: [
@@ -1646,7 +1698,7 @@ struct UnifiedAppButton: View {
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 18)
-            .background(style == .primary ? AppTheme.unifiedButtonPrimary : Color.white)
+            .background(style == .primary ? AppTheme.unifiedButtonPrimary : AppTheme.surface)
             .foregroundStyle(style == .primary ? Color.white : AppTheme.unifiedButtonBorder)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(
@@ -1670,7 +1722,7 @@ struct UnifiedAppIconButton: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isPrimary ? .white : AppTheme.unifiedButtonBorder)
                 .frame(width: 36, height: 36)
-                .background(isPrimary ? AppTheme.unifiedButtonPrimary : Color.white)
+                .background(isPrimary ? AppTheme.unifiedButtonPrimary : AppTheme.surface)
                 .clipShape(Circle())
                 .overlay(
                     Circle()
@@ -2609,6 +2661,32 @@ struct OptimizedAsyncImage: View {
         }
         .clipped()
         .transition(.opacity)
+    }
+}
+
+// MARK: - Unified page scaffold
+struct AppPageScaffold<Content: View>: View {
+    var maxWidth: CGFloat? = 980
+    var horizontalPadding: CGFloat = 20
+    var topPadding: CGFloat = 16
+    var bottomPadding: CGFloat = 32
+    var spacing: CGFloat = 16
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: spacing) {
+                content()
+            }
+            .frame(maxWidth: maxWidth, alignment: .topLeading)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.top, topPadding)
+            .padding(.bottom, bottomPadding)
+            .frame(maxWidth: .infinity, alignment: .top)
+        }
+        .scrollIndicators(.automatic)
+        .background(AppTheme.pageBackground.ignoresSafeArea())
+        .hideNavigationBarOnMac()
     }
 }
 

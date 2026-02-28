@@ -1189,6 +1189,49 @@ app.delete("/api/user/memory/:id", authMiddleware, async (req, res) => {
   return res.json({ success: true });
 });
 
+// ---------- 用户整体使用统计（对话 / 翻译 / 学习） ----------
+app.get("/api/user/stats", authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [totalConversations, totalTranslations, totalLearningAgg, learningSessions] = await Promise.all([
+    prisma.conversation.count({ where: { userId } }),
+    prisma.translationHistory.count({ where: { userId } }),
+    prisma.learningSession.aggregate({
+      _sum: { minutes: true },
+      where: { userId }
+    }),
+    prisma.learningSession.count({ where: { userId } })
+  ]);
+
+  const [todayConversations, todayTranslations, todayLearningAgg] = await Promise.all([
+    prisma.conversation.count({
+      where: { userId, createdAt: { gte: today } }
+    }),
+    prisma.translationHistory.count({
+      where: { userId, createdAt: { gte: today } }
+    }),
+    prisma.learningSession.aggregate({
+      _sum: { minutes: true },
+      where: { userId, sessionDate: { gte: today } }
+    })
+  ]);
+
+  const totalLearningMinutes = totalLearningAgg?._sum?.minutes || 0;
+  const todayLearningMinutes = todayLearningAgg?._sum?.minutes || 0;
+
+  return res.json({
+    todayConversations,
+    todayTranslations,
+    todayLearningMinutes,
+    totalConversations,
+    totalTranslations,
+    totalLearningMinutes,
+    learningSessions
+  });
+});
+
 app.use((err, req, res, next) => {
   console.error("Express error:", err?.message || err);
   res.status(500).json({

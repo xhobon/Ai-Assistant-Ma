@@ -30,6 +30,8 @@ struct AITranslateHomeView: View {
                         .padding(.bottom, 32)
                 }
                 .padding(.top, 8)
+                .frame(maxWidth: 980, alignment: .top)
+                .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.automatic)
             .background(AppTheme.pageBackground.ignoresSafeArea())
@@ -661,40 +663,44 @@ struct RealTimeTranslationView: View {
                             ForEach(viewModel.entries) { entry in
                                 VStack(spacing: 8) {
                                     if entry.sourceLanguage == .chinese {
-                                        // 原文是中文：中文在上，印尼文在下
-                                        SpeechBubbleCard(
+                                        // 原文是中文：中文为“原文气泡”，印尼文为“译文气泡”
+                                        RealtimeSpeechBubble(
                                             title: "中文",
                                             text: entry.chinese,
                                             placeholder: "",
-                                            tint: AppTheme.accentWarm,
+                                            languageTint: AppTheme.accentWarm,
                                             alignTrailing: true,
+                                            isSource: true,
                                             languageForSpeech: "zh-CN",
                                             onCopy: { ClipboardService.copy(entry.chinese) }
                                         )
-                                        SpeechBubbleCard(
+                                        RealtimeSpeechBubble(
                                             title: "印度尼西亚语",
                                             text: entry.indonesian,
                                             placeholder: "",
-                                            tint: AppTheme.brandBlue,
+                                            languageTint: AppTheme.brandBlue,
+                                            isSource: false,
                                             languageForSpeech: "id-ID",
                                             onCopy: { ClipboardService.copy(entry.indonesian) }
                                         )
                                     } else {
-                                        // 原文是印尼文：印尼文在上，中文在下
-                                        SpeechBubbleCard(
+                                        // 原文是印尼文：印尼文为“原文气泡”，中文为“译文气泡”
+                                        RealtimeSpeechBubble(
                                             title: "印度尼西亚语",
                                             text: entry.indonesian,
                                             placeholder: "",
-                                            tint: AppTheme.brandBlue,
+                                            languageTint: AppTheme.brandBlue,
+                                            isSource: true,
                                             languageForSpeech: "id-ID",
                                             onCopy: { ClipboardService.copy(entry.indonesian) }
                                         )
-                                        SpeechBubbleCard(
+                                        RealtimeSpeechBubble(
                                             title: "中文",
                                             text: entry.chinese,
                                             placeholder: "",
-                                            tint: AppTheme.accentWarm,
+                                            languageTint: AppTheme.accentWarm,
                                             alignTrailing: true,
+                                            isSource: false,
                                             languageForSpeech: "zh-CN",
                                             onCopy: { ClipboardService.copy(entry.chinese) }
                                         )
@@ -703,42 +709,50 @@ struct RealTimeTranslationView: View {
                             }
                             VStack(spacing: 8) {
                                 if viewModel.currentSourceLanguage == .chinese {
-                                    // 当前原文预期为中文：中文在上
-                                    SpeechBubbleCard(
+                                    // 当前原文预期为中文：中文为“原文气泡”，印尼文为“译文气泡”
+                                    let chineseText = viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText
+                                    let indonesianText = viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText
+                                    RealtimeSpeechBubble(
                                         title: "中文",
-                                        text: viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText,
+                                        text: chineseText,
                                         placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
-                                        tint: AppTheme.accentWarm,
+                                        languageTint: AppTheme.accentWarm,
                                         alignTrailing: true,
+                                        isSource: true,
                                         languageForSpeech: "zh-CN",
-                                        onCopy: { ClipboardService.copy(viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText) }
+                                        onCopy: { ClipboardService.copy(chineseText) }
                                     )
-                                    SpeechBubbleCard(
+                                    RealtimeSpeechBubble(
                                         title: "印度尼西亚语",
-                                        text: viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText,
+                                        text: indonesianText,
                                         placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
-                                        tint: AppTheme.brandBlue,
+                                        languageTint: AppTheme.brandBlue,
+                                        isSource: false,
                                         languageForSpeech: "id-ID",
-                                        onCopy: { ClipboardService.copy(viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText) }
+                                        onCopy: { ClipboardService.copy(indonesianText) }
                                     )
                                 } else {
-                                    // 当前原文预期为印尼文：印尼文在上
-                                    SpeechBubbleCard(
+                                    // 当前原文预期为印尼文：印尼文为“原文气泡”，中文为“译文气泡”
+                                    let indonesianText = viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText
+                                    let chineseText = viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText
+                                    RealtimeSpeechBubble(
                                         title: "印度尼西亚语",
-                                        text: viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText,
+                                        text: indonesianText,
                                         placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
-                                        tint: AppTheme.brandBlue,
+                                        languageTint: AppTheme.brandBlue,
+                                        isSource: true,
                                         languageForSpeech: "id-ID",
-                                        onCopy: { ClipboardService.copy(viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText) }
+                                        onCopy: { ClipboardService.copy(indonesianText) }
                                     )
-                                    SpeechBubbleCard(
+                                    RealtimeSpeechBubble(
                                         title: "中文",
-                                        text: viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText,
+                                        text: chineseText,
                                         placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
-                                        tint: AppTheme.accentWarm,
+                                        languageTint: AppTheme.accentWarm,
                                         alignTrailing: true,
+                                        isSource: false,
                                         languageForSpeech: "zh-CN",
-                                        onCopy: { ClipboardService.copy(viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText) }
+                                        onCopy: { ClipboardService.copy(chineseText) }
                                     )
                                 }
                             }
@@ -971,12 +985,12 @@ struct VoiceRecordButton: View {
             VStack(spacing: 4) {
                 ZStack {
                     Circle()
-                        .fill(isRecording ? AppTheme.unifiedButtonPrimary : Color.white)
+                        .fill(isRecording ? tint : tint.opacity(0.14))
                         .frame(width: 32, height: 32)
-                        .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: isRecording ? 0 : 1))
+                        .overlay(Circle().stroke(isRecording ? Color.clear : tint.opacity(0.35), lineWidth: 1))
                     Image(systemName: isRecording ? "stop.fill" : "mic.fill")
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(isRecording ? .white : AppTheme.unifiedButtonBorder)
+                        .foregroundStyle(isRecording ? .white : tint)
                 }
                 Text(title)
                     .font(.caption2.weight(.semibold))
@@ -1043,6 +1057,119 @@ struct SpeechBubbleCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
         .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+}
+
+/// 实时语音翻译：对话式气泡（贴近 AI 助理对话样式）
+struct RealtimeSpeechBubble: View {
+    let title: String
+    let text: String
+    let placeholder: String
+    let languageTint: Color
+    var alignTrailing: Bool = false
+    var isSource: Bool = false
+    var languageForSpeech: String? = nil
+    var onCopy: (() -> Void)? = nil
+
+    @ObservedObject private var speechService = SpeechService.shared
+    private var bubbleBackground: Color {
+        isSource ? languageTint.opacity(0.9) : languageTint.opacity(0.08)
+    }
+    private var bubbleTextColor: Color {
+        isSource ? .white : AppTheme.textPrimary
+    }
+
+    private var displayedText: String { text }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            if alignTrailing { Spacer(minLength: 0) }
+            if !alignTrailing {
+                RealtimeTranslationAvatar(tint: languageTint, isSource: isSource)
+            }
+
+            VStack(alignment: alignTrailing ? .trailing : .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    if alignTrailing { Spacer(minLength: 0) }
+
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(languageTint.opacity(0.6))
+                            .frame(width: 6, height: 6)
+                        Text(title)
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(languageTint)
+
+                    if let lang = languageForSpeech, !displayedText.isEmpty {
+                        HStack(spacing: 12) {
+                            Button {
+                                if speechService.isPlaying {
+                                    speechService.stopSpeaking()
+                                } else {
+                                    SpeechService.shared.speak(displayedText, language: lang)
+                                }
+                            } label: {
+                                Label("朗读", systemImage: speechService.isPlaying ? "stop.fill" : "speaker.wave.2.fill")
+                                    .labelStyle(.iconOnly)
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                onCopy?()
+                            } label: {
+                                Label("复制", systemImage: "doc.on.doc.fill")
+                                    .labelStyle(.iconOnly)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(isSource ? Color.white.opacity(0.9) : AppTheme.textSecondary)
+                    }
+
+                    if !alignTrailing { Spacer(minLength: 0) }
+                }
+
+                Text(displayedText.isEmpty ? placeholder : displayedText)
+                    .font(.subheadline)
+                    .foregroundStyle(
+                        bubbleTextColor.opacity(displayedText.isEmpty ? 0.72 : 1)
+                    )
+                    .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
+                    .multilineTextAlignment(alignTrailing ? .trailing : .leading)
+                    .lineLimit(10)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(bubbleBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(languageTint.opacity(isSource ? 0 : 0.25), lineWidth: isSource ? 0 : 1)
+            )
+            .shadow(color: languageTint.opacity(isSource ? 0.28 : 0.12), radius: 6, x: 0, y: 2)
+            .frame(maxWidth: 380, alignment: alignTrailing ? .trailing : .leading)
+
+            if !alignTrailing { Spacer(minLength: 0) }
+        }
+        .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
+    }
+}
+
+private struct RealtimeTranslationAvatar: View {
+    let tint: Color
+    let isSource: Bool
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(tint.opacity(isSource ? 0.18 : 0.22))
+                .frame(width: 34, height: 34)
+            Image(systemName: isSource ? "mic.fill" : "globe.asia.australia.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(tint.opacity(0.9))
+        }
+        .padding(.top, 2)
     }
 }
 
@@ -1168,7 +1295,6 @@ struct DualTranslationInputCard: View {
                 onClear: {
                     viewModel.sourceText = ""
                 },
-                showActions: !viewModel.sourceText.isEmpty,
                 language: viewModel.sourceLang,
                 onEnterToTranslate: { viewModel.translate() }
             )
@@ -1190,7 +1316,6 @@ struct DualTranslationInputCard: View {
                 onClear: {
                     viewModel.translatedText = ""
                 },
-                showActions: !viewModel.translatedText.isEmpty,
                 language: viewModel.targetLang,
                 onEnterToTranslate: { viewModel.translate() }
             )
@@ -1214,40 +1339,18 @@ struct TranslationInputBox: View {
     let onPlay: () -> Void
     let onCopy: () -> Void
     let onClear: () -> Void
-    let showActions: Bool
     let language: LanguageOption
     /// 回车键或 Cmd+Enter 时调用（翻译）
     var onEnterToTranslate: (() -> Void)? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 标题栏：标题 + 字数统计 + 操作按钮
+            // 标题栏：标题 + 字数统计（上方不再重复放朗读/复制按钮）
             HStack {
                 Text(title)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer(minLength: 0)
-                if showActions {
-                    HStack(spacing: 8) {
-                        Button(action: onPlay) {
-                            Image(systemName: "speaker.wave.2.fill")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.unifiedButtonBorder)
-                                .frame(width: 24, height: 24)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("语音播放")
-                        
-                        Button(action: onCopy) {
-                            Image(systemName: "doc.on.doc.fill")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.unifiedButtonBorder)
-                                .frame(width: 24, height: 24)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("复制")
-                    }
-                }
                 if !text.isEmpty {
                     Text("\(text.count)/5000")
                         .font(.caption2)
@@ -1294,17 +1397,18 @@ struct TranslationInputBox: View {
                 .disabled(text.isEmpty)
                 .accessibilityLabel("语音播放")
                 
-                Button { } label: {
-                    Image(systemName: "doc.text.fill")
+                Button(action: onCopy) {
+                    Image(systemName: "doc.on.doc.fill")
                         .font(.subheadline)
-                        .foregroundStyle(AppTheme.unifiedButtonBorder)
+                        .foregroundStyle(text.isEmpty ? AppTheme.textTertiary : AppTheme.unifiedButtonBorder)
                         .frame(width: 32, height: 32)
                         .background(Color.white)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("文档")
+                .disabled(text.isEmpty)
+                .accessibilityLabel("复制")
                 
                 Spacer(minLength: 0)
 

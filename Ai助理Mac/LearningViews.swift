@@ -26,19 +26,15 @@ struct IndonesianLearningView: View {
                     )
                     .padding(.horizontal, horizontalPadding)
 
-                    LearningInsightCard(
-                        title: "今日目标",
-                        subtitle: "完成 15 个高频词 + 3 句口语",
-                        detail: "连续学习 5 天可解锁进阶场景"
-                    )
-                    .padding(.horizontal, horizontalPadding)
-
-                    LearningOverviewRow()
+                    LearningOverviewRow(viewModel: viewModel)
                         .padding(.horizontal, horizontalPadding)
 
                     LearningResourceSection(
                         categories: viewModel.categories,
-                        selectedCategoryId: $viewModel.selectedCategoryId
+                        selectedCategoryId: $viewModel.selectedCategoryId,
+                        difficulties: difficulties,
+                        selectedDifficulty: $selectedDifficulty,
+                        showFavoritesOnly: $showFavoritesOnly
                     )
                     .padding(.horizontal, horizontalPadding)
 
@@ -51,6 +47,8 @@ struct IndonesianLearningView: View {
                 }
                 .padding(.top, 8)
                 .padding(.bottom, 32)
+                .frame(maxWidth: 980, alignment: .top)
+                .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.automatic)
             .background(
@@ -176,26 +174,6 @@ struct LearningSearchPanel: View {
     var body: some View {
         VStack(spacing: 10) {
             SearchBar(text: $searchText)
-            FilterRow(
-                difficulties: difficulties,
-                selected: $selectedDifficulty,
-                showFavoritesOnly: $showFavoritesOnly
-            )
-            HStack {
-                Text("筛选：\(selectedDifficulty)")
-                    .font(.caption2)
-                    .foregroundStyle(AppTheme.textTertiary)
-                Spacer(minLength: 0)
-                Button {
-                    searchText = ""
-                    selectedDifficulty = "全部"
-                    showFavoritesOnly = false
-                } label: {
-                    Text("重置")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(AppTheme.primary)
-                }
-            }
         }
         .padding(12)
         .background(AppTheme.surface)
@@ -242,33 +220,88 @@ struct LearningInsightCard: View {
 }
 
 struct LearningOverviewRow: View {
+    @ObservedObject var viewModel: LearningViewModel
+
     var body: some View {
         VStack(spacing: 10) {
-            LearningProgressCard()
-            TodayPlanCard()
+            LearningProgressCard(
+                completedText: progressCompletedText,
+                daysText: "\(viewModel.activeDaysCount) 天",
+                masteredText: "\(viewModel.masteredCount)"
+            )
         }
+        .onAppear {
+            viewModel.registerActiveDayIfNeeded()
+        }
+    }
+
+    private var progressCompletedText: String {
+        let total = viewModel.totalVocabCount
+        let mastered = viewModel.masteredCount
+        guard total > 0 else { return "0/0" }
+        return "\(mastered)/\(total)"
     }
 }
 
 struct LearningResourceSection: View {
     let categories: [VocabCategory]
     @Binding var selectedCategoryId: String?
+    let difficulties: [String]
+    @Binding var selectedDifficulty: String
+    @Binding var showFavoritesOnly: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
+            HStack(alignment: .center, spacing: 12) {
+                // 左侧：主标题 + 小标题
                 VStack(alignment: .leading, spacing: 2) {
                     Text("学习主题")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("按主题浏览高频词汇与场景")
+                    Text("按主题浏览高频词汇与场景 · 共 \(categories.count) 类")
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
-                Spacer(minLength: 0)
-                Text("共 \(categories.count) 类")
-                    .font(.caption2)
-                    .foregroundStyle(AppTheme.textTertiary)
+
+                Spacer(minLength: 8)
+
+                // 右侧：难度筛选 + 仅看收藏，与标题垂直居中对齐
+                HStack(spacing: 6) {
+                    ForEach(difficulties, id: \.self) { item in
+                        Button {
+                            selectedDifficulty = item
+                        } label: {
+                            Text(item)
+                                .font(.caption.weight(selectedDifficulty == item ? .semibold : .regular))
+                                .foregroundStyle(selectedDifficulty == item ? .white : AppTheme.textSecondary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(selectedDifficulty == item ? AppTheme.accentStrong : AppTheme.surface)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Button {
+                        showFavoritesOnly.toggle()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: showFavoritesOnly ? "heart.fill" : "heart")
+                            Text("仅看收藏")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(showFavoritesOnly ? AppTheme.accentStrong : AppTheme.textSecondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(showFavoritesOnly ? AppTheme.accentStrong.opacity(0.15) : AppTheme.surface)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -416,15 +449,19 @@ struct FilterRow: View {
 }
 
 struct LearningProgressCard: View {
+    let completedText: String
+    let daysText: String
+    let masteredText: String
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("学习进度")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             HStack(spacing: 8) {
-                ProgressStatCard(title: "完成", value: "8/20", color: AppTheme.accentStrong, icon: "checkmark.seal.fill")
-                ProgressStatCard(title: "坚持", value: "5 天", color: AppTheme.brandBlue, icon: "flame.fill")
-                ProgressStatCard(title: "掌握", value: "126", color: AppTheme.accentWarm, icon: "bookmark.fill")
+                ProgressStatCard(title: "完成", value: completedText, color: AppTheme.accentStrong, icon: "checkmark.seal.fill")
+                ProgressStatCard(title: "坚持", value: daysText, color: AppTheme.brandBlue, icon: "flame.fill")
+                ProgressStatCard(title: "掌握", value: masteredText, color: AppTheme.accentWarm, icon: "bookmark.fill")
             }
         }
         .padding(12)
@@ -647,8 +684,18 @@ struct VocabularyCard: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                ExampleSentenceRow(title: "中文例句", text: item.exampleZh, language: "zh-CN")
-                ExampleSentenceRow(title: "印尼语例句", text: item.exampleId, language: "id-ID")
+                ExampleSentenceRow(
+                    title: "中文例句",
+                    text: item.exampleZh,
+                    language: "zh-CN",
+                    onCopy: { ClipboardService.copy(item.exampleZh) }
+                )
+                ExampleSentenceRow(
+                    title: "印尼语例句",
+                    text: item.exampleId,
+                    language: "id-ID",
+                    onCopy: { ClipboardService.copy(item.exampleId) }
+                )
             }
             .padding(8)
             .background(AppTheme.surfaceMuted)
@@ -669,6 +716,7 @@ struct ExampleSentenceRow: View {
     let title: String
     let text: String
     let language: String
+    var onCopy: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -683,15 +731,15 @@ struct ExampleSentenceRow: View {
 
             Spacer()
 
-            Button {
-                SpeechService.shared.speak(text, language: language)
-            } label: {
-                Image(systemName: "speaker.wave.2.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(AppTheme.accentWarm)
-                    .frame(width: 28, height: 28)
-                    .background(AppTheme.accentWarm.opacity(0.12))
-                    .clipShape(Circle())
+            HStack(spacing: 8) {
+                CircleIconButton(systemImage: "speaker.wave.2") {
+                    SpeechService.shared.speak(text, language: language)
+                }
+                if let onCopy {
+                    CircleIconButton(systemImage: "doc.on.doc") {
+                        onCopy()
+                    }
+                }
             }
         }
     }

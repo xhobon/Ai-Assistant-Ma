@@ -51,59 +51,51 @@ struct ProfileCenterView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 18) {
-                    ProfileLoginCard {
-                        authMode = .login
-                        showAuthSheet = true
-                    }
+            AppPageScaffold(maxWidth: 960, spacing: 18) {
+                ProfileLoginCard {
+                    authMode = .login
+                    showAuthSheet = true
+                }
 
-                    VIPBannerCard {
-                        showMemberRecharge = true
-                    }
+                VIPBannerCard {
+                    showMemberRecharge = true
+                }
 
-                    ProfileQuickActionRow(actions: quickActions) { action in
-                        switch action.id {
-                        case "fav": showFavorites = true
-                        case "wallet": showWallet = true
-                        case "task": showTaskCenter = true
-                        case "gift": showShareGift = true
-                        default: break
-                        }
-                    }
-
-                    ProfileSectionHeader(title: "设置入口")
-                    ProfileMenuList(items: settingsItems) { item in
-                        switch item.id {
-                        case "settings": showSettings = true
-                        case "account": showAccount = true
-                        case "memory": showAssistantMemory = true
-                        case "member": showMemberExplain = true
-                        case "faq": showFAQ = true
-                        default: break
-                        }
-                    }
-                    ProfileHintCard(text: "在设置中可管理通知、隐私与语言等选项，确保你的对话记录与个人信息安全。")
-
-                    ProfileSectionHeader(title: "服务与支持")
-                    ProfileMenuList(items: helpItems) { item in
-                        switch item.id {
-                        case "clear": showClearConfirm = true
-                        case "about": showAbout = true
-                        case "agreement": showAgreement = true
-                        case "terms": showTerms = true
-                        case "support": showSupport = true
-                        default: break
-                        }
+                ProfileQuickActionRow(actions: quickActions) { action in
+                    switch action.id {
+                    case "fav": showFavorites = true
+                    case "wallet": showWallet = true
+                    case "task": showTaskCenter = true
+                    case "gift": showShareGift = true
+                    default: break
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 32)
+
+                ProfileSectionHeader(title: "设置入口")
+                ProfileMenuList(items: settingsItems) { item in
+                    switch item.id {
+                    case "settings": showSettings = true
+                    case "account": showAccount = true
+                    case "memory": showAssistantMemory = true
+                    case "member": showMemberExplain = true
+                    case "faq": showFAQ = true
+                    default: break
+                    }
+                }
+                ProfileHintCard(text: "在设置中可管理通知、隐私与语言等选项，确保你的对话记录与个人信息安全。")
+
+                ProfileSectionHeader(title: "服务与支持")
+                ProfileMenuList(items: helpItems) { item in
+                    switch item.id {
+                    case "clear": showClearConfirm = true
+                    case "about": showAbout = true
+                    case "agreement": showAgreement = true
+                    case "terms": showTerms = true
+                    case "support": showSupport = true
+                    default: break
+                    }
+                }
             }
-            .scrollIndicators(.automatic)
-            .background(AppTheme.pageBackground.ignoresSafeArea())
-            .hideNavigationBarOnMac()
             .navigationDestination(isPresented: $showMemberRecharge) {
                 MemberRechargeView()
             }
@@ -618,24 +610,18 @@ struct MemberRechargeView: View {
     ]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                MemberRechargeHeader {
-                    dismiss()
-                }
-
-                MemberBenefitsCard(benefits: benefits)
-
-                ProfileSectionHeader(title: "充值会员", subtitle: "推荐永久会员方案")
-                MemberPlanCard(plans: plans, selectedPlanId: $selectedPlanId) {
-                }
-                PaymentOptionCard(options: paymentOptions, selectedId: $selectedPaymentId)
+        AppPageScaffold(maxWidth: 960, spacing: 18) {
+            MemberRechargeHeader {
+                dismiss()
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 28)
+
+            MemberBenefitsCard(benefits: benefits)
+
+            ProfileSectionHeader(title: "充值会员", subtitle: "推荐永久会员方案")
+            MemberPlanCard(plans: plans, selectedPlanId: $selectedPlanId) {
+            }
+            PaymentOptionCard(options: paymentOptions, selectedId: $selectedPaymentId)
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
@@ -734,21 +720,15 @@ struct TaskCenterView: View {
     ]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                TaskCenterHeader {
-                    dismiss()
-                }
-
-                TaskSummaryCard(availableDays: 0)
-
-                TaskListCard(tasks: tasks)
+        AppPageScaffold(maxWidth: 960, spacing: 18) {
+            TaskCenterHeader {
+                dismiss()
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 28)
+
+            TaskSummaryCard(availableDays: 0)
+
+            TaskListCard(tasks: tasks)
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
@@ -1436,12 +1416,16 @@ struct AuthView: View {
             isSendingCode = true
         }
         do {
-            try await APIClient.shared.sendEmailCode(
+            let codeReturned = try await APIClient.shared.sendEmailCode(
                 email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                 purpose: mode == .login ? "login" : "register"
             )
             await MainActor.run {
-                message = "验证码已发送，请在 10 分钟内完成验证。当前版本如未接入邮箱服务，可在后端日志中查看验证码。"
+                if let c = codeReturned, !c.isEmpty {
+                    message = "验证码已发送，请在 10 分钟内完成验证。\n\n当前测试环境，本次验证码为：\(c)"
+                } else {
+                    message = "验证码已发送，请在 10 分钟内完成验证。"
+                }
             }
         } catch {
             await MainActor.run {
@@ -1570,7 +1554,6 @@ struct AuthSocialButton: View {
 // MARK: - 我的收藏（学习词汇收藏）
 
 struct MyFavoritesView: View {
-    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = LearningViewModel()
 
     private var favoriteItems: [VocabItem] {
@@ -1578,29 +1561,8 @@ struct MyFavoritesView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.surface)
-                            .clipShape(Circle())
-                    }
-                    Spacer()
-                    Text("我的收藏")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Spacer()
-                    Color.clear.frame(width: 36, height: 36)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
+        SettingsPage(title: "我的收藏") {
+            SettingsCard(title: "已收藏词汇", subtitle: "在学习页将词汇或句子加入收藏后，会显示在这里。") {
                 if favoriteItems.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "star.slash")
@@ -1615,7 +1577,7 @@ struct MyFavoritesView: View {
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 60)
+                    .padding(.vertical, 16)
                 } else {
                     LazyVStack(spacing: 12) {
                         ForEach(favoriteItems) { item in
@@ -1624,13 +1586,9 @@ struct MyFavoritesView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 32)
                 }
             }
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
@@ -1669,103 +1627,44 @@ struct FavoriteVocabRow: View {
 // MARK: - 我的钱包
 
 struct MyWalletView: View {
-    @Environment(\.dismiss) private var dismiss
-
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.surface)
-                            .clipShape(Circle())
-                    }
-                    Spacer()
-                    Text("我的钱包")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Spacer()
-                    Color.clear.frame(width: 36, height: 36)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
-                VStack(spacing: 12) {
-                    Text("余额")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                    Text("¥ 0.00")
-                        .font(.title.weight(.bold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .padding(.horizontal, 20)
-
-                Text("收支记录")
-                    .font(.subheadline.weight(.semibold))
+        SettingsPage(title: "我的钱包") {
+            SettingsCard(title: "账户余额", subtitle: "当前可用余额") {
+                Text("¥ 0.00")
+                    .font(.title.weight(.bold))
                     .foregroundStyle(AppTheme.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
 
+            SettingsCard(title: "收支记录", subtitle: "最近交易记录") {
                 Text("暂无记录")
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 32)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
             }
-            .padding(.bottom, 32)
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
 // MARK: - 分享有礼
 
 struct ShareGiftView: View {
-    @Environment(\.dismiss) private var dismiss
+    @State private var toastMessage: String?
+    private let inviteURL = "https://ai-assistant.example.com/invite"
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.surface)
-                            .clipShape(Circle())
-                    }
-                    Spacer()
-                    Text("分享有礼")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Spacer()
-                    Color.clear.frame(width: 36, height: 36)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
+        SettingsPage(title: "分享有礼") {
+            SettingsCard(title: "邀请好友，双方各得奖励", subtitle: "每成功邀请 1 位好友注册并登录，您与好友均可获得 3 天会员体验。多邀多得，上不封顶。") {
                 VStack(spacing: 16) {
                     Image(systemName: "gift.fill")
                         .font(.system(size: 56))
                         .foregroundStyle(AppTheme.accentWarm)
-                    Text("邀请好友，双方各得奖励")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text("每成功邀请 1 位好友注册并登录，您与好友均可获得 3 天会员体验。多邀多得，上不封顶。")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .multilineTextAlignment(.center)
                     Button {
-                        // 可接入 UIActivityViewController 或分享链接
+                        ClipboardService.copy(inviteURL)
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            toastMessage = "邀请链接已复制"
+                        }
                     } label: {
                         Label("分享邀请链接", systemImage: "square.and.arrow.up")
                             .font(.subheadline.weight(.semibold))
@@ -1777,15 +1676,9 @@ struct ShareGiftView: View {
                     }
                     .padding(.top, 8)
                 }
-                .padding(24)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .padding(.horizontal, 20)
             }
-            .padding(.bottom, 32)
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
+        .toast(message: $toastMessage)
     }
 }
 
@@ -1838,30 +1731,9 @@ struct AccountSecurityView: View {
 // MARK: - 会员说明
 
 struct MemberExplainView: View {
-    @Environment(\.dismiss) private var dismiss
-
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.surface)
-                            .clipShape(Circle())
-                    }
-                    Spacer()
-                    Text("会员说明")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Spacer()
-                    Color.clear.frame(width: 36, height: 36)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
+        SettingsPage(title: "会员说明") {
+            SettingsCard(title: "会员规则", subtitle: "权益、续费与退款说明") {
                 VStack(alignment: .leading, spacing: 16) {
                     sectionTitle("会员权益")
                     Text("• 无限制 AI 对话与翻译\n• 专业学习内容与场景解锁\n• 优先响应与专属助理能力\n• 更多权益持续更新")
@@ -1878,15 +1750,8 @@ struct MemberExplainView: View {
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
-                .padding(20)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .padding(.horizontal, 20)
             }
-            .padding(.bottom, 32)
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 
     private func sectionTitle(_ title: String) -> some View {

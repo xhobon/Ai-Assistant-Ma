@@ -192,10 +192,11 @@ struct ToastPresenter: ViewModifier {
     let duration: Duration
 
     func body(content: Content) -> some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .bottom) {
             content
             if let message {
                 ToastView(text: message)
+                    .frame(maxWidth: .infinity, alignment: .center)
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .task {
                         try? await Task.sleep(for: duration)

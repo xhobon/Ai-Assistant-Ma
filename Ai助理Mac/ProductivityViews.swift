@@ -16,87 +16,80 @@ struct WritingStudioView: View {
     private let presets = ["新品发布文案", "周报总结", "活动邀请函", "招聘海报文案"]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                ProductivityHeader(
-                    title: "写作工作台",
-                    subtitle: "结构化输入，快速生成可编辑草稿",
-                    systemImage: "pencil.and.outline",
-                    tint: AppTheme.accentStrong
-                )
+        AppPageScaffold(maxWidth: 960) {
+            ProductivityHeader(
+                title: "写作工作台",
+                subtitle: "结构化输入，快速生成可编辑草稿",
+                systemImage: "pencil.and.outline",
+                tint: AppTheme.accentStrong
+            )
 
-                SectionCard {
-                    VStack(spacing: 12) {
-                        LabeledField(title: "写作主题", placeholder: "例如：AI 产品发布文案", text: $topic)
-                        LabeledField(title: "关键词（可选）", placeholder: "例如：高效、稳定、低成本", text: $keywords)
-                        ChipPicker(title: "风格", options: styles, selection: $style)
-                        ChipPicker(title: "语气", options: tones, selection: $tone)
-                        ChipPicker(title: "篇幅", options: lengths, selection: $length)
-                        QuickChips(title: "模板快捷选题", options: presets) { preset in
-                            topic = preset
-                        }
+            SectionCard {
+                VStack(spacing: 12) {
+                    LabeledField(title: "写作主题", placeholder: "例如：AI 产品发布文案", text: $topic)
+                    LabeledField(title: "关键词（可选）", placeholder: "例如：高效、稳定、低成本", text: $keywords)
+                    ChipPicker(title: "风格", options: styles, selection: $style)
+                    ChipPicker(title: "语气", options: tones, selection: $tone)
+                    ChipPicker(title: "篇幅", options: lengths, selection: $length)
+                    QuickChips(title: "模板快捷选题", options: presets) { preset in
+                        topic = preset
                     }
                 }
+            }
 
-                SectionCard {
-                    VStack(spacing: 12) {
-                        TextEditorField(title: "生成草稿", placeholder: "点击下方生成按钮后显示草稿", text: $draft, minHeight: 180)
-                        HStack(spacing: 12) {
-                            ProductivityActionButton("生成草稿", systemImage: "sparkles", style: .filled) {
-                                draft = WritingGenerator.generate(
-                                    topic: topic,
-                                    keywords: keywords,
+            SectionCard {
+                VStack(spacing: 12) {
+                    TextEditorField(title: "生成草稿", placeholder: "点击下方生成按钮后显示草稿", text: $draft, minHeight: 180)
+                    HStack(spacing: 12) {
+                        ProductivityActionButton("生成草稿", systemImage: "sparkles", style: .filled) {
+                            draft = WritingGenerator.generate(
+                                topic: topic,
+                                keywords: keywords,
+                                style: style,
+                                tone: tone,
+                                length: length
+                            )
+                        }
+                        ProductivityActionButton("保存草稿", systemImage: "tray.and.arrow.down", style: .outline) {
+                            guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                            drafts.insert(
+                                WritingDraft(
+                                    title: topic.isEmpty ? "未命名主题" : topic,
+                                    content: draft,
                                     style: style,
                                     tone: tone,
-                                    length: length
-                                )
-                            }
-                            ProductivityActionButton("保存草稿", systemImage: "tray.and.arrow.down", style: .outline) {
-                                guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                                drafts.insert(
-                                    WritingDraft(
-                                        title: topic.isEmpty ? "未命名主题" : topic,
-                                        content: draft,
-                                        style: style,
-                                        tone: tone,
-                                        length: length,
-                                        createdAt: Date()
-                                    ),
-                                    at: 0
-                                )
-                            }
-                            ProductivityActionButton("复制", systemImage: "doc.on.doc", style: .ghost) {
-                                ClipboardService.copy(draft)
-                            }
+                                    length: length,
+                                    createdAt: Date()
+                                ),
+                                at: 0
+                            )
+                        }
+                        ProductivityActionButton("复制", systemImage: "doc.on.doc", style: .ghost) {
+                            ClipboardService.copy(draft)
                         }
                     }
                 }
+            }
 
-                SectionCard {
-                    VStack(spacing: 12) {
-                        SectionTitle("草稿箱")
-                        if drafts.isEmpty {
-                            EmptyStateRow(text: "还没有保存草稿")
-                        } else {
-                            ForEach(drafts) { item in
-                                DraftRow(draft: item) {
-                                    draft = item.content
-                                    topic = item.title
-                                    style = item.style
-                                    tone = item.tone
-                                    length = item.length
-                                }
+            SectionCard {
+                VStack(spacing: 12) {
+                    SectionTitle("草稿箱")
+                    if drafts.isEmpty {
+                        EmptyStateRow(text: "还没有保存草稿")
+                    } else {
+                        ForEach(drafts) { item in
+                            DraftRow(draft: item) {
+                                draft = item.content
+                                topic = item.title
+                                style = item.style
+                                tone = item.tone
+                                length = item.length
                             }
                         }
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 32)
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
@@ -112,69 +105,62 @@ struct PPTStudioView: View {
     private let templates = ["产品路演", "季度复盘", "市场调研", "培训课件"]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                ProductivityHeader(
-                    title: "PPT 生成器",
-                    subtitle: "输入主题与受众，快速生成结构化大纲",
-                    systemImage: "rectangle.stack.fill",
-                    tint: AppTheme.brandBlue
-                )
+        AppPageScaffold(maxWidth: 960) {
+            ProductivityHeader(
+                title: "PPT 生成器",
+                subtitle: "输入主题与受众，快速生成结构化大纲",
+                systemImage: "rectangle.stack.fill",
+                tint: AppTheme.brandBlue
+            )
 
-                SectionCard {
-                    VStack(spacing: 12) {
-                        LabeledField(title: "主题", placeholder: "例如：AI 助理产品路演", text: $topic)
-                        LabeledField(title: "受众", placeholder: "例如：管理层/客户/团队成员", text: $audience)
-                        HStack {
-                            Text("页数")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
-                            Spacer(minLength: 0)
-                            Stepper("\(slideCount) 页", value: $slideCount, in: 6...30)
-                                .labelsHidden()
-                        }
-                        ChipPicker(title: "风格", options: styles, selection: $style)
-                        QuickChips(title: "快速模板", options: templates) { preset in
-                            topic = preset
-                        }
-                    }
-                }
-
-                SectionCard {
-                    VStack(spacing: 12) {
-                        HStack {
-                            SectionTitle("大纲预览")
-                            Spacer(minLength: 0)
-                            Button("复制大纲") {
-                                ClipboardService.copy(outlines.map(\.text).joined(separator: "\n"))
-                            }
+            SectionCard {
+                VStack(spacing: 12) {
+                    LabeledField(title: "主题", placeholder: "例如：AI 助理产品路演", text: $topic)
+                    LabeledField(title: "受众", placeholder: "例如：管理层/客户/团队成员", text: $audience)
+                    HStack {
+                        Text("页数")
                             .font(.caption)
-                            .foregroundStyle(AppTheme.accentStrong)
-                        }
-                        if outlines.isEmpty {
-                            EmptyStateRow(text: "点击生成后显示 PPT 大纲")
-                        } else {
-                            ForEach(outlines) { outline in
-                                SlideOutlineRow(outline: outline)
-                            }
-                        }
-                        ProductivityActionButton("生成大纲", systemImage: "wand.and.stars", style: .filled) {
-                            outlines = PPTGenerator.generate(
-                                topic: topic,
-                                audience: audience,
-                                slideCount: slideCount,
-                                style: style
-                            )
-                        }
+                            .foregroundStyle(AppTheme.textSecondary)
+                        Spacer(minLength: 0)
+                        Stepper("\(slideCount) 页", value: $slideCount, in: 6...30)
+                            .labelsHidden()
+                    }
+                    ChipPicker(title: "风格", options: styles, selection: $style)
+                    QuickChips(title: "快速模板", options: templates) { preset in
+                        topic = preset
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 32)
+
+            SectionCard {
+                VStack(spacing: 12) {
+                    HStack {
+                        SectionTitle("大纲预览")
+                        Spacer(minLength: 0)
+                        Button("复制大纲") {
+                            ClipboardService.copy(outlines.map(\.text).joined(separator: "\n"))
+                        }
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.accentStrong)
+                    }
+                    if outlines.isEmpty {
+                        EmptyStateRow(text: "点击生成后显示 PPT 大纲")
+                    } else {
+                        ForEach(outlines) { outline in
+                            SlideOutlineRow(outline: outline)
+                        }
+                    }
+                    ProductivityActionButton("生成大纲", systemImage: "wand.and.stars", style: .filled) {
+                        outlines = PPTGenerator.generate(
+                            topic: topic,
+                            audience: audience,
+                            slideCount: slideCount,
+                            style: style
+                        )
+                    }
+                }
+            }
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
@@ -188,62 +174,55 @@ struct NotesWorkspaceView: View {
     @State private var notes: [NoteEntry] = []
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                ProductivityHeader(
-                    title: "笔记中心",
-                    subtitle: "随手记录，支持标签与快速检索",
-                    systemImage: "note.text",
-                    tint: AppTheme.accentWarm
-                )
+        AppPageScaffold(maxWidth: 960) {
+            ProductivityHeader(
+                title: "笔记中心",
+                subtitle: "随手记录，支持标签与快速检索",
+                systemImage: "note.text",
+                tint: AppTheme.accentWarm
+            )
 
-                SectionCard {
-                    VStack(spacing: 12) {
-                        LabeledField(title: "标题", placeholder: "例如：会议纪要 / 读书笔记", text: $title)
-                        TextEditorField(title: "内容", placeholder: "支持粘贴、语音转写或手动输入", text: $content, minHeight: 160)
-                        LabeledField(title: "标签（用逗号分隔）", placeholder: "例如：工作,学习,重要", text: $tags)
-                        HStack(spacing: 12) {
-                            ProductivityActionButton(isRecording ? "转写中" : "语音转写", systemImage: "mic.fill", style: .outline) {
-                                isRecording.toggle()
-                            }
-                            ProductivityActionButton("保存笔记", systemImage: "tray.and.arrow.down", style: .filled) {
-                                guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                                notes.insert(
-                                    NoteEntry(
-                                        title: title.isEmpty ? "未命名笔记" : title,
-                                        content: content,
-                                        tags: tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty },
-                                        createdAt: Date()
-                                    ),
-                                    at: 0
-                                )
-                                title = ""
-                                content = ""
-                                tags = ""
-                            }
+            SectionCard {
+                VStack(spacing: 12) {
+                    LabeledField(title: "标题", placeholder: "例如：会议纪要 / 读书笔记", text: $title)
+                    TextEditorField(title: "内容", placeholder: "支持粘贴、语音转写或手动输入", text: $content, minHeight: 160)
+                    LabeledField(title: "标签（用逗号分隔）", placeholder: "例如：工作,学习,重要", text: $tags)
+                    HStack(spacing: 12) {
+                        ProductivityActionButton(isRecording ? "转写中" : "语音转写", systemImage: "mic.fill", style: .outline) {
+                            isRecording.toggle()
                         }
-                    }
-                }
-
-                SectionCard {
-                    VStack(spacing: 12) {
-                        LabeledField(title: "快速搜索", placeholder: "输入关键字/标签", text: $searchText)
-                        if filteredNotes.isEmpty {
-                            EmptyStateRow(text: "暂无笔记记录")
-                        } else {
-                            ForEach(filteredNotes) { note in
-                                NoteRow(note: note)
-                            }
+                        ProductivityActionButton("保存笔记", systemImage: "tray.and.arrow.down", style: .filled) {
+                            guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                            notes.insert(
+                                NoteEntry(
+                                    title: title.isEmpty ? "未命名笔记" : title,
+                                    content: content,
+                                    tags: tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty },
+                                    createdAt: Date()
+                                ),
+                                at: 0
+                            )
+                            title = ""
+                            content = ""
+                            tags = ""
                         }
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 32)
+
+            SectionCard {
+                VStack(spacing: 12) {
+                    LabeledField(title: "快速搜索", placeholder: "输入关键字/标签", text: $searchText)
+                    if filteredNotes.isEmpty {
+                        EmptyStateRow(text: "暂无笔记记录")
+                    } else {
+                        ForEach(filteredNotes) { note in
+                            NoteRow(note: note)
+                        }
+                    }
+                }
+            }
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 
     private var filteredNotes: [NoteEntry] {
@@ -268,55 +247,48 @@ struct SummaryWorkspaceView: View {
     private let lengths = ["短", "中等", "长"]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                ProductivityHeader(
-                    title: "内容总结",
-                    subtitle: "输入长文本或会议记录，快速提炼重点",
-                    systemImage: "doc.text.magnifyingglass",
-                    tint: AppTheme.accentPurple
-                )
+        AppPageScaffold(maxWidth: 960) {
+            ProductivityHeader(
+                title: "内容总结",
+                subtitle: "输入长文本或会议记录，快速提炼重点",
+                systemImage: "doc.text.magnifyingglass",
+                tint: AppTheme.accentPurple
+            )
 
-                SectionCard {
-                    VStack(spacing: 12) {
-                        TextEditorField(title: "原始内容", placeholder: "粘贴需要总结的内容", text: $sourceText, minHeight: 180)
-                        ChipPicker(title: "总结方式", options: modes, selection: $mode)
-                        ChipPicker(title: "长度", options: lengths, selection: $length)
-                        HStack(spacing: 12) {
-                            ProductivityActionButton("生成总结", systemImage: "bolt.fill", style: .filled) {
-                                result = SummaryGenerator.generate(text: sourceText, mode: mode, length: length)
-                            }
-                            ProductivityActionButton("复制", systemImage: "doc.on.doc", style: .outline) {
-                                ClipboardService.copy(result)
-                            }
-                            ProductivityActionButton("清空", systemImage: "trash", style: .ghost) {
-                                sourceText = ""
-                                result = ""
-                            }
+            SectionCard {
+                VStack(spacing: 12) {
+                    TextEditorField(title: "原始内容", placeholder: "粘贴需要总结的内容", text: $sourceText, minHeight: 180)
+                    ChipPicker(title: "总结方式", options: modes, selection: $mode)
+                    ChipPicker(title: "长度", options: lengths, selection: $length)
+                    HStack(spacing: 12) {
+                        ProductivityActionButton("生成总结", systemImage: "bolt.fill", style: .filled) {
+                            result = SummaryGenerator.generate(text: sourceText, mode: mode, length: length)
                         }
-                    }
-                }
-
-                SectionCard {
-                    VStack(spacing: 12) {
-                        SectionTitle("总结结果")
-                        if result.isEmpty {
-                            EmptyStateRow(text: "生成后显示总结内容")
-                        } else {
-                            Text(result)
-                                .font(.body)
-                                .foregroundStyle(AppTheme.textPrimary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                        ProductivityActionButton("复制", systemImage: "doc.on.doc", style: .outline) {
+                            ClipboardService.copy(result)
+                        }
+                        ProductivityActionButton("清空", systemImage: "trash", style: .ghost) {
+                            sourceText = ""
+                            result = ""
                         }
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 32)
+
+            SectionCard {
+                VStack(spacing: 12) {
+                    SectionTitle("总结结果")
+                    if result.isEmpty {
+                        EmptyStateRow(text: "生成后显示总结内容")
+                    } else {
+                        Text(result)
+                            .font(.body)
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
         }
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
     }
 }
 
@@ -559,7 +531,7 @@ private struct ProductivityActionButton: View {
         case .filled:
             return AnyView(AppTheme.unifiedButtonPrimary)
         case .outline, .ghost:
-            return AnyView(Color.white)
+            return AnyView(AppTheme.surface)
         }
     }
 

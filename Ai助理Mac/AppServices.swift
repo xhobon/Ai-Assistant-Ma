@@ -259,13 +259,14 @@ final class APIClient {
         )
     }
 
-    func sendEmailCode(email: String, purpose: String) async throws {
-        struct Res: Codable { let ok: Bool }
-        let _: Res = try await request(
+    func sendEmailCode(email: String, purpose: String) async throws -> String? {
+        struct Res: Codable { let ok: Bool; let code: String? }
+        let res: Res = try await request(
             "api/auth/send-code",
             method: "POST",
             body: ["email": email, "purpose": purpose]
         )
+        return res.code
     }
 
     func registerWithEmailCode(email: String, code: String, displayName: String) async throws -> AuthResponse {
@@ -506,6 +507,29 @@ final class APIClient {
                 createdAt: date
             )
         }
+    }
+
+    /// 用户整体统计（今日 & 总计）
+    func getUserStats() async throws -> UserStats {
+        struct Res: Codable {
+            let todayConversations: Int
+            let todayTranslations: Int
+            let todayLearningMinutes: Int
+            let totalConversations: Int
+            let totalTranslations: Int
+            let totalLearningMinutes: Int
+            let learningSessions: Int
+        }
+        let res: Res = try await request("api/user/stats", method: "GET", authorized: true)
+        return UserStats(
+            todayConversations: res.todayConversations,
+            todayTranslations: res.todayTranslations,
+            todayLearningMinutes: res.todayLearningMinutes,
+            totalConversations: res.totalConversations,
+            totalTranslations: res.totalTranslations,
+            totalLearningMinutes: res.totalLearningMinutes,
+            learningSessions: res.learningSessions
+        )
     }
 }
 
@@ -858,6 +882,10 @@ final class OpenClawService: ObservableObject {
 
 }
 
+extension Notification.Name {
+    static let globalCopySucceeded = Notification.Name("GlobalCopySucceeded")
+}
+
 struct ClipboardService {
     static func copy(_ text: String) {
         #if os(iOS)
@@ -866,6 +894,7 @@ struct ClipboardService {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
         #endif
+        NotificationCenter.default.post(name: .globalCopySucceeded, object: nil)
     }
 }
 

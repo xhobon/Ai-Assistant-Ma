@@ -26,7 +26,7 @@ enum SidebarItem: Int, CaseIterable {
 
     var icon: String {
         switch self {
-        case .partner: return "person.2"
+        case .partner: return "brain.head.profile"
         case .writing: return "pencil"
         case .ppt: return "rectangle.stack"
         case .notes: return "mic"
@@ -89,6 +89,7 @@ struct SidebarRow: View {
 struct ContentView: View {
     @State private var selectedItem: SidebarItem? = .partner
     @ObservedObject private var appearance = AppearanceStore.shared
+    @State private var copyToastMessage: String?
     private var primarySidebarItems: [SidebarItem] {
         // 侧边栏只保留：助理、笔记、总结、翻译、学习（写作/PPT 入口已移动到助理页面的加号里）
         SidebarItem.allCases.filter { ![.profile, .writing, .ppt].contains($0) }
@@ -178,6 +179,12 @@ struct ContentView: View {
             SpeechService.shared.stopSpeaking()
         }
         .preferredColorScheme(appearance.colorScheme)
+        .toast(message: $copyToastMessage)
+        .onReceive(NotificationCenter.default.publisher(for: .globalCopySucceeded)) { _ in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                copyToastMessage = "已复制到剪贴板"
+            }
+        }
     }
 }
 

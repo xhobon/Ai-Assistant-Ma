@@ -12,5 +12,7 @@
 	<string>用于识别语音内容并转成文字</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>用于选择图片进行文字识别</string>
+	<key>NSCameraUsageDescription</key>
+	<string>用于打开摄像头，让 AI 助理可以看到画面并识别</string>
 </dict>
 </plist>

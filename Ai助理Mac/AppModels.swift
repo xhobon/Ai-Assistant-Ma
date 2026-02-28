@@ -55,6 +55,16 @@ struct LearningStat: Identifiable, Hashable {
     let value: String
 }
 
+struct UserStats: Codable {
+    let todayConversations: Int
+    let todayTranslations: Int
+    let todayLearningMinutes: Int
+    let totalConversations: Int
+    let totalTranslations: Int
+    let totalLearningMinutes: Int
+    let learningSessions: Int
+}
+
 /// 助理长期记忆条目（偏好、习惯、重要事实），用于个性化回复与持续学习
 struct UserMemoryItem: Identifiable, Hashable, Codable {
     let id: String
