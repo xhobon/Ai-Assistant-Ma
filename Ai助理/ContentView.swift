@@ -84,8 +84,6 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .navigationTitle(tab.title)
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

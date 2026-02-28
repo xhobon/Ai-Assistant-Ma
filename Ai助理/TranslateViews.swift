@@ -1,13 +1,22 @@
 import SwiftUI
 #if os(iOS)
 import UIKit
+import AVFoundation
+import Speech
 #elseif os(macOS)
 import AppKit
 #endif
+import UniformTypeIdentifiers
 
 struct AITranslateHomeView: View {
     @StateObject private var viewModel = TranslateViewModel()
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var showAudioImporter = false
+    @State private var showVideoImporter = false
+    @State private var showRealtimeTranslation = false
+    @State private var isImportingMedia = false
+    @State private var importStatusText: String?
+    @State private var importAlertMessage: String?
     private let quickPhrases = [
         "你好，很高兴认识你",
         "请问洗手间在哪里？",
@@ -23,6 +32,15 @@ struct AITranslateHomeView: View {
             LazyVStack(spacing: 14) {
                 TranslateShowcaseCard(viewModel: viewModel)
                     .padding(.horizontal, 16)
+
+                TranslateMediaToolsCard(
+                    isImporting: isImportingMedia,
+                    statusText: importStatusText,
+                    onOpenRealtime: { showRealtimeTranslation = true },
+                    onImportAudio: { showAudioImporter = true },
+                    onImportVideo: { showVideoImporter = true }
+                )
+                .padding(.horizontal, 16)
 
                 ModernTranslationQuickLinksRow(history: viewModel.history)
                     .padding(.horizontal, 16)
@@ -66,8 +84,262 @@ struct AITranslateHomeView: View {
         } message: {
             Text(viewModel.alertMessage ?? "")
         }
+        .alert("导入失败", isPresented: Binding(
+            get: { importAlertMessage != nil },
+            set: { if !$0 { importAlertMessage = nil } }
+        )) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(importAlertMessage ?? "")
+        }
+        .fileImporter(
+            isPresented: $showAudioImporter,
+            allowedContentTypes: [.audio],
+            allowsMultipleSelection: false
+        ) { result in
+            guard case .success(let urls) = result, let url = urls.first else { return }
+            Task { await handleImportedMedia(url: url, isVideo: false) }
+        }
+        .fileImporter(
+            isPresented: $showVideoImporter,
+            allowedContentTypes: [.movie],
+            allowsMultipleSelection: false
+        ) { result in
+            guard case .success(let urls) = result, let url = urls.first else { return }
+            Task { await handleImportedMedia(url: url, isVideo: true) }
+        }
+        .navigationDestination(isPresented: $showRealtimeTranslation) {
+            RealTimeTranslationView()
+        }
+    }
+
+    private func handleImportedMedia(url: URL, isVideo: Bool) async {
+        await MainActor.run {
+            isImportingMedia = true
+            importStatusText = isVideo ? "正在提取视频音频并转写..." : "正在转写音频..."
+        }
+
+        do {
+            let secured = url.startAccessingSecurityScopedResource()
+            defer {
+                if secured { url.stopAccessingSecurityScopedResource() }
+            }
+
+            let tempURL = try copyToTemp(url)
+            let transcript = try await MediaSpeechTranscriber.transcribe(
+                from: tempURL,
+                localeIdentifier: viewModel.sourceLang.speechCode,
+                isVideo: isVideo
+            )
+
+            await MainActor.run {
+                isImportingMedia = false
+                importStatusText = nil
+                viewModel.sourceText = transcript
+                viewModel.translatedText = ""
+                viewModel.translate()
+            }
+        } catch {
+            await MainActor.run {
+                isImportingMedia = false
+                importStatusText = nil
+                importAlertMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func copyToTemp(_ sourceURL: URL) throws -> URL {
+        let tempDir = FileManager.default.temporaryDirectory
+        let ext = sourceURL.pathExtension.isEmpty ? "tmp" : sourceURL.pathExtension
+        let target = tempDir.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+        if FileManager.default.fileExists(atPath: target.path) {
+            try FileManager.default.removeItem(at: target)
+        }
+        try FileManager.default.copyItem(at: sourceURL, to: target)
+        return target
     }
 }
+
+private struct TranslateMediaToolsCard: View {
+    let isImporting: Bool
+    let statusText: String?
+    let onOpenRealtime: () -> Void
+    let onImportAudio: () -> Void
+    let onImportVideo: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("语音转写与翻译")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(AppTheme.textPrimary)
+
+            HStack(spacing: 10) {
+                toolButton(
+                    title: "录音速译",
+                    subtitle: "实时语音翻译",
+                    icon: "waveform.circle.fill",
+                    tint: Color(red: 0.36, green: 0.56, blue: 0.96),
+                    action: onOpenRealtime
+                )
+
+                toolButton(
+                    title: "导入音频",
+                    subtitle: "本地音频转写",
+                    icon: "music.note",
+                    tint: Color(red: 0.32, green: 0.69, blue: 0.97),
+                    action: onImportAudio
+                )
+
+                toolButton(
+                    title: "导入视频",
+                    subtitle: "视频音轨转写",
+                    icon: "video.fill",
+                    tint: Color(red: 0.47, green: 0.56, blue: 0.98),
+                    action: onImportVideo
+                )
+            }
+
+            if isImporting {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(statusText ?? "处理中...")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+        }
+        .padding(14)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+
+    private func toolButton(
+        title: String,
+        subtitle: String,
+        icon: String,
+        tint: Color,
+        action: (() -> Void)?
+    ) -> some View {
+        Button {
+            action?()
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 32, height: 32)
+                    .background(tint.opacity(0.95))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+            .padding(10)
+            .background(tint.opacity(0.16))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(action == nil)
+    }
+}
+
+#if os(iOS)
+private enum MediaSpeechTranscriber {
+    static func transcribe(from url: URL, localeIdentifier: String, isVideo: Bool) async throws -> String {
+        let audioURL = isVideo ? try await extractAudio(from: url) : url
+        return try await recognize(url: audioURL, localeIdentifier: localeIdentifier)
+    }
+
+    private static func recognize(url: URL, localeIdentifier: String) async throws -> String {
+        let authStatus = await requestAuthorization()
+        guard authStatus == .authorized else {
+            throw NSError(domain: "Translate", code: 1, userInfo: [NSLocalizedDescriptionKey: "未获得语音识别权限"])
+        }
+
+        let locale = Locale(identifier: localeIdentifier)
+        guard let recognizer = SFSpeechRecognizer(locale: locale) ?? SFSpeechRecognizer(locale: Locale(identifier: "zh-CN")) else {
+            throw NSError(domain: "Translate", code: 2, userInfo: [NSLocalizedDescriptionKey: "当前语言不支持语音转写"])
+        }
+        let request = SFSpeechURLRecognitionRequest(url: url)
+        request.shouldReportPartialResults = false
+
+        return try await withCheckedThrowingContinuation { continuation in
+            var didFinish = false
+            recognizer.recognitionTask(with: request) { result, error in
+                if let error, !didFinish {
+                    didFinish = true
+                    continuation.resume(throwing: error)
+                    return
+                }
+                if let result, result.isFinal, !didFinish {
+                    let text = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if text.isEmpty {
+                        didFinish = true
+                        continuation.resume(throwing: NSError(domain: "Translate", code: 3, userInfo: [NSLocalizedDescriptionKey: "未识别到有效语音内容"]))
+                    } else {
+                        didFinish = true
+                        continuation.resume(returning: text)
+                    }
+                }
+            }
+        }
+    }
+
+    private static func extractAudio(from videoURL: URL) async throws -> URL {
+        let asset = AVURLAsset(url: videoURL)
+        guard let export = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
+            throw NSError(domain: "Translate", code: 4, userInfo: [NSLocalizedDescriptionKey: "无法读取视频音轨"])
+        }
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("m4a")
+        if FileManager.default.fileExists(atPath: outputURL.path) {
+            try FileManager.default.removeItem(at: outputURL)
+        }
+        export.outputURL = outputURL
+        export.outputFileType = .m4a
+
+        return try await withCheckedThrowingContinuation { continuation in
+            export.exportAsynchronously {
+                switch export.status {
+                case .completed:
+                    continuation.resume(returning: outputURL)
+                case .failed:
+                    continuation.resume(throwing: export.error ?? NSError(domain: "Translate", code: 5, userInfo: [NSLocalizedDescriptionKey: "视频音轨提取失败"]))
+                case .cancelled:
+                    continuation.resume(throwing: NSError(domain: "Translate", code: 6, userInfo: [NSLocalizedDescriptionKey: "已取消导入"]))
+                default:
+                    continuation.resume(throwing: NSError(domain: "Translate", code: 7, userInfo: [NSLocalizedDescriptionKey: "处理未完成"]))
+                }
+            }
+        }
+    }
+
+    private static func requestAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
+        await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: status)
+            }
+        }
+    }
+}
+#else
+private enum MediaSpeechTranscriber {
+    static func transcribe(from url: URL, localeIdentifier: String, isVideo: Bool) async throws -> String {
+        throw NSError(domain: "Translate", code: 100, userInfo: [NSLocalizedDescriptionKey: "当前平台暂不支持媒体转写"])
+    }
+}
+#endif
 
 private struct TranslateShowcaseCard: View {
     @ObservedObject var viewModel: TranslateViewModel
