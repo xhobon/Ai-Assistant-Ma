@@ -10,6 +10,7 @@ import Combine
 import Vision
 import Security
 import SwiftUI
+import AuthenticationServices
 
 /// 服务器配置：固定使用 Vercel 生产地址，AI 对话全部走后端
 final class ServerConfigStore: ObservableObject {
@@ -182,6 +183,8 @@ final class SpeechSettingsStore: ObservableObject {
 
 final class APIClient {
     static let shared = APIClient()
+    private var webAuthSession: ASWebAuthenticationSession?
+    private let authPresentationProvider = WebAuthPresentationContextProvider()
 
     private func request<T: Decodable>(
         _ path: String,
@@ -302,6 +305,66 @@ final class APIClient {
             body["email"] = email
         }
         return try await request("api/auth/social", method: "POST", body: body)
+    }
+
+    func loginWithGoogle() async throws -> AuthResponse {
+        let callbackURL = try await startGoogleWebAuth()
+        let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)
+        if let err = components?.queryItems?.first(where: { $0.name == "error" })?.value, !err.isEmpty {
+            throw APIClientError.serverError("Google 登录失败：\(err)")
+        }
+        guard let ticket = components?.queryItems?.first(where: { $0.name == "ticket" })?.value, !ticket.isEmpty else {
+            throw APIClientError.serverError("Google 登录失败：未获取到登录票据")
+        }
+        struct GoogleTicketResponse: Codable {
+            let token: String
+            let user: UserDTO
+        }
+        let auth: GoogleTicketResponse = try await request(
+            "api/auth/google/result?ticket=\(ticket)",
+            method: "GET"
+        )
+        return AuthResponse(token: auth.token, user: auth.user)
+    }
+
+    private func startGoogleWebAuth() async throws -> URL {
+        let rawBase = ServerConfigStore.shared.baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard var comps = URLComponents(string: rawBase.hasSuffix("/") ? "\(rawBase)api/auth/google/start" : "\(rawBase)/api/auth/google/start") else {
+            throw APIClientError.serverError("Google 登录地址无效")
+        }
+        comps.queryItems = [
+            URLQueryItem(name: "redirect_uri", value: "aiassistant://oauth/google")
+        ]
+        guard let authURL = comps.url else {
+            throw APIClientError.serverError("Google 登录地址无效")
+        }
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.main.async {
+                let session = ASWebAuthenticationSession(url: authURL, callbackURLScheme: "aiassistant") { callbackURL, error in
+                    self.webAuthSession = nil
+                    if let error {
+                        if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
+                            continuation.resume(throwing: APIClientError.serverError("已取消 Google 登录"))
+                        } else {
+                            continuation.resume(throwing: APIClientError.serverError("Google 登录失败，请重试"))
+                        }
+                        return
+                    }
+                    guard let callbackURL else {
+                        continuation.resume(throwing: APIClientError.serverError("Google 登录失败：未收到回调"))
+                        return
+                    }
+                    continuation.resume(returning: callbackURL)
+                }
+                session.presentationContextProvider = self.authPresentationProvider
+                session.prefersEphemeralWebBrowserSession = false
+                self.webAuthSession = session
+                if !session.start() {
+                    self.webAuthSession = nil
+                    continuation.resume(throwing: APIClientError.serverError("无法打开 Google 登录窗口"))
+                }
+            }
+        }
     }
 
     /// 服务器 AI 对话（支持图片）；userContext 为未登录时的本地记忆；localExecution 开启时助理可返回 [CMD]命令[/CMD] 由客户端执行
@@ -530,6 +593,19 @@ final class APIClient {
             totalLearningMinutes: res.totalLearningMinutes,
             learningSessions: res.learningSessions
         )
+    }
+}
+
+final class WebAuthPresentationContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        #if os(macOS)
+        return NSApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? NSApplication.shared.windows.first ?? ASPresentationAnchor()
+        #else
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+        return windows.first(where: { $0.isKeyWindow }) ?? ASPresentationAnchor()
+        #endif
     }
 }
 

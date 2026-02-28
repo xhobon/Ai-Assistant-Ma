@@ -1361,6 +1361,7 @@ struct AuthView: View {
     @State private var code = ""
     @State private var isSubmitting = false
     @State private var isSendingCode = false
+    @State private var isGoogleSigningIn = false
     @State private var message: String?
     @State private var statusText: String?
     @FocusState private var focusedField: Field?
@@ -1372,7 +1373,7 @@ struct AuthView: View {
     }
 
     private var isSendCodeDisabled: Bool {
-        isSendingCode || isSubmitting || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        isSendingCode || isSubmitting || isGoogleSigningIn || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var submitButtonTitle: String {
@@ -1556,14 +1557,19 @@ struct AuthView: View {
                 .shadow(color: AppTheme.primary.opacity(0.22), radius: 10, x: 0, y: 4)
             }
             .buttonStyle(.plain)
-            .disabled(isSubmitting || isSendingCode)
-            .opacity((isSubmitting || isSendingCode) ? 0.7 : 1)
+            .disabled(isSubmitting || isSendingCode || isGoogleSigningIn)
+            .opacity((isSubmitting || isSendingCode || isGoogleSigningIn) ? 0.7 : 1)
 
             Button {
                 onTapGoogleSignIn()
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "globe")
+                    if isGoogleSigningIn {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "globe")
+                    }
                     Text("Google")
                         .font(.subheadline.weight(.semibold))
                 }
@@ -1579,8 +1585,8 @@ struct AuthView: View {
                 )
             }
             .buttonStyle(.plain)
-            .disabled(isSubmitting || isSendingCode)
-            .opacity((isSubmitting || isSendingCode) ? 0.65 : 1)
+            .disabled(isSubmitting || isSendingCode || isGoogleSigningIn)
+            .opacity((isSubmitting || isSendingCode || isGoogleSigningIn) ? 0.65 : 1)
         }
     }
 
@@ -1609,7 +1615,7 @@ struct AuthView: View {
                 await MainActor.run {
                     statusText = "验证码已发送，请在 10 分钟内完成验证"
                     if let c = codeReturned, !c.isEmpty {
-                        message = "验证码已发送，请在 10 分钟内完成验证。\n\n当前测试环境，本次验证码为：\(c)"
+                        message = "验证码已发送，请在 10 分钟内完成验证。\n\n验证码：\(c)"
                     } else {
                         message = "验证码已发送，请在 10 分钟内完成验证。"
                     }
@@ -1628,7 +1634,7 @@ struct AuthView: View {
 
     @MainActor
     private func onTapSubmit() {
-        guard !isSubmitting, !isSendingCode else { return }
+        guard !isSubmitting, !isSendingCode, !isGoogleSigningIn else { return }
         if let err = validateEmail() {
             message = err
             return
@@ -1679,8 +1685,27 @@ struct AuthView: View {
 
     @MainActor
     private func onTapGoogleSignIn() {
-        statusText = "正在准备 Google 登录..."
-        message = "Google 登录入口已添加。请在后端配置 OAuth 后，我可以继续帮你接通完整登录流程。"
+        guard !isGoogleSigningIn, !isSubmitting, !isSendingCode else { return }
+        isGoogleSigningIn = true
+        statusText = "正在打开 Google 登录..."
+        Task {
+            do {
+                let auth = try await APIClient.shared.loginWithGoogle()
+                await MainActor.run {
+                    TokenStore.shared.token = auth.token
+                    statusText = "Google 登录成功"
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    statusText = "Google 登录失败"
+                    message = userFacingMessage(for: error)
+                }
+            }
+            await MainActor.run {
+                isGoogleSigningIn = false
+            }
+        }
     }
 }
 

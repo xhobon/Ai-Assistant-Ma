@@ -14,5 +14,16 @@
 	<string>用于选择图片进行文字识别</string>
 	<key>NSCameraUsageDescription</key>
 	<string>用于打开摄像头，让 AI 助理可以看到画面并识别</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.ai-assistant.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>aiassistant</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

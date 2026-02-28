@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import morgan from "morgan";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
@@ -93,6 +94,14 @@ globalForPrisma.prisma = prisma;
 
 const PORT = Number(process.env.PORT || 8080);
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
+const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
+const RESEND_FROM_EMAIL = (process.env.RESEND_FROM_EMAIL || "").trim();
+const AUTH_DEBUG_RETURN_CODE = process.env.AUTH_DEBUG_RETURN_CODE === "1";
+const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || "").trim();
+const GOOGLE_CLIENT_SECRET = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
+const DEFAULT_GOOGLE_APP_REDIRECT = "aiassistant://oauth/google";
+const googleOAuthStates = new Map();
+const googleOAuthTickets = new Map();
 
 function getGroqApiKey() {
   const raw = process.env.GROQ_API_KEY || "";
@@ -288,6 +297,116 @@ function signToken(user) {
   });
 }
 
+function cleanupOAuthStore() {
+  const now = Date.now();
+  for (const [k, v] of googleOAuthStates.entries()) {
+    if (v.expiresAt <= now) googleOAuthStates.delete(k);
+  }
+  for (const [k, v] of googleOAuthTickets.entries()) {
+    if (v.expiresAt <= now) googleOAuthTickets.delete(k);
+  }
+}
+
+function getRequestOrigin(req) {
+  const proto = (req.headers["x-forwarded-proto"] || req.protocol || "https").toString().split(",")[0].trim();
+  const host = (req.headers["x-forwarded-host"] || req.headers.host || "").toString().split(",")[0].trim();
+  if (!host) return "";
+  return `${proto}://${host}`;
+}
+
+function appendQuery(urlText, key, value) {
+  const url = new URL(urlText);
+  url.searchParams.set(key, value);
+  return url.toString();
+}
+
+function resolvePostAuthRedirect(raw, req) {
+  const fallback = DEFAULT_GOOGLE_APP_REDIRECT;
+  if (!raw || typeof raw !== "string") return fallback;
+  try {
+    const candidate = new URL(raw);
+    if (candidate.protocol === "aiassistant:") return candidate.toString();
+    const origin = getRequestOrigin(req);
+    if (origin && `${candidate.protocol}//${candidate.host}` === origin) return candidate.toString();
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function sendVerificationEmail(email, code, purpose) {
+  if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
+    throw new Error("EMAIL_SERVICE_NOT_CONFIGURED");
+  }
+  const subject = purpose === "register" ? "注册验证码" : "登录验证码";
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1f2937;">
+      <h2 style="margin: 0 0 12px;">AI 全能助理 验证码</h2>
+      <p style="margin: 0 0 8px;">您本次${purpose === "register" ? "注册" : "登录"}的验证码是：</p>
+      <p style="font-size: 28px; font-weight: 700; letter-spacing: 4px; margin: 8px 0 14px;">${code}</p>
+      <p style="margin: 0; color: #6b7280;">验证码 10 分钟内有效，请勿泄露给他人。</p>
+    </div>
+  `;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM_EMAIL,
+      to: [email],
+      subject,
+      html
+    })
+  });
+  if (!res.ok) {
+    const raw = await res.text().catch(() => "");
+    throw new Error(`EMAIL_SEND_FAILED:${res.status}:${raw.slice(0, 200)}`);
+  }
+}
+
+async function upsertSocialUser({ provider, providerUserId, email, displayName }) {
+  let providerRecord = await prisma.authProvider.findUnique({
+    where: { provider_providerUserId: { provider, providerUserId } },
+    include: { user: true }
+  });
+  if (providerRecord) {
+    const updated = await prisma.user.update({
+      where: { id: providerRecord.user.id },
+      data: { lastLoginAt: new Date() }
+    });
+    return updated;
+  }
+
+  const normalizedEmail = email ? email.toLowerCase() : null;
+  let user = null;
+  if (normalizedEmail) {
+    user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  }
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        displayName
+      }
+    });
+  }
+  await prisma.authProvider.create({
+    data: {
+      provider,
+      providerUserId,
+      email: normalizedEmail,
+      userId: user.id
+    }
+  });
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() }
+  });
+  return updated;
+}
+
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -405,10 +524,20 @@ app.post("/api/auth/send-code", async (req, res) => {
     }
   });
 
-  // 这里本应发送邮件。当前版本为了方便测试，直接在响应中返回验证码。
-  // 上线时建议接入邮件服务（如 Resend、SendGrid 等），并移除响应中的 code 字段。
-  console.log(`[auth] send-code ${purpose} to ${email}: ${code}`);
-  return res.json({ ok: true, code });
+  try {
+    await sendVerificationEmail(email, code, purpose);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("[auth] send-code email error:", err?.message || err);
+    if (AUTH_DEBUG_RETURN_CODE) {
+      console.log(`[auth] send-code ${purpose} to ${email}: ${code}`);
+      return res.json({ ok: true, code });
+    }
+    return res.status(503).json({
+      error: "EMAIL_SERVICE_UNAVAILABLE",
+      message: "邮件服务不可用，请稍后重试"
+    });
+  }
 });
 
 app.post("/api/auth/register", async (req, res) => {
@@ -529,32 +658,121 @@ app.post("/api/auth/social", async (req, res) => {
   }
 
   const { provider, providerUserId, email, displayName } = parseResult.data;
+  const user = await upsertSocialUser({
+    provider,
+    providerUserId,
+    email,
+    displayName
+  });
+  return res.json({ token: signToken(user), user });
+});
 
-  let providerRecord = await prisma.authProvider.findUnique({
-    where: { provider_providerUserId: { provider, providerUserId } },
-    include: { user: true }
+app.get("/api/auth/google/start", async (req, res) => {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    return res.status(503).json({ error: "GOOGLE_OAUTH_NOT_CONFIGURED" });
+  }
+  cleanupOAuthStore();
+  const state = nanoid(36);
+  const postAuthRedirect = resolvePostAuthRedirect(req.query.redirect_uri, req);
+  const serverOrigin = getRequestOrigin(req);
+  if (!serverOrigin) {
+    return res.status(400).json({ error: "INVALID_SERVER_ORIGIN" });
+  }
+  const callbackURL = `${serverOrigin}/api/auth/google/callback`;
+  googleOAuthStates.set(state, {
+    postAuthRedirect,
+    callbackURL,
+    expiresAt: Date.now() + 10 * 60 * 1000
   });
 
-  if (!providerRecord) {
-    const user = await prisma.user.create({
-      data: {
-        email: email || null,
-        displayName
-      }
-    });
+  const authURL = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  authURL.searchParams.set("client_id", GOOGLE_CLIENT_ID);
+  authURL.searchParams.set("redirect_uri", callbackURL);
+  authURL.searchParams.set("response_type", "code");
+  authURL.searchParams.set("scope", "openid email profile");
+  authURL.searchParams.set("state", state);
+  authURL.searchParams.set("prompt", "select_account");
+  authURL.searchParams.set("access_type", "offline");
+  return res.redirect(authURL.toString());
+});
 
-    providerRecord = await prisma.authProvider.create({
-      data: {
-        provider,
-        providerUserId,
-        email: email || null,
-        userId: user.id
-      },
-      include: { user: true }
-    });
+app.get("/api/auth/google/callback", async (req, res) => {
+  cleanupOAuthStore();
+  const state = String(req.query.state || "");
+  const code = String(req.query.code || "");
+  const oauthError = String(req.query.error || "");
+  const stateEntry = googleOAuthStates.get(state);
+  googleOAuthStates.delete(state);
+  const fallbackRedirect = DEFAULT_GOOGLE_APP_REDIRECT;
+  if (!stateEntry) {
+    return res.redirect(appendQuery(fallbackRedirect, "error", "invalid_state"));
+  }
+  const postAuthRedirect = stateEntry.postAuthRedirect || fallbackRedirect;
+  if (oauthError) {
+    return res.redirect(appendQuery(postAuthRedirect, "error", oauthError));
+  }
+  if (!code) {
+    return res.redirect(appendQuery(postAuthRedirect, "error", "missing_code"));
   }
 
-  return res.json({ token: signToken(providerRecord.user), user: providerRecord.user });
+  try {
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: stateEntry.callbackURL,
+        grant_type: "authorization_code"
+      })
+    });
+    if (!tokenRes.ok) {
+      const raw = await tokenRes.text().catch(() => "");
+      throw new Error(`GOOGLE_TOKEN_EXCHANGE_FAILED:${tokenRes.status}:${raw.slice(0, 160)}`);
+    }
+    const tokenData = await tokenRes.json();
+    const accessToken = tokenData.access_token;
+    if (!accessToken) throw new Error("GOOGLE_ACCESS_TOKEN_MISSING");
+
+    const userRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (!userRes.ok) {
+      const raw = await userRes.text().catch(() => "");
+      throw new Error(`GOOGLE_USERINFO_FAILED:${userRes.status}:${raw.slice(0, 160)}`);
+    }
+    const profile = await userRes.json();
+    const providerUserId = String(profile.sub || "").trim();
+    if (!providerUserId) throw new Error("GOOGLE_SUB_MISSING");
+    const email = typeof profile.email === "string" ? profile.email.toLowerCase() : null;
+    const displayName = String(profile.name || profile.given_name || "Google用户").trim().slice(0, 40) || "Google用户";
+    const user = await upsertSocialUser({
+      provider: "GOOGLE",
+      providerUserId,
+      email,
+      displayName
+    });
+    const ticket = crypto.randomUUID();
+    googleOAuthTickets.set(ticket, {
+      auth: { token: signToken(user), user },
+      expiresAt: Date.now() + 2 * 60 * 1000
+    });
+    return res.redirect(appendQuery(postAuthRedirect, "ticket", ticket));
+  } catch (err) {
+    console.error("[auth] google callback error:", err?.message || err);
+    return res.redirect(appendQuery(postAuthRedirect, "error", "oauth_failed"));
+  }
+});
+
+app.get("/api/auth/google/result", async (req, res) => {
+  cleanupOAuthStore();
+  const ticket = String(req.query.ticket || "");
+  if (!ticket) return res.status(400).json({ error: "MISSING_TICKET" });
+  const payload = googleOAuthTickets.get(ticket);
+  if (!payload) return res.status(400).json({ error: "INVALID_OR_EXPIRED_TICKET" });
+  googleOAuthTickets.delete(ticket);
+  return res.json(payload.auth);
 });
 
 app.get("/api/profile", authMiddleware, async (req, res) => {
