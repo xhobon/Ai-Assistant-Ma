@@ -38,9 +38,9 @@ enum SidebarItem: Int, CaseIterable {
     }
 }
 
-private let sidebarActiveBg = Color(red: 0.11, green: 0.44, blue: 0.85).opacity(0.16)
-private let sidebarActiveFg = Color(red: 0.10, green: 0.43, blue: 0.86)
-private let sidebarInactive = Color(red: 0.35, green: 0.39, blue: 0.45)
+private let sidebarActiveBg = AppTheme.primary.opacity(0.20)
+private let sidebarActiveFg = AppTheme.primary
+private let sidebarInactive = AppTheme.textSecondary
 
 struct SidebarLogoView: View {
     var body: some View {

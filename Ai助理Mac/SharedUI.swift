@@ -107,22 +107,22 @@ struct ModernColorSystem {
 
     // MARK: - 浅色主题（微暖灰白）
     struct LightTheme {
-        static let backgroundPrimary = Color(red: 0.98, green: 0.98, blue: 0.985)
-        static let backgroundSecondary = Color(red: 0.965, green: 0.965, blue: 0.97)
-        static let backgroundTertiary = Color(red: 0.945, green: 0.945, blue: 0.955)
+        static let backgroundPrimary = Color(red: 0.96, green: 0.97, blue: 0.985)
+        static let backgroundSecondary = Color(red: 0.92, green: 0.94, blue: 0.97)
+        static let backgroundTertiary = Color(red: 0.88, green: 0.91, blue: 0.95)
         static let surfaceElevated = Color.white
-        static let glassBackground = Color.white.opacity(0.85)
-        static let glassBorder = Color.black.opacity(0.055)
+        static let glassBackground = Color.white.opacity(0.93)
+        static let glassBorder = Color.black.opacity(0.11)
     }
 
     // MARK: - 深色主题（备用）
     struct DarkTheme {
-        static let backgroundPrimary = Color(red: 0.11, green: 0.12, blue: 0.16)
-        static let backgroundSecondary = Color(red: 0.15, green: 0.16, blue: 0.20)
-        static let backgroundTertiary = Color(red: 0.19, green: 0.20, blue: 0.25)
-        static let surfaceElevated = Color(red: 0.23, green: 0.24, blue: 0.30)
-        static let glassBackground = Color.white.opacity(0.08)
-        static let glassBorder = Color.white.opacity(0.12)
+        static let backgroundPrimary = Color(red: 0.09, green: 0.10, blue: 0.14)
+        static let backgroundSecondary = Color(red: 0.13, green: 0.15, blue: 0.20)
+        static let backgroundTertiary = Color(red: 0.18, green: 0.21, blue: 0.28)
+        static let surfaceElevated = Color(red: 0.15, green: 0.18, blue: 0.25)
+        static let glassBackground = Color.white.opacity(0.12)
+        static let glassBorder = Color.white.opacity(0.22)
     }
 
     // MARK: - AI 助理主色（靛蓝·紫·青）
@@ -214,9 +214,9 @@ struct ModernColorSystem {
 
 // MARK: - 主题配色（AI 助理：专业·现代·可信）
 struct AppTheme {
-    static let primary = Color(red: 0.10, green: 0.43, blue: 0.86)
-    static let primaryVariant = Color(red: 0.07, green: 0.32, blue: 0.72)
-    static let secondary = Color(red: 0.10, green: 0.63, blue: 0.67)
+    static let primary = Color(red: 0.05, green: 0.38, blue: 0.84)
+    static let primaryVariant = Color(red: 0.03, green: 0.29, blue: 0.66)
+    static let secondary = Color(red: 0.03, green: 0.56, blue: 0.62)
 
     private static var isDark: Bool {
         AppearanceStore.shared.mode == .dark
@@ -236,7 +236,7 @@ struct AppTheme {
         isDark ? ModernColorSystem.DarkTheme.surfaceElevated : ModernColorSystem.LightTheme.surfaceElevated
     }
     static var surfaceMuted: Color {
-        isDark ? ModernColorSystem.DarkTheme.backgroundSecondary : ModernColorSystem.LightTheme.backgroundSecondary
+        isDark ? ModernColorSystem.DarkTheme.backgroundTertiary : ModernColorSystem.LightTheme.backgroundSecondary
     }
     static var surfaceElevated: Color {
         isDark ? ModernColorSystem.DarkTheme.surfaceElevated : ModernColorSystem.LightTheme.surfaceElevated
@@ -254,13 +254,13 @@ struct AppTheme {
         isDark ? ModernColorSystem.Neutral.gray50 : ModernColorSystem.Neutral.gray900
     }
     static var textSecondary: Color {
-        isDark ? ModernColorSystem.Neutral.gray300 : ModernColorSystem.Neutral.gray600
+        isDark ? ModernColorSystem.Neutral.gray200 : ModernColorSystem.Neutral.gray700
     }
     static var textTertiary: Color {
-        isDark ? ModernColorSystem.Neutral.gray400 : ModernColorSystem.Neutral.gray500
+        isDark ? ModernColorSystem.Neutral.gray300 : ModernColorSystem.Neutral.gray600
     }
     static var textMuted: Color {
-        isDark ? ModernColorSystem.Neutral.gray500 : ModernColorSystem.Neutral.gray400
+        isDark ? ModernColorSystem.Neutral.gray400 : ModernColorSystem.Neutral.gray500
     }
     static let textOnPrimary = Color.white
     /// 输入框内文字颜色（黑色/白色），确保与背景对比清晰
@@ -279,24 +279,24 @@ struct AppTheme {
 
     static let accent = primary
     static let accentStrong = primaryVariant
-    static let accentWarm = Color(red: 0.92, green: 0.56, blue: 0.16)
+    static let accentWarm = Color(red: 0.88, green: 0.52, blue: 0.13)
     static let accentPurple = Color(red: 0.18, green: 0.48, blue: 0.83)
     static let brandBlue = primary
 
     // 统一按钮样式：主按钮蓝色填充，次按钮清透蓝边
-    static let unifiedButtonPrimary = Color(red: 0.10, green: 0.43, blue: 0.86)
-    static let unifiedButtonBorder = Color(red: 0.23, green: 0.50, blue: 0.80)
+    static let unifiedButtonPrimary = Color(red: 0.05, green: 0.38, blue: 0.84)
+    static let unifiedButtonBorder = Color(red: 0.08, green: 0.34, blue: 0.72)
 
     // 边框与阴影
     static var border: Color {
         isDark ? ModernColorSystem.DarkTheme.glassBorder : ModernColorSystem.LightTheme.glassBorder
     }
     static var borderStrong: Color {
-        isDark ? Color.white.opacity(0.15) : Color.black.opacity(0.10)
+        isDark ? Color.white.opacity(0.26) : Color.black.opacity(0.18)
     }
     static let neonGlow = primary.opacity(0.25)
     static var softShadow: Color {
-        isDark ? Color.black.opacity(0.6) : Color.black.opacity(0.05)
+        isDark ? Color.black.opacity(0.7) : Color.black.opacity(0.08)
     }
     static var mediumShadow: Color {
         isDark ? Color.black.opacity(0.8) : Color.black.opacity(0.10)
@@ -344,9 +344,9 @@ struct AppTheme {
     static var pageBackground: LinearGradient {
         LinearGradient(
             colors: [
-                isDark ? Color(red: 0.08, green: 0.10, blue: 0.14) : Color(red: 0.95, green: 0.97, blue: 0.995),
-                isDark ? Color(red: 0.09, green: 0.12, blue: 0.17) : Color(red: 0.93, green: 0.96, blue: 0.99),
-                isDark ? Color(red: 0.07, green: 0.10, blue: 0.15) : Color(red: 0.97, green: 0.98, blue: 1.0)
+                isDark ? Color(red: 0.07, green: 0.09, blue: 0.13) : Color(red: 0.93, green: 0.95, blue: 0.985),
+                isDark ? Color(red: 0.09, green: 0.12, blue: 0.18) : Color(red: 0.89, green: 0.92, blue: 0.97),
+                isDark ? Color(red: 0.07, green: 0.10, blue: 0.16) : Color(red: 0.95, green: 0.97, blue: 0.995)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
