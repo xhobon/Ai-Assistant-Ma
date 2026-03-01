@@ -9,7 +9,6 @@ struct IndonesianLearningView: View {
     @State private var searchText = ""
     @State private var selectedDifficulty = "全部"
     @State private var showFavoritesOnly = false
-    @State private var showFeatureHub = false
 
     private let difficulties = ["全部", "入门", "进阶", "高级"]
     private let horizontalPadding: CGFloat = 14
@@ -21,9 +20,6 @@ struct IndonesianLearningView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: sectionSpacing) {
-                learningHeader
-                    .padding(.horizontal, horizontalPadding)
-
                 LearningSearchPanel(
                     searchText: $searchText,
                     selectedDifficulty: $selectedDifficulty,
@@ -31,9 +27,6 @@ struct IndonesianLearningView: View {
                     difficulties: difficulties
                 )
                 .padding(.horizontal, horizontalPadding)
-
-                LearningPlanCard()
-                    .padding(.horizontal, horizontalPadding)
 
                 LearningOverviewRow(viewModel: viewModel)
                     .padding(.horizontal, horizontalPadding)
@@ -67,18 +60,6 @@ struct IndonesianLearningView: View {
         )
         .navigationTitle("学习")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showFeatureHub = true
-                } label: {
-                    Image(systemName: "square.grid.2x2")
-                }
-            }
-        }
-        .navigationDestination(isPresented: $showFeatureHub) {
-            FeatureHubView()
-        }
     }
 
     private var filteredItems: [VocabItem] {
@@ -140,12 +121,711 @@ struct IndonesianLearningView: View {
     }
 }
 
-private struct LearningPlanCard: View {
+struct PracticeHomeView: View {
+    @StateObject private var viewModel = LearningViewModel()
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("practice_goal_minutes") private var goalMinutes = 20
+    @AppStorage("practice_goal_review_words") private var goalReviewWords = 12
+    @AppStorage("practice_today_minutes") private var todayMinutes = 0
+    @AppStorage("practice_today_reviewed_words") private var todayReviewedWords = 0
+    @AppStorage("practice_today_date") private var todayDateKey = ""
+    @State private var choiceQuestion: PracticeChoiceQuestion?
+    @State private var selectedChoiceId: String?
+    @State private var choiceAnswerCorrect: Bool?
+    @State private var choiceAnsweredCount = 0
+    @State private var choiceCorrectCount = 0
+
+    @State private var tfQuestion: PracticeTrueFalseQuestion?
+    @State private var tfAnswered: Bool?
+    @State private var tfAnswerCorrect: Bool?
+    @State private var tfAnsweredCount = 0
+    @State private var tfCorrectCount = 0
+
+    @State private var flashcardItem: VocabItem?
+    @State private var flashcardRevealed = false
+    @State private var flashcardMasteredCount = 0
+    @State private var searchText = ""
+    @State private var selectedDifficulty = "全部"
+    @State private var showFavoritesOnly = false
+    @State private var selectedMode: PracticeMode = .choice
+    @State private var listeningQuestion: PracticeListeningQuestion?
+    @State private var selectedListeningOptionId: String?
+    @State private var listeningAnswerCorrect: Bool?
+    @State private var listeningAnsweredCount = 0
+    @State private var listeningCorrectCount = 0
+    @State private var spellingQuestion: VocabItem?
+    @State private var spellingInput = ""
+    @State private var spellingAnswerCorrect: Bool?
+    @State private var spellingAnsweredCount = 0
+    @State private var spellingCorrectCount = 0
+    @State private var streakInSession = 0
+    @State private var bestStreakInSession = 0
+    @State private var showGoalEditor = false
+
+    private var pageMaxWidth: CGFloat {
+        horizontalSizeClass == .compact ? .infinity : 760
+    }
+    private var allItems: [VocabItem] {
+        viewModel.categories.flatMap { $0.items }
+    }
+    private var categoryItems: [VocabItem] {
+        guard let selected = viewModel.selectedCategoryId,
+              let category = viewModel.categories.first(where: { $0.id == selected }) else {
+            return allItems
+        }
+        return category.items
+    }
+    private var practiceItems: [VocabItem] {
+        let keyword = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !keyword.isEmpty else { return categoryItems }
+        return categoryItems.filter {
+            $0.textZh.localizedCaseInsensitiveContains(keyword)
+            || $0.textId.localizedCaseInsensitiveContains(keyword)
+            || $0.exampleZh.localizedCaseInsensitiveContains(keyword)
+            || $0.exampleId.localizedCaseInsensitiveContains(keyword)
+        }
+    }
+    private var pendingCountText: String {
+        "\(max(0, goalReviewWords - todayReviewedWords))词"
+    }
+    private var todayTargetText: String {
+        "\(todayMinutes)/\(goalMinutes)分钟"
+    }
+    private var streakText: String {
+        "\(max(viewModel.activeDaysCount, 1))天"
+    }
+    private var overallAnswered: Int {
+        choiceAnsweredCount + tfAnsweredCount + listeningAnsweredCount + spellingAnsweredCount + flashcardMasteredCount
+    }
+    private var overallCorrect: Int {
+        choiceCorrectCount + tfCorrectCount + listeningCorrectCount + spellingCorrectCount
+    }
+    private var accuracyText: String {
+        guard overallAnswered > 0 else { return "0%" }
+        let percent = Int((Double(overallCorrect) / Double(max(1, overallAnswered))) * 100)
+        return "\(percent)%"
+    }
+
     var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                LearningSearchPanel(
+                    searchText: $searchText,
+                    selectedDifficulty: $selectedDifficulty,
+                    showFavoritesOnly: $showFavoritesOnly,
+                    difficulties: ["全部"]
+                )
+                .padding(.horizontal, 14)
+
+                LearningPlanCard(
+                    title: "练习目标",
+                    todayTargetText: todayTargetText,
+                    pendingReviewText: pendingCountText,
+                    streakText: streakText,
+                    actionTitle: "自定义",
+                    action: { showGoalEditor = true }
+                )
+                    .padding(.horizontal, 14)
+
+                practiceOverviewCard
+                    .padding(.horizontal, 14)
+
+                practiceCategorySection
+                    .padding(.horizontal, 14)
+
+                practiceModeSection
+                    .padding(.horizontal, 14)
+            }
+            .padding(.top, 10)
+            .padding(.bottom, 28)
+            .frame(maxWidth: pageMaxWidth, alignment: .top)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .scrollIndicators(.automatic)
+        .background(
+            AppTheme.pageBackground
+                .ignoresSafeArea(edges: .top)
+        )
+        .navigationTitle("练习")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            refreshDailyBucketIfNeeded()
+            if viewModel.selectedCategoryId == nil {
+                viewModel.selectedCategoryId = viewModel.categories.first?.id
+            }
+            if choiceQuestion == nil { generateChoiceQuestion() }
+            if tfQuestion == nil { generateTrueFalseQuestion() }
+            if flashcardItem == nil { generateFlashcard() }
+            if listeningQuestion == nil { generateListeningQuestion() }
+            if spellingQuestion == nil { generateSpellingQuestion() }
+        }
+        .onChange(of: viewModel.selectedCategoryId) { _, _ in
+            regenerateAllQuestions()
+        }
+        .onChange(of: searchText) { _, _ in
+            regenerateAllQuestions()
+        }
+        .sheet(isPresented: $showGoalEditor) {
+            PracticeGoalEditorSheet(
+                goalMinutes: $goalMinutes,
+                goalReviewWords: $goalReviewWords
+            )
+            .presentationDetents([.medium])
+        }
+    }
+
+    private var practiceOverviewCard: some View {
         HStack(spacing: 8) {
-            planItem("今日目标", value: "20分钟", icon: "timer")
-            planItem("待复习", value: "12词", icon: "arrow.clockwise")
-            planItem("连胜天数", value: "5天", icon: "flame.fill")
+            practiceStatItem(title: "总练习", value: "\(overallAnswered)", subtitle: "已完成")
+            practiceStatItem(title: "正确率", value: accuracyText, subtitle: "综合")
+            practiceStatItem(title: "连击", value: "\(bestStreakInSession)", subtitle: "本次最佳")
+        }
+        .padding(10)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+
+    private func practiceStatItem(title: String, value: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textSecondary)
+            Text(value)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textTertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var practiceCategorySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("练习主题")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("按学习分类选择练习场景")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(viewModel.categories) { category in
+                        let selected = viewModel.selectedCategoryId == category.id
+                        Button {
+                            viewModel.selectedCategoryId = category.id
+                        } label: {
+                            Text(category.nameZh)
+                                .font(.caption.weight(selected ? .semibold : .medium))
+                                .foregroundStyle(selected ? .white : AppTheme.textSecondary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(selected ? AppTheme.accentStrong : AppTheme.surface)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+
+    private var practiceModeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("练习模式")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(PracticeMode.allCases) { mode in
+                        let selected = selectedMode == mode
+                        Button {
+                            selectedMode = mode
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: mode.icon)
+                                Text(mode.title)
+                            }
+                            .font(.caption.weight(selected ? .semibold : .medium))
+                            .foregroundStyle(selected ? .white : AppTheme.textSecondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(selected ? AppTheme.accentStrong : AppTheme.surface)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            Group {
+                switch selectedMode {
+                case .choice: practiceChoiceCard
+                case .trueFalse: practiceTrueFalseCard
+                case .flashcard: practiceFlashcardCard
+                case .listening: practiceListeningCard
+                case .spelling: practiceSpellingCard
+                }
+            }
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+
+    private var practiceChoiceCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("词汇四选一")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Text("正确 \(choiceCorrectCount)/\(choiceAnsweredCount)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+
+            if let question = choiceQuestion {
+                Text("“\(question.promptZh)” 的印尼语是：")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                VStack(spacing: 8) {
+                    ForEach(question.options) { option in
+                        Button {
+                            submitChoice(option.id, for: question)
+                        } label: {
+                            HStack {
+                                Text(option.textId)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Spacer()
+                                if selectedChoiceId == option.id {
+                                    Image(systemName: option.id == question.correctId ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                        .foregroundStyle(option.id == question.correctId ? Color.green : Color.red)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(AppTheme.surfaceMuted)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(selectedChoiceId != nil)
+                    }
+                }
+
+                if let correct = choiceAnswerCorrect {
+                    Text(correct ? "答对了，继续保持！" : "答错了，正确答案已标记。")
+                        .font(.caption)
+                        .foregroundStyle(correct ? Color.green : AppTheme.accentWarm)
+                }
+
+                Button("下一题") {
+                    generateChoiceQuestion()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.primary)
+            }
+        }
+    }
+
+    private var practiceTrueFalseCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("对错判断")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Text("正确 \(tfCorrectCount)/\(tfAnsweredCount)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+
+            if let question = tfQuestion {
+                Text("“\(question.promptZh)” 的印尼语是 “\(question.shownId)”")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                HStack(spacing: 10) {
+                    Button("正确") { submitTrueFalse(true, for: question) }
+                        .buttonStyle(.bordered)
+                        .disabled(tfAnswered != nil)
+
+                    Button("错误") { submitTrueFalse(false, for: question) }
+                        .buttonStyle(.bordered)
+                        .disabled(tfAnswered != nil)
+                }
+
+                if let correct = tfAnswerCorrect {
+                    Text(correct ? "判断正确！" : "判断错误，继续加油。")
+                        .font(.caption)
+                        .foregroundStyle(correct ? Color.green : AppTheme.accentWarm)
+                }
+
+                Button("下一题") {
+                    generateTrueFalseQuestion()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.primary)
+            }
+        }
+    }
+
+    private var practiceFlashcardCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("闪卡记忆")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Text("已掌握 \(flashcardMasteredCount)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+
+            if let item = flashcardItem {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        flashcardRevealed.toggle()
+                    }
+                } label: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(flashcardRevealed ? item.textId : item.textZh)
+                            .font(.system(size: 24, weight: .heavy))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text(flashcardRevealed ? item.exampleId : "点卡片翻面查看印尼语")
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                HStack(spacing: 10) {
+                    Button("还没记住") {
+                        generateFlashcard()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("记住了") {
+                        flashcardMasteredCount += 1
+                        registerPracticeResult(correct: true, minutes: 2, reviewedWords: 1)
+                        viewModel.registerActiveDayIfNeeded()
+                        generateFlashcard()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.primary)
+                }
+            }
+        }
+    }
+
+    private var practiceListeningCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("听力选择")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Text("正确 \(listeningCorrectCount)/\(listeningAnsweredCount)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+
+            if let question = listeningQuestion {
+                Button {
+                    SpeechService.shared.speak(question.promptId, language: "id-ID")
+                } label: {
+                    Label("播放单词发音", systemImage: "speaker.wave.2.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(AppTheme.surfaceMuted)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                VStack(spacing: 8) {
+                    ForEach(question.options) { option in
+                        Button {
+                            submitListening(option.id, for: question)
+                        } label: {
+                            HStack {
+                                Text(option.textZh)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Spacer()
+                                if selectedListeningOptionId == option.id {
+                                    Image(systemName: option.id == question.correctId ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                        .foregroundStyle(option.id == question.correctId ? Color.green : Color.red)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(AppTheme.surfaceMuted)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(selectedListeningOptionId != nil)
+                    }
+                }
+
+                if let correct = listeningAnswerCorrect {
+                    Text(correct ? "听力正确！" : "再听一遍会更容易记住。")
+                        .font(.caption)
+                        .foregroundStyle(correct ? Color.green : AppTheme.accentWarm)
+                }
+
+                Button("下一题") { generateListeningQuestion() }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.primary)
+            }
+        }
+    }
+
+    private var practiceSpellingCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("拼写挑战")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Text("正确 \(spellingCorrectCount)/\(spellingAnsweredCount)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+
+            if let question = spellingQuestion {
+                Text("把这句中文写成印尼语词汇：\(question.textZh)")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                TextField("输入印尼语答案", text: $spellingInput)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                HStack(spacing: 10) {
+                    Button("检查答案") {
+                        submitSpelling(for: question)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.primary)
+                    .disabled(spellingInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || spellingAnswerCorrect != nil)
+
+                    Button("换一题") {
+                        generateSpellingQuestion()
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                if let correct = spellingAnswerCorrect {
+                    Text(correct ? "拼写正确！" : "正确答案：\(question.textId)")
+                        .font(.caption)
+                        .foregroundStyle(correct ? Color.green : AppTheme.accentWarm)
+                }
+            }
+        }
+    }
+
+    private func generateChoiceQuestion() {
+        guard practiceItems.count >= 4, let correct = practiceItems.randomElement() else { return }
+        let wrongs = practiceItems.filter { $0.id != correct.id }.shuffled().prefix(3)
+        let options = ([correct] + Array(wrongs)).shuffled()
+        choiceQuestion = PracticeChoiceQuestion(
+            promptZh: correct.textZh,
+            correctId: correct.id,
+            options: options
+        )
+        selectedChoiceId = nil
+        choiceAnswerCorrect = nil
+    }
+
+    private func submitChoice(_ optionId: String, for question: PracticeChoiceQuestion) {
+        guard selectedChoiceId == nil else { return }
+        selectedChoiceId = optionId
+        let correct = optionId == question.correctId
+        choiceAnswerCorrect = correct
+        choiceAnsweredCount += 1
+        if correct { choiceCorrectCount += 1 }
+        registerPracticeResult(correct: correct, minutes: 2, reviewedWords: 1)
+        viewModel.registerActiveDayIfNeeded()
+    }
+
+    private func generateTrueFalseQuestion() {
+        guard practiceItems.count >= 2, let base = practiceItems.randomElement() else { return }
+        let isTrue = Bool.random()
+        let shown: String
+        if isTrue {
+            shown = base.textId
+        } else {
+            shown = practiceItems.filter { $0.id != base.id }.randomElement()?.textId ?? base.textId
+        }
+        tfQuestion = PracticeTrueFalseQuestion(
+            promptZh: base.textZh,
+            shownId: shown,
+            isTrueStatement: shown == base.textId
+        )
+        tfAnswered = nil
+        tfAnswerCorrect = nil
+    }
+
+    private func submitTrueFalse(_ answer: Bool, for question: PracticeTrueFalseQuestion) {
+        guard tfAnswered == nil else { return }
+        tfAnswered = answer
+        let correct = answer == question.isTrueStatement
+        tfAnswerCorrect = correct
+        tfAnsweredCount += 1
+        if correct { tfCorrectCount += 1 }
+        registerPracticeResult(correct: correct, minutes: 2, reviewedWords: 1)
+        viewModel.registerActiveDayIfNeeded()
+    }
+
+    private func generateFlashcard() {
+        flashcardItem = practiceItems.randomElement() ?? allItems.randomElement()
+        flashcardRevealed = false
+    }
+
+    private func generateListeningQuestion() {
+        guard practiceItems.count >= 4, let correct = practiceItems.randomElement() else { return }
+        let wrongs = practiceItems.filter { $0.id != correct.id }.shuffled().prefix(3)
+        listeningQuestion = PracticeListeningQuestion(
+            promptId: correct.textId,
+            correctId: correct.id,
+            options: ([correct] + Array(wrongs)).shuffled()
+        )
+        selectedListeningOptionId = nil
+        listeningAnswerCorrect = nil
+    }
+
+    private func submitListening(_ optionId: String, for question: PracticeListeningQuestion) {
+        guard selectedListeningOptionId == nil else { return }
+        selectedListeningOptionId = optionId
+        let correct = optionId == question.correctId
+        listeningAnswerCorrect = correct
+        listeningAnsweredCount += 1
+        if correct { listeningCorrectCount += 1 }
+        registerPracticeResult(correct: correct, minutes: 2, reviewedWords: 1)
+        viewModel.registerActiveDayIfNeeded()
+    }
+
+    private func generateSpellingQuestion() {
+        spellingQuestion = practiceItems.randomElement() ?? allItems.randomElement()
+        spellingInput = ""
+        spellingAnswerCorrect = nil
+    }
+
+    private func submitSpelling(for question: VocabItem) {
+        guard spellingAnswerCorrect == nil else { return }
+        let input = spellingInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let answer = question.textId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let correct = input == answer
+        spellingAnswerCorrect = correct
+        spellingAnsweredCount += 1
+        if correct { spellingCorrectCount += 1 }
+        registerPracticeResult(correct: correct, minutes: 3, reviewedWords: 1)
+        viewModel.registerActiveDayIfNeeded()
+    }
+
+    private func regenerateAllQuestions() {
+        generateChoiceQuestion()
+        generateTrueFalseQuestion()
+        generateFlashcard()
+        generateListeningQuestion()
+        generateSpellingQuestion()
+    }
+
+    private func refreshDailyBucketIfNeeded() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let today = formatter.string(from: Date())
+        if todayDateKey != today {
+            todayDateKey = today
+            todayMinutes = 0
+            todayReviewedWords = 0
+        }
+    }
+
+    private func addPracticeProgress(minutes: Int, reviewedWords: Int) {
+        refreshDailyBucketIfNeeded()
+        todayMinutes += max(0, minutes)
+        todayReviewedWords += max(0, reviewedWords)
+    }
+
+    private func registerPracticeResult(correct: Bool, minutes: Int, reviewedWords: Int) {
+        addPracticeProgress(minutes: minutes, reviewedWords: reviewedWords)
+        if correct {
+            streakInSession += 1
+            bestStreakInSession = max(bestStreakInSession, streakInSession)
+        } else {
+            streakInSession = 0
+        }
+    }
+}
+
+private struct LearningPlanCard: View {
+    var title: String? = nil
+    var todayTargetText: String = "20分钟"
+    var pendingReviewText: String = "12词"
+    var streakText: String = "5天"
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if (title?.isEmpty == false) || action != nil {
+                HStack {
+                    if let title, !title.isEmpty {
+                        Text(title)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                    }
+                    Spacer()
+                    if let actionTitle, let action {
+                        Button(actionTitle, action: action)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.primary)
+                            .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            HStack(spacing: 8) {
+                planItem("今日目标", value: todayTargetText, icon: "timer")
+                planItem("待复习", value: pendingReviewText, icon: "arrow.clockwise")
+                planItem("连胜天数", value: streakText, icon: "flame.fill")
+            }
         }
         .padding(10)
         .background(AppTheme.surface)
@@ -172,6 +852,91 @@ private struct LearningPlanCard: View {
         .padding(8)
         .background(AppTheme.surfaceMuted)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct PracticeChoiceQuestion {
+    let promptZh: String
+    let correctId: String
+    let options: [VocabItem]
+}
+
+private struct PracticeTrueFalseQuestion {
+    let promptZh: String
+    let shownId: String
+    let isTrueStatement: Bool
+}
+
+private struct PracticeListeningQuestion {
+    let promptId: String
+    let correctId: String
+    let options: [VocabItem]
+}
+
+private enum PracticeMode: String, CaseIterable, Identifiable {
+    case choice
+    case trueFalse
+    case flashcard
+    case listening
+    case spelling
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .choice: return "选择"
+        case .trueFalse: return "判断"
+        case .flashcard: return "闪卡"
+        case .listening: return "听力"
+        case .spelling: return "拼写"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .choice: return "checkmark.circle"
+        case .trueFalse: return "questionmark.circle"
+        case .flashcard: return "rectangle.on.rectangle"
+        case .listening: return "speaker.wave.2"
+        case .spelling: return "pencil.and.outline"
+        }
+    }
+}
+
+private struct PracticeGoalEditorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var goalMinutes: Int
+    @Binding var goalReviewWords: Int
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Stepper(value: $goalMinutes, in: 5...180, step: 5) {
+                    HStack {
+                        Text("每日目标时长")
+                        Spacer()
+                        Text("\(goalMinutes) 分钟")
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                }
+
+                Stepper(value: $goalReviewWords, in: 1...200, step: 1) {
+                    HStack {
+                        Text("每日复习词数")
+                        Spacer()
+                        Text("\(goalReviewWords) 词")
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                }
+            }
+            .navigationTitle("自定义目标")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
     }
 }
 

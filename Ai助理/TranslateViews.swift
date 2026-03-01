@@ -13,7 +13,6 @@ struct AITranslateHomeView: View {
     @ObservedObject private var mediaImportCoordinator = MediaImportCoordinator.shared
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showRealtimeTranslation = false
-    @State private var showFeatureHub = false
     @State private var showAllHistory = false
     private var pageMaxWidth: CGFloat {
         horizontalSizeClass == .compact ? .infinity : 760
@@ -22,9 +21,6 @@ struct AITranslateHomeView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 14) {
-                TranslateNativeHeaderCard()
-                    .padding(.horizontal, 16)
-
                 TranslateMediaToolsCard(
                     onOpenRealtime: { showRealtimeTranslation = true },
                     onOpenHistory: { showAllHistory = true }
@@ -53,15 +49,6 @@ struct AITranslateHomeView: View {
         .background(AppTheme.pageBackground.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle("翻译")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showFeatureHub = true
-                } label: {
-                    Image(systemName: "square.grid.2x2")
-                }
-            }
-        }
         .onTapGesture {
             hideKeyboard()
         }
@@ -84,9 +71,6 @@ struct AITranslateHomeView: View {
         }
         .navigationDestination(isPresented: $showAllHistory) {
             AllTranslationRecordsView(history: viewModel.history)
-        }
-        .navigationDestination(isPresented: $showFeatureHub) {
-            FeatureHubView()
         }
     }
 
@@ -169,6 +153,8 @@ private struct TranslateLanguageBar: View {
 private struct TranslateMainInputCard: View {
     @ObservedObject var viewModel: TranslateViewModel
     private let languages = LanguageOption.all
+    @State private var showSourceLanguagePicker = false
+    @State private var showTargetLanguagePicker = false
 
     var body: some View {
         VStack(spacing: 10) {
@@ -236,19 +222,14 @@ private struct TranslateMainInputCard: View {
     }
 
     private func languageMenuButton(title: String, side: LanguagePickerSide) -> some View {
-        Menu {
-            ForEach(languages) { lang in
-                Button {
-                    setLanguage(lang, for: side)
-                } label: {
-                    if selectedLanguage(for: side) == lang {
-                        Label(lang.name, systemImage: "checkmark")
-                            .font(.system(size: 18, weight: .medium))
-                    } else {
-                        Text(lang.name)
-                            .font(.system(size: 18, weight: .medium))
-                    }
-                }
+        let isSource = side == .source
+        return Button {
+            if isSource {
+                showSourceLanguagePicker.toggle()
+                showTargetLanguagePicker = false
+            } else {
+                showTargetLanguagePicker.toggle()
+                showSourceLanguagePicker = false
             }
         } label: {
             HStack(spacing: 5) {
@@ -258,6 +239,46 @@ private struct TranslateMainInputCard: View {
             }
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(AppTheme.textSecondary)
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .buttonStyle(.plain)
+        .popover(
+            isPresented: isSource ? $showSourceLanguagePicker : $showTargetLanguagePicker,
+            attachmentAnchor: .rect(.bounds),
+            arrowEdge: .top
+        ) {
+            VStack(spacing: 0) {
+                ForEach(languages) { lang in
+                    Button {
+                        setLanguage(lang, for: side)
+                        if isSource {
+                            showSourceLanguagePicker = false
+                        } else {
+                            showTargetLanguagePicker = false
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            if selectedLanguage(for: side) == lang {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .frame(width: 14)
+                            } else {
+                                Color.clear.frame(width: 14, height: 13)
+                            }
+                            Text(lang.name)
+                                .font(.system(size: 15, weight: .medium))
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .padding(.horizontal, 12)
+                        .frame(height: 40)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .frame(width: 132)
+            .padding(.vertical, 6)
+            .presentationCompactAdaptation(.popover)
         }
     }
 
@@ -354,7 +375,7 @@ private struct TranslateHistoryPreviewCard: View {
     let onViewAll: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("最近记录")
                     .font(.headline.weight(.bold))
@@ -492,12 +513,8 @@ private struct TranslateMediaToolsCard: View {
     let onOpenHistory: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("语音转写与翻译")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(AppTheme.textPrimary)
-
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
                 toolButton(
                     title: "录音速译",
                     subtitle: "实时语音翻译",
@@ -515,7 +532,8 @@ private struct TranslateMediaToolsCard: View {
                 )
             }
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
@@ -536,25 +554,25 @@ private struct TranslateMediaToolsCard: View {
         } label: {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: icon)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
                     .background(tint.opacity(0.95))
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                     Text(subtitle)
-                        .font(.caption2)
+                        .font(.system(size: 11, weight: .regular))
                         .foregroundStyle(AppTheme.textSecondary)
                         .lineLimit(2)
                 }
                 Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
             .background(tint.opacity(0.16))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }

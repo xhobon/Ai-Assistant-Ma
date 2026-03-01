@@ -4,6 +4,7 @@ enum MainTab: Int, CaseIterable {
     case assistant
     case translate
     case learning
+    case practice
     case settings
 
     var title: String {
@@ -11,6 +12,7 @@ enum MainTab: Int, CaseIterable {
         case .assistant: return "AI助理"
         case .translate: return "翻译"
         case .learning: return "学习"
+        case .practice: return "练习"
         case .settings: return "我的"
         }
     }
@@ -20,6 +22,7 @@ enum MainTab: Int, CaseIterable {
         case .assistant: return "brain.head.profile"
         case .translate: return "character.bubble"
         case .learning: return "book.fill"
+        case .practice: return "target"
         case .settings: return "gearshape"
         }
     }
@@ -43,6 +46,10 @@ struct ContentView: View {
             tabRoot(.learning)
                 .tabItem { Label(MainTab.learning.title, systemImage: MainTab.learning.icon) }
                 .tag(MainTab.learning)
+
+            tabRoot(.practice)
+                .tabItem { Label(MainTab.practice.title, systemImage: MainTab.practice.icon) }
+                .tag(MainTab.practice)
 
             tabRoot(.settings)
                 .tabItem { Label(MainTab.settings.title, systemImage: MainTab.settings.icon) }
@@ -71,6 +78,8 @@ struct ContentView: View {
             AITranslateHomeView()
         case .learning:
             IndonesianLearningView()
+        case .practice:
+            PracticeHomeView()
         case .settings:
             MyDesignedView()
         }
