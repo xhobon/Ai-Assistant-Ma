@@ -158,8 +158,15 @@ struct PracticeHomeView: View {
     @State private var spellingAnswerCorrect: Bool?
     @State private var spellingAnsweredCount = 0
     @State private var spellingCorrectCount = 0
+    @State private var reorderQuestion: PracticeReorderQuestion?
+    @State private var reorderPickedWords: [String] = []
+    @State private var reorderAnswerCorrect: Bool?
+    @State private var reorderAnsweredCount = 0
+    @State private var reorderCorrectCount = 0
     @State private var streakInSession = 0
     @State private var bestStreakInSession = 0
+    @State private var heartsLeft = 3
+    @State private var xp = 0
     @State private var showGoalEditor = false
 
     private var pageMaxWidth: CGFloat {
@@ -177,13 +184,19 @@ struct PracticeHomeView: View {
     }
     private var practiceItems: [VocabItem] {
         let keyword = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !keyword.isEmpty else { return categoryItems }
-        return categoryItems.filter {
+        let searched = keyword.isEmpty ? categoryItems : categoryItems.filter {
             $0.textZh.localizedCaseInsensitiveContains(keyword)
             || $0.textId.localizedCaseInsensitiveContains(keyword)
             || $0.exampleZh.localizedCaseInsensitiveContains(keyword)
             || $0.exampleId.localizedCaseInsensitiveContains(keyword)
         }
+        let byDifficulty = selectedDifficulty == "全部"
+            ? searched
+            : searched.filter { difficultyForItem($0) == selectedDifficulty }
+        if showFavoritesOnly {
+            return byDifficulty.filter { viewModel.isFavorite($0) }
+        }
+        return byDifficulty
     }
     private var pendingCountText: String {
         "\(max(0, goalReviewWords - todayReviewedWords))词"
@@ -195,10 +208,10 @@ struct PracticeHomeView: View {
         "\(max(viewModel.activeDaysCount, 1))天"
     }
     private var overallAnswered: Int {
-        choiceAnsweredCount + tfAnsweredCount + listeningAnsweredCount + spellingAnsweredCount + flashcardMasteredCount
+        choiceAnsweredCount + tfAnsweredCount + listeningAnsweredCount + spellingAnsweredCount + reorderAnsweredCount + flashcardMasteredCount
     }
     private var overallCorrect: Int {
-        choiceCorrectCount + tfCorrectCount + listeningCorrectCount + spellingCorrectCount
+        choiceCorrectCount + tfCorrectCount + listeningCorrectCount + spellingCorrectCount + reorderCorrectCount
     }
     private var accuracyText: String {
         guard overallAnswered > 0 else { return "0%" }
@@ -213,7 +226,7 @@ struct PracticeHomeView: View {
                     searchText: $searchText,
                     selectedDifficulty: $selectedDifficulty,
                     showFavoritesOnly: $showFavoritesOnly,
-                    difficulties: ["全部"]
+                    difficulties: ["全部", "入门", "进阶", "高级"]
                 )
                 .padding(.horizontal, 14)
 
@@ -225,6 +238,9 @@ struct PracticeHomeView: View {
                     actionTitle: "自定义",
                     action: { showGoalEditor = true }
                 )
+                    .padding(.horizontal, 14)
+
+                practiceChallengeCard
                     .padding(.horizontal, 14)
 
                 practiceOverviewCard
@@ -259,6 +275,7 @@ struct PracticeHomeView: View {
             if flashcardItem == nil { generateFlashcard() }
             if listeningQuestion == nil { generateListeningQuestion() }
             if spellingQuestion == nil { generateSpellingQuestion() }
+            if reorderQuestion == nil { generateReorderQuestion() }
         }
         .onChange(of: viewModel.selectedCategoryId) { _, _ in
             regenerateAllQuestions()
@@ -288,6 +305,44 @@ struct PracticeHomeView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(AppTheme.border, lineWidth: 1)
         )
+    }
+
+    private var practiceChallengeCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("今日挑战")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Text("Lv.\(xp / 100 + 1) · XP \(xp)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+
+            HStack(spacing: 8) {
+                Label("\(heartsLeft)/3", systemImage: "heart.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(heartsLeft > 0 ? Color.red : AppTheme.textTertiary)
+                ProgressView(value: Double(xp % 100), total: 100)
+                    .tint(AppTheme.primary)
+                Text("下一级")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
+            if heartsLeft == 0 {
+                Button("恢复体力并继续练习") {
+                    heartsLeft = 3
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.primary)
+            }
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
     }
 
     private func practiceStatItem(title: String, value: String, subtitle: String) -> some View {
@@ -386,6 +441,7 @@ struct PracticeHomeView: View {
                 case .flashcard: practiceFlashcardCard
                 case .listening: practiceListeningCard
                 case .spelling: practiceSpellingCard
+                case .reorder: practiceReorderCard
                 }
             }
         }
@@ -659,6 +715,57 @@ struct PracticeHomeView: View {
         }
     }
 
+    private var practiceReorderCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("句子重组")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Text("正确 \(reorderCorrectCount)/\(reorderAnsweredCount)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+
+            if let question = reorderQuestion {
+                Text("把这句中文重组成正确印尼语：\(question.promptZh)")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                Text(reorderPickedWords.joined(separator: " "))
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                FlexibleWordWrap(words: question.shuffledWords) { word in
+                    let matchedCount = reorderPickedWords.filter { $0 == word }.count
+                    let allowedCount = question.targetWords.filter { $0 == word }.count
+                    guard matchedCount < allowedCount else { return }
+                    reorderPickedWords.append(word)
+                }
+
+                HStack(spacing: 10) {
+                    Button("清空") { reorderPickedWords.removeAll() }
+                        .buttonStyle(.bordered)
+                    Button("检查") { submitReorder(for: question) }
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.primary)
+                    Button("下一题") { generateReorderQuestion() }
+                        .buttonStyle(.bordered)
+                }
+
+                if let correct = reorderAnswerCorrect {
+                    Text(correct ? "顺序完全正确！" : "正确答案：\(question.targetWords.joined(separator: " "))")
+                        .font(.caption)
+                        .foregroundStyle(correct ? Color.green : AppTheme.accentWarm)
+                }
+            }
+        }
+    }
+
     private func generateChoiceQuestion() {
         guard practiceItems.count >= 4, let correct = practiceItems.randomElement() else { return }
         let wrongs = practiceItems.filter { $0.id != correct.id }.shuffled().prefix(3)
@@ -673,6 +780,7 @@ struct PracticeHomeView: View {
     }
 
     private func submitChoice(_ optionId: String, for question: PracticeChoiceQuestion) {
+        guard heartsLeft > 0 else { return }
         guard selectedChoiceId == nil else { return }
         selectedChoiceId = optionId
         let correct = optionId == question.correctId
@@ -702,6 +810,7 @@ struct PracticeHomeView: View {
     }
 
     private func submitTrueFalse(_ answer: Bool, for question: PracticeTrueFalseQuestion) {
+        guard heartsLeft > 0 else { return }
         guard tfAnswered == nil else { return }
         tfAnswered = answer
         let correct = answer == question.isTrueStatement
@@ -730,6 +839,7 @@ struct PracticeHomeView: View {
     }
 
     private func submitListening(_ optionId: String, for question: PracticeListeningQuestion) {
+        guard heartsLeft > 0 else { return }
         guard selectedListeningOptionId == nil else { return }
         selectedListeningOptionId = optionId
         let correct = optionId == question.correctId
@@ -747,6 +857,7 @@ struct PracticeHomeView: View {
     }
 
     private func submitSpelling(for question: VocabItem) {
+        guard heartsLeft > 0 else { return }
         guard spellingAnswerCorrect == nil else { return }
         let input = spellingInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let answer = question.textId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -758,12 +869,53 @@ struct PracticeHomeView: View {
         viewModel.registerActiveDayIfNeeded()
     }
 
+    private func generateReorderQuestion() {
+        guard let item = (practiceItems.randomElement() ?? allItems.randomElement()) else { return }
+        let words = item.textId
+            .split(whereSeparator: { $0 == " " || $0 == "," || $0 == "." || $0 == "?" || $0 == "!" })
+            .map(String.init)
+            .filter { !$0.isEmpty }
+        guard words.count >= 2 else {
+            reorderQuestion = PracticeReorderQuestion(promptZh: item.textZh, targetWords: [item.textId], shuffledWords: [item.textId])
+            reorderPickedWords = []
+            reorderAnswerCorrect = nil
+            return
+        }
+        reorderQuestion = PracticeReorderQuestion(
+            promptZh: item.textZh,
+            targetWords: words,
+            shuffledWords: words.shuffled()
+        )
+        reorderPickedWords = []
+        reorderAnswerCorrect = nil
+    }
+
+    private func submitReorder(for question: PracticeReorderQuestion) {
+        guard heartsLeft > 0 else { return }
+        guard !reorderPickedWords.isEmpty else { return }
+        let correct = reorderPickedWords == question.targetWords
+        reorderAnswerCorrect = correct
+        reorderAnsweredCount += 1
+        if correct { reorderCorrectCount += 1 }
+        registerPracticeResult(correct: correct, minutes: 3, reviewedWords: 1)
+        viewModel.registerActiveDayIfNeeded()
+    }
+
     private func regenerateAllQuestions() {
         generateChoiceQuestion()
         generateTrueFalseQuestion()
         generateFlashcard()
         generateListeningQuestion()
         generateSpellingQuestion()
+        generateReorderQuestion()
+    }
+
+    private func difficultyForItem(_ item: VocabItem) -> String {
+        let digits = item.id.compactMap { Int(String($0)) }
+        let value = digits.first ?? 1
+        if value <= 2 { return "入门" }
+        if value <= 4 { return "进阶" }
+        return "高级"
     }
 
     private func refreshDailyBucketIfNeeded() {
@@ -785,6 +937,11 @@ struct PracticeHomeView: View {
 
     private func registerPracticeResult(correct: Bool, minutes: Int, reviewedWords: Int) {
         addPracticeProgress(minutes: minutes, reviewedWords: reviewedWords)
+        if !correct {
+            heartsLeft = max(0, heartsLeft - 1)
+        } else {
+            xp += 12
+        }
         if correct {
             streakInSession += 1
             bestStreakInSession = max(bestStreakInSession, streakInSession)
@@ -873,12 +1030,19 @@ private struct PracticeListeningQuestion {
     let options: [VocabItem]
 }
 
+private struct PracticeReorderQuestion {
+    let promptZh: String
+    let targetWords: [String]
+    let shuffledWords: [String]
+}
+
 private enum PracticeMode: String, CaseIterable, Identifiable {
     case choice
     case trueFalse
     case flashcard
     case listening
     case spelling
+    case reorder
 
     var id: String { rawValue }
 
@@ -889,6 +1053,7 @@ private enum PracticeMode: String, CaseIterable, Identifiable {
         case .flashcard: return "闪卡"
         case .listening: return "听力"
         case .spelling: return "拼写"
+        case .reorder: return "重组"
         }
     }
 
@@ -899,6 +1064,29 @@ private enum PracticeMode: String, CaseIterable, Identifiable {
         case .flashcard: return "rectangle.on.rectangle"
         case .listening: return "speaker.wave.2"
         case .spelling: return "pencil.and.outline"
+        case .reorder: return "text.line.first.and.arrowtriangle.forward"
+        }
+    }
+}
+
+private struct FlexibleWordWrap: View {
+    let words: [String]
+    let onTap: (String) -> Void
+
+    private let columns = [GridItem(.adaptive(minimum: 70), spacing: 8)]
+
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+            ForEach(Array(words.enumerated()), id: \.offset) { _, word in
+                Button(word) { onTap(word) }
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(AppTheme.surfaceMuted)
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .buttonStyle(.plain)
+            }
         }
     }
 }
