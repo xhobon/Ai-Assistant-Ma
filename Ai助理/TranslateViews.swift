@@ -174,26 +174,10 @@ private struct TranslateMainInputCard: View {
         VStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Menu {
-                        ForEach(languages) { lang in
-                            Button(lang.name) {
-                                viewModel.sourceLang = lang
-                                if viewModel.targetLang == lang {
-                                    if let fallback = languages.first(where: { $0 != lang }) {
-                                        viewModel.targetLang = fallback
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(viewModel.sourceLang.name)
-                                .font(.caption.weight(.semibold))
-                            Image(systemName: "chevron.down")
-                                .font(.caption2.weight(.semibold))
-                        }
-                        .foregroundStyle(AppTheme.textSecondary)
-                    }
+                    languageMenuButton(
+                        title: viewModel.sourceLang.name,
+                        side: .source
+                    )
                     Spacer()
                     iconButton(system: "speaker.wave.2.fill", enabled: !viewModel.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
                         SpeechService.shared.speak(viewModel.sourceText, language: viewModel.sourceLang.speechCode)
@@ -217,26 +201,10 @@ private struct TranslateMainInputCard: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Menu {
-                        ForEach(languages) { lang in
-                            Button(lang.name) {
-                                viewModel.targetLang = lang
-                                if viewModel.sourceLang == lang {
-                                    if let fallback = languages.first(where: { $0 != lang }) {
-                                        viewModel.sourceLang = fallback
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(viewModel.targetLang.name)
-                                .font(.caption.weight(.semibold))
-                            Image(systemName: "chevron.down")
-                                .font(.caption2.weight(.semibold))
-                        }
-                        .foregroundStyle(AppTheme.textSecondary)
-                    }
+                    languageMenuButton(
+                        title: viewModel.targetLang.name,
+                        side: .target
+                    )
                     Spacer()
                     iconButton(system: "speaker.wave.2.fill", enabled: !viewModel.translatedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
                         viewModel.playResult()
@@ -267,6 +235,51 @@ private struct TranslateMainInputCard: View {
         )
     }
 
+    private func languageMenuButton(title: String, side: LanguagePickerSide) -> some View {
+        Menu {
+            ForEach(languages) { lang in
+                Button {
+                    setLanguage(lang, for: side)
+                } label: {
+                    if selectedLanguage(for: side) == lang {
+                        Label(lang.name, systemImage: "checkmark")
+                            .font(.system(size: 22, weight: .semibold))
+                    } else {
+                        Text(lang.name)
+                            .font(.system(size: 22, weight: .semibold))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(title)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .font(.system(size: 22, weight: .semibold))
+            .foregroundStyle(AppTheme.textSecondary)
+        }
+    }
+
+    private func setLanguage(_ lang: LanguageOption, for side: LanguagePickerSide) {
+        switch side {
+        case .source:
+            viewModel.sourceLang = lang
+            if viewModel.targetLang == lang, let fallback = languages.first(where: { $0 != lang }) {
+                viewModel.targetLang = fallback
+            }
+        case .target:
+            viewModel.targetLang = lang
+            if viewModel.sourceLang == lang, let fallback = languages.first(where: { $0 != lang }) {
+                viewModel.sourceLang = fallback
+            }
+        }
+    }
+
+    private func selectedLanguage(for side: LanguagePickerSide) -> LanguageOption {
+        side == .source ? viewModel.sourceLang : viewModel.targetLang
+    }
+
     private func micButton(active: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: active ? "stop.fill" : "mic.fill")
@@ -291,6 +304,11 @@ private struct TranslateMainInputCard: View {
         .buttonStyle(.plain)
         .disabled(!enabled)
     }
+}
+
+private enum LanguagePickerSide {
+    case source
+    case target
 }
 
 private struct TranslateBottomActionBar: View {

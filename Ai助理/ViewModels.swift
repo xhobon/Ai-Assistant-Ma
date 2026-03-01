@@ -592,8 +592,6 @@ final class TranslateViewModel: ObservableObject {
     }
 
     func clearTexts() {
-        sourceLang = .chinese
-        targetLang = .indonesian
         sourceText = ""
         translatedText = ""
     }
@@ -627,8 +625,8 @@ final class TranslateViewModel: ObservableObject {
             do {
                 let result = try await APIClient.shared.translate(
                     text: trimmed,
-                    sourceLang: sourceLang.speechCode,
-                    targetLang: targetLang.speechCode
+                    sourceLang: sourceLang.code,
+                    targetLang: targetLang.code
                 )
                 let translated = result.trimmingCharacters(in: .whitespacesAndNewlines)
                 await MainActor.run {
@@ -672,8 +670,8 @@ final class TranslateViewModel: ObservableObject {
                 // 交换语言方向翻译
                 let result = try await APIClient.shared.translate(
                     text: trimmed,
-                    sourceLang: targetLang.speechCode,
-                    targetLang: sourceLang.speechCode
+                    sourceLang: targetLang.code,
+                    targetLang: sourceLang.code
                 )
                 let translated = result.trimmingCharacters(in: .whitespacesAndNewlines)
                 await MainActor.run {
@@ -781,29 +779,7 @@ final class TranslateViewModel: ObservableObject {
             : translatedText.trimmingCharacters(in: .whitespacesAndNewlines)
         
         if !text.isEmpty {
-            if let detected = detectedLanguage(from: text) {
-                if listeningSide == .left {
-                    sourceLang = detected
-                    targetLang = defaultTargetLanguage(for: detected)
-                } else {
-                    targetLang = detected
-                    sourceLang = defaultTargetLanguage(for: detected)
-                }
-            }
             translate()
-        }
-    }
-
-    private func defaultTargetLanguage(for source: LanguageOption) -> LanguageOption {
-        switch source {
-        case .chinese:
-            return .indonesian
-        case .indonesian:
-            return .chinese
-        case .english:
-            return .chinese
-        default:
-            return .chinese
         }
     }
 

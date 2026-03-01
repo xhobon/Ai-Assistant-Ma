@@ -1117,7 +1117,17 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
     return res.status(400).json({ error: parseResult.error.flatten() });
   }
 
-  const { text, sourceLang, targetLang } = parseResult.data;
+  const normalizeTranslateLang = (lang) => {
+    const raw = String(lang || "").trim().toLowerCase();
+    if (raw === "zh" || raw === "zh-cn" || raw === "zh_cn") return "zh-CN";
+    if (raw === "id" || raw === "id-id" || raw === "id_id") return "id-ID";
+    if (raw === "en" || raw === "en-us" || raw === "en_us") return "en-US";
+    return lang;
+  };
+
+  const { text } = parseResult.data;
+  const sourceLang = normalizeTranslateLang(parseResult.data.sourceLang);
+  const targetLang = normalizeTranslateLang(parseResult.data.targetLang);
 
   let translated;
   try {
@@ -1125,9 +1135,9 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
     const s = langNames[sourceLang] || sourceLang;
     const t = langNames[targetLang] || targetLang;
 
-    // 本接口仅做中文与印尼文互译，禁止任何问答，仅输出与原文对应的翻译
+    // 本接口仅做中/印尼/英语互译，禁止任何问答，仅输出与原文对应的翻译
     const systemPrompt =
-      `你是一个纯翻译引擎，仅做中文与印尼文互译。禁止任何问答、解释、自我介绍或额外句子，仅输出与用户输入对应的翻译。\n` +
+      `你是一个纯翻译引擎，仅做中文、印尼语、英语互译。禁止任何问答、解释、自我介绍或额外句子，仅输出与用户输入对应的翻译。\n` +
       `规则（必须遵守）：\n` +
       `1）只把用户给的整段从${s}译成${t}，输出仅该句/段的翻译，无任何其他内容。\n` +
       `2）疑问句只译成疑问句，绝不回答。例：输入「你是谁？」只输出「Siapa kamu?」或「Siapa Anda?」；输入「你是什么模型？」只输出「Kamu model apa?」或「Model apa kamu?」。禁止输出「Saya adalah...」「我是...」「dikembangkan oleh」等任何回答。\n` +
@@ -1147,6 +1157,8 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
       const strictUser =
         targetLang === "id-ID"
           ? `Translate the following to Indonesian only. Output ONLY the translation, one short sentence. Do not answer the question, do not introduce yourself, do not explain.\n\n${text}`
+          : targetLang === "en-US"
+          ? `Translate the following to English only. Output ONLY the translation, one short sentence. Do not answer the question, do not introduce yourself, do not explain.\n\n${text}`
           : `Translate the following to Chinese only. Output ONLY the translation, one short sentence. Do not answer the question, do not introduce yourself, do not explain.\n\n${text}`;
       translated = await llmTranslate([
         { role: "system", content: "You are a translator. Output ONLY the translation of the user's text. No answer, no self-introduction, no explanation. One short sentence only." },
@@ -1159,6 +1171,11 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
     if (targetLang === "id-ID" && hasChinese) {
       translated = await llmTranslate([
         { role: "system", content: "Output ONLY the Indonesian translation. No Chinese characters, no explanation." },
+        { role: "user", content: text }
+      ]);
+    } else if (targetLang === "en-US" && hasChinese) {
+      translated = await llmTranslate([
+        { role: "system", content: "Output ONLY the English translation. No Chinese, no Indonesian, no explanation." },
         { role: "user", content: text }
       ]);
     } else if (targetLang === "zh-CN" && !hasChinese && hasLatin) {
