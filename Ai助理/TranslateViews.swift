@@ -168,14 +168,32 @@ private struct TranslateLanguageBar: View {
 
 private struct TranslateMainInputCard: View {
     @ObservedObject var viewModel: TranslateViewModel
+    private let languages = LanguageOption.all
 
     var body: some View {
         VStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(viewModel.sourceLang.name)
-                        .font(.caption.weight(.semibold))
+                    Menu {
+                        ForEach(languages) { lang in
+                            Button(lang.name) {
+                                viewModel.sourceLang = lang
+                                if viewModel.targetLang == lang {
+                                    if let fallback = languages.first(where: { $0 != lang }) {
+                                        viewModel.targetLang = fallback
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(viewModel.sourceLang.name)
+                                .font(.caption.weight(.semibold))
+                            Image(systemName: "chevron.down")
+                                .font(.caption2.weight(.semibold))
+                        }
                         .foregroundStyle(AppTheme.textSecondary)
+                    }
                     Spacer()
                     iconButton(system: "speaker.wave.2.fill", enabled: !viewModel.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
                         SpeechService.shared.speak(viewModel.sourceText, language: viewModel.sourceLang.speechCode)
@@ -192,9 +210,6 @@ private struct TranslateMainInputCard: View {
                     .scrollContentBackground(.hidden)
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(AppTheme.textPrimary)
-                    .onChange(of: viewModel.sourceText) { _, _ in
-                        viewModel.scheduleAutoTranslate()
-                    }
             }
             .padding(12)
             .background(AppTheme.surfaceMuted)
@@ -202,9 +217,26 @@ private struct TranslateMainInputCard: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(viewModel.targetLang.name)
-                        .font(.caption.weight(.semibold))
+                    Menu {
+                        ForEach(languages) { lang in
+                            Button(lang.name) {
+                                viewModel.targetLang = lang
+                                if viewModel.sourceLang == lang {
+                                    if let fallback = languages.first(where: { $0 != lang }) {
+                                        viewModel.sourceLang = fallback
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(viewModel.targetLang.name)
+                                .font(.caption.weight(.semibold))
+                            Image(systemName: "chevron.down")
+                                .font(.caption2.weight(.semibold))
+                        }
                         .foregroundStyle(AppTheme.textSecondary)
+                    }
                     Spacer()
                     iconButton(system: "speaker.wave.2.fill", enabled: !viewModel.translatedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
                         viewModel.playResult()
@@ -221,9 +253,6 @@ private struct TranslateMainInputCard: View {
                     .scrollContentBackground(.hidden)
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(AppTheme.textPrimary)
-                    .onChange(of: viewModel.translatedText) { _, _ in
-                        viewModel.scheduleAutoTranslate()
-                    }
             }
             .padding(12)
             .background(AppTheme.surfaceMuted)
@@ -270,9 +299,9 @@ private struct TranslateBottomActionBar: View {
     var body: some View {
         HStack(spacing: 10) {
             Button {
-                viewModel.swapLanguages()
+                viewModel.clearTexts()
             } label: {
-                Label("语言切换", systemImage: "arrow.left.arrow.right")
+                Label("清空", systemImage: "xmark.circle")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
@@ -468,7 +497,7 @@ private struct TranslateMediaToolsCard: View {
                 )
             }
         }
-        .padding(14)
+        .padding(12)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
@@ -487,23 +516,27 @@ private struct TranslateMediaToolsCard: View {
         Button {
             action?()
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 10) {
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)
                     .background(tint.opacity(0.95))
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text(subtitle)
-                    .font(.caption2)
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .lineLimit(2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
-            .padding(10)
+            .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
             .background(tint.opacity(0.16))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }

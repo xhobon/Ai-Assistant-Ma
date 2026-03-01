@@ -591,6 +591,13 @@ final class TranslateViewModel: ObservableObject {
         translatedText = tempText
     }
 
+    func clearTexts() {
+        sourceLang = .chinese
+        targetLang = .indonesian
+        sourceText = ""
+        translatedText = ""
+    }
+
     /// 智能翻译：根据哪个框有内容，自动判断翻译方向
     func translate() {
         let leftTrimmed = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -777,13 +784,26 @@ final class TranslateViewModel: ObservableObject {
             if let detected = detectedLanguage(from: text) {
                 if listeningSide == .left {
                     sourceLang = detected
-                    targetLang = detected == .chinese ? .indonesian : .chinese
+                    targetLang = defaultTargetLanguage(for: detected)
                 } else {
                     targetLang = detected
-                    sourceLang = detected == .chinese ? .indonesian : .chinese
+                    sourceLang = defaultTargetLanguage(for: detected)
                 }
             }
             translate()
+        }
+    }
+
+    private func defaultTargetLanguage(for source: LanguageOption) -> LanguageOption {
+        switch source {
+        case .chinese:
+            return .indonesian
+        case .indonesian:
+            return .chinese
+        case .english:
+            return .chinese
+        default:
+            return .chinese
         }
     }
 

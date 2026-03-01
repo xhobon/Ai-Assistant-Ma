@@ -30,8 +30,9 @@ struct LanguageOption: Identifiable, Hashable {
 
     static let chinese = LanguageOption(id: "zh", code: "zh", name: "中文", speechCode: "zh-CN")
     static let indonesian = LanguageOption(id: "id", code: "id", name: "印尼文", speechCode: "id-ID")
+    static let english = LanguageOption(id: "en", code: "en", name: "英语", speechCode: "en-US")
 
-    static let all: [LanguageOption] = [.chinese, .indonesian]
+    static let all: [LanguageOption] = [.chinese, .indonesian, .english]
 }
 
 struct VocabCategory: Identifiable, Hashable {
