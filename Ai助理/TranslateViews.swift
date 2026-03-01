@@ -243,10 +243,10 @@ private struct TranslateMainInputCard: View {
                 } label: {
                     if selectedLanguage(for: side) == lang {
                         Label(lang.name, systemImage: "checkmark")
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.system(size: 18, weight: .medium))
                     } else {
                         Text(lang.name)
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.system(size: 18, weight: .medium))
                     }
                 }
             }
@@ -254,9 +254,9 @@ private struct TranslateMainInputCard: View {
             HStack(spacing: 5) {
                 Text(title)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
             }
-            .font(.system(size: 22, weight: .semibold))
+            .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(AppTheme.textSecondary)
         }
     }
