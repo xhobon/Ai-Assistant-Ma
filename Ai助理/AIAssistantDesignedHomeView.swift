@@ -104,15 +104,11 @@ struct AIAssistantDesignedHomeView: View {
             Task { await handleImportedMedia(url: url, isVideo: true) }
         }
         .overlay(alignment: .bottomTrailing) {
-            Button {
+            StackChanFloatingButton {
                 showStackChanDialog = true
-            } label: {
-                StackChanFloatingIcon()
             }
-            .buttonStyle(.plain)
-            .padding(.trailing, 18)
-            .padding(.bottom, 96)
-            .accessibilityLabel("打开 Stack-chan 助手")
+            .padding(.trailing, 14)
+            .padding(.bottom, 90)
         }
         .fullScreenCover(isPresented: $showStackChanDialog) {
             StackChanDialogView()
@@ -441,7 +437,58 @@ struct AIAssistantDesignedHomeView: View {
     }
 }
 
+private struct StackChanFloatingButton: View {
+    let onTap: () -> Void
+    @AppStorage("stack_chan_daily_event_date") private var dailyEventDate = ""
+    @AppStorage("stack_chan_daily_event_done") private var dailyEventDone = false
+    @State private var dragOffset: CGSize = .zero
+    @State private var isDragging = false
+
+    private var hasPendingEvent: Bool {
+        let today = StackChanDateUtil.todayString()
+        if dailyEventDate != today { return true }
+        return !dailyEventDone
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            StackChanFloatingIcon(isSpeaking: false, emotion: .happy)
+                .scaleEffect(isDragging ? 1.06 : 1.0)
+                .offset(dragOffset)
+                .overlay(alignment: .topTrailing) {
+                    if hasPendingEvent {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 12, height: 12)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white, lineWidth: 2)
+                            )
+                            .offset(x: 2, y: -2)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 1)
+                .onChanged { value in
+                    isDragging = true
+                    dragOffset = value.translation
+                }
+                .onEnded { _ in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        isDragging = false
+                        dragOffset = .zero
+                    }
+                }
+        )
+        .accessibilityLabel("打开 Stack-chan 助手")
+    }
+}
+
 private struct StackChanFloatingIcon: View {
+    let isSpeaking: Bool
+    let emotion: StackChanEmotion
     @State private var blink = false
 
     var body: some View {
@@ -451,48 +498,128 @@ private struct StackChanFloatingIcon: View {
                 .frame(width: 58, height: 58)
                 .shadow(color: Color.black.opacity(0.24), radius: 10, x: 0, y: 5)
 
-            HStack(spacing: 10) {
-                eyeView
-                eyeView
+            VStack(spacing: 7) {
+                HStack(spacing: 10) {
+                    eye
+                    eye
+                }
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(Color.white.opacity(emotion == .happy ? 0.95 : 0.8))
+                    .frame(width: isSpeaking ? 13 : 9, height: isSpeaking ? 4 : 2)
             }
         }
         .task {
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(Int.random(in: 1_600_000_000...3_200_000_000)))
-                withAnimation(.easeInOut(duration: 0.12)) { blink = true }
+                try? await Task.sleep(nanoseconds: UInt64(Int.random(in: 1_700_000_000...3_300_000_000)))
+                withAnimation(.easeInOut(duration: 0.1)) { blink = true }
                 try? await Task.sleep(nanoseconds: 120_000_000)
-                withAnimation(.easeInOut(duration: 0.12)) { blink = false }
+                withAnimation(.easeInOut(duration: 0.1)) { blink = false }
             }
         }
     }
 
-    private var eyeView: some View {
+    private var eye: some View {
         RoundedRectangle(cornerRadius: 4, style: .continuous)
             .fill(Color.white)
-            .frame(width: 11, height: blink ? 2.5 : 11)
+            .frame(width: 11, height: blink ? 2.4 : 11)
+    }
+}
+
+private enum StackChanEmotion {
+    case neutral
+    case happy
+    case thinking
+    case listening
+}
+
+private enum StackChanSkin: String, CaseIterable, Identifiable {
+    case classic
+    case mint
+    case sunset
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .classic: return "经典"
+        case .mint: return "薄荷"
+        case .sunset: return "晚霞"
+        }
+    }
+
+    var faceBackground: Color {
+        switch self {
+        case .classic: return .black
+        case .mint: return Color(red: 0.08, green: 0.24, blue: 0.22)
+        case .sunset: return Color(red: 0.24, green: 0.11, blue: 0.17)
+        }
+    }
+
+    var accent: Color {
+        switch self {
+        case .classic: return AppTheme.primary
+        case .mint: return Color(red: 0.11, green: 0.66, blue: 0.56)
+        case .sunset: return Color(red: 0.96, green: 0.47, blue: 0.31)
+        }
     }
 }
 
 private struct StackChanDialogView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var speechService = SpeechService.shared
+    @AppStorage("stack_chan_pet_points") private var petPoints = 0
+    @AppStorage("stack_chan_pet_name") private var petName = "豆豆"
+    @AppStorage("stack_chan_favorite_topic") private var favoriteTopic = "聊天"
+    @AppStorage("stack_chan_streak_days") private var streakDays = 1
+    @AppStorage("stack_chan_last_active_date") private var lastActiveDate = ""
+    @AppStorage("stack_chan_daily_chat_count") private var dailyChatCount = 0
+    @AppStorage("stack_chan_daily_task_date") private var dailyTaskDate = ""
+    @AppStorage("stack_chan_badge_chat_novice") private var badgeChatNovice = false
+    @AppStorage("stack_chan_badge_streak_7") private var badgeStreak7 = false
+    @AppStorage("stack_chan_badge_pet_lover") private var badgePetLover = false
+    @AppStorage("stack_chan_daily_event_date") private var dailyEventDate = ""
+    @AppStorage("stack_chan_daily_event_id") private var dailyEventId = ""
+    @AppStorage("stack_chan_daily_event_done") private var dailyEventDone = false
+    @AppStorage("stack_chan_message_cache") private var messageCache = ""
+    @AppStorage("stack_chan_input_locale") private var inputLocaleCode = "zh-CN"
+    @AppStorage("stack_chan_output_locale") private var outputLocaleCode = "zh-CN"
+    @AppStorage("stack_chan_skin") private var skinRawValue = StackChanSkin.classic.rawValue
+    @AppStorage("stack_chan_last_greeting_date") private var lastGreetingDate = ""
+
     @State private var messages: [StackChanMessage] = [
-        StackChanMessage(role: .assistant, text: "嗨，我是豆豆助手。点麦克风说话，或直接打字问我。")
+        StackChanMessage(role: .assistant, text: "嗨，我是豆豆机器人。今天也一起玩吧。")
     ]
     @State private var inputText = ""
     @State private var isSending = false
     @State private var isListening = false
     @State private var errorMessage: String?
     @State private var conversationId: String?
-    @State private var transcriber = SpeechTranscriber()
+    private let transcriber = SpeechTranscriber()
+
+    @State private var emotion: StackChanEmotion = .happy
+    @State private var blink = false
+    @State private var mouthOpen = false
+    @State private var gazeX: CGFloat = 0
+    @State private var showPetRoom = false
+    @State private var showMemoryEditor = false
+    @State private var currentEvent: StackChanPetEvent?
+
+    private let quickPrompts = ["给我一个鼓励", "陪我练口语", "今天做什么", "讲个冷笑话"]
+    private let dailyGoal = 5
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                petHeader
+
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 10) {
                             ForEach(messages) { message in
                                 bubble(message)
+                            }
+                            if isSending {
+                                thinkingBubble
                             }
                         }
                         .padding(.horizontal, 16)
@@ -501,11 +628,12 @@ private struct StackChanDialogView: View {
                     }
                     .onChange(of: messages.count) { _, _ in
                         guard let last = messages.last else { return }
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            proxy.scrollTo(last.id, anchor: .bottom)
-                        }
+                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
+
+                quickPromptRow
+                eventCard
 
                 if let errorMessage, !errorMessage.isEmpty {
                     Text(errorMessage)
@@ -515,47 +643,9 @@ private struct StackChanDialogView: View {
                         .padding(.top, 6)
                 }
 
-                HStack(spacing: 8) {
-                    Button {
-                        toggleListening()
-                    } label: {
-                        Image(systemName: isListening ? "stop.fill" : "mic.fill")
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 42, height: 42)
-                            .background(isListening ? Color.red : AppTheme.primary)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-
-                    TextField("和豆豆助手说点什么...", text: $inputText, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .lineLimit(1...4)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(AppTheme.surfaceMuted)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                    Button {
-                        Task { await sendMessage() }
-                    } label: {
-                        Image(systemName: isSending ? "hourglass" : "paperplane.fill")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 42, height: 42)
-                            .background(isSending ? Color.gray : AppTheme.primary)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isSending)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 12)
-                .background(.ultraThinMaterial)
+                composer
             }
             .background(AppTheme.pageBackground.ignoresSafeArea())
-            .navigationTitle("Stack-chan")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -565,8 +655,291 @@ private struct StackChanDialogView: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 12) {
+                        Button {
+                            clearConversation()
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        Button {
+                            showMemoryEditor = true
+                        } label: {
+                            Image(systemName: "person.crop.circle")
+                        }
+                        Button {
+                            showPetRoom = true
+                        } label: {
+                            Image(systemName: "house.fill")
+                        }
+                    }
+                }
+            }
+            .task {
+                loadCachedMessages()
+                resetDailyTaskIfNeeded()
+                prepareDailyEventIfNeeded()
+                updateDailyStreak()
+                appendDailyGreetingIfNeeded()
+                await runIdleFaceAnimation()
+            }
+            .onChange(of: speechService.isPlaying) { _, isPlaying in
+                if isPlaying {
+                    emotion = .happy
+                    Task { await runMouthAnimation() }
+                } else {
+                    mouthOpen = false
+                }
+            }
+            .fullScreenCover(isPresented: $showPetRoom) {
+                StackChanPetRoomView(
+                    petName: $petName,
+                    favoriteTopic: $favoriteTopic,
+                    petPoints: $petPoints,
+                    streakDays: $streakDays,
+                    dailyChatCount: $dailyChatCount,
+                    dailyGoal: dailyGoal,
+                    badgeChatNovice: $badgeChatNovice,
+                    badgeStreak7: $badgeStreak7,
+                    badgePetLover: $badgePetLover,
+                    skinRawValue: $skinRawValue
+                )
+            }
+            .sheet(isPresented: $showMemoryEditor) {
+                NavigationStack {
+                    Form {
+                        Section("关系记忆") {
+                            TextField("机器人昵称", text: $petName)
+                            TextField("你更想聊的话题", text: $favoriteTopic)
+                        }
+                        Section("语音设置") {
+                            Picker("输入语言", selection: $inputLocaleCode) {
+                                ForEach(StackChanLanguageOption.allCases) { option in
+                                    Text(option.title).tag(option.localeCode)
+                                }
+                            }
+                            Picker("播报语言", selection: $outputLocaleCode) {
+                                ForEach(StackChanLanguageOption.allCases) { option in
+                                    Text(option.title).tag(option.localeCode)
+                                }
+                            }
+                        }
+                    }
+                    .navigationTitle("豆豆记忆")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("完成") { showMemoryEditor = false }
+                        }
+                    }
+                }
+                .presentationDetents([.medium])
             }
         }
+    }
+
+    private var petHeader: some View {
+        VStack(spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(LinearGradient(colors: [Color(red: 0.88, green: 0.93, blue: 1.0), Color.white], startPoint: .topLeading, endPoint: .bottomTrailing))
+                VStack(spacing: 8) {
+                    StackChanFacePanel(emotion: emotion, blink: blink, mouthOpen: mouthOpen, gazeX: gazeX, skin: currentSkin)
+                    Text("\(petName)机器人 · 亲密度 \(petPoints) · 连续 \(streakDays) 天")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                .padding(.vertical, 12)
+            }
+            .frame(height: 150)
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("今日互动任务")
+                        .font(.subheadline.weight(.bold))
+                    Spacer()
+                    Text("\(dailyChatCount)/\(dailyGoal)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(AppTheme.surfaceMuted)
+                            .frame(height: 8)
+                        Capsule()
+                            .fill(AppTheme.primary)
+                            .frame(width: geo.size.width * min(Double(dailyChatCount) / Double(dailyGoal), 1), height: 8)
+                    }
+                }
+                .frame(height: 8)
+
+                HStack(spacing: 8) {
+                    badgePill("新手聊天", unlocked: badgeChatNovice)
+                    badgePill("7日陪伴", unlocked: badgeStreak7)
+                    badgePill("宠物达人", unlocked: badgePetLover)
+                }
+            }
+            .padding(12)
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func badgePill(_ title: String, unlocked: Bool) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: unlocked ? "medal.fill" : "lock.fill")
+                .font(.caption2.weight(.bold))
+            Text(title)
+                .font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(unlocked ? Color.orange : AppTheme.textSecondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background((unlocked ? Color.orange.opacity(0.12) : AppTheme.surfaceMuted))
+        .clipShape(Capsule())
+    }
+
+    private var quickPromptRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(quickPrompts, id: \.self) { prompt in
+                    Button(prompt) {
+                        inputText = prompt
+                        Task { await sendMessage() }
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(AppTheme.surface)
+                    .clipShape(Capsule())
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+        }
+    }
+
+    @ViewBuilder
+    private var eventCard: some View {
+        if let event = currentEvent {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("今日事件")
+                        .font(.subheadline.weight(.bold))
+                    Spacer()
+                    if dailyEventDone {
+                        Text("已完成")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.green)
+                    }
+                }
+
+                Text(event.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(event.detail)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+
+                HStack(spacing: 8) {
+                    Button {
+                        completeEvent(event)
+                    } label: {
+                        Text(dailyEventDone ? "已领取奖励" : "完成事件 +\(event.reward)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(dailyEventDone ? Color.gray : AppTheme.primary)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(dailyEventDone)
+
+                    Button("换一个") {
+                        switchEvent()
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(Capsule())
+                }
+            }
+            .padding(12)
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private var composer: some View {
+        HStack(spacing: 8) {
+            Button {
+                toggleListening()
+            } label: {
+                Image(systemName: isListening ? "stop.fill" : "mic.fill")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(isListening ? Color.red : AppTheme.primary)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+
+            TextField("和豆豆机器人说点什么...", text: $inputText, axis: .vertical)
+                .textFieldStyle(.plain)
+                .lineLimit(1...4)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            Menu {
+                ForEach(StackChanLanguageOption.allCases) { option in
+                    Button {
+                        inputLocaleCode = option.localeCode
+                    } label: {
+                        if inputLocaleCode == option.localeCode {
+                            Label(option.shortTitle, systemImage: "checkmark")
+                        } else {
+                            Text(option.shortTitle)
+                        }
+                    }
+                }
+            } label: {
+                Text(activeInputLanguage.shortTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .frame(width: 42, height: 42)
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(Circle())
+            }
+
+            Button {
+                Task { await sendMessage() }
+            } label: {
+                Image(systemName: isSending ? "hourglass" : "paperplane.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(isSending ? Color.gray : AppTheme.primary)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(isSending)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .background(.ultraThinMaterial)
     }
 
     @ViewBuilder
@@ -588,9 +961,22 @@ private struct StackChanDialogView: View {
         .id(message.id)
     }
 
+    private var thinkingBubble: some View {
+        HStack {
+            Spacer(minLength: 44)
+            Text("豆豆正在思考...")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.95))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(AppTheme.primary.opacity(0.8)))
+        }
+    }
+
     private func toggleListening() {
         if isListening {
             stopListening()
+            emotion = .neutral
             return
         }
         Task { await startListening() }
@@ -600,22 +986,28 @@ private struct StackChanDialogView: View {
     private func startListening() async {
         SpeechService.shared.stopSpeaking()
         errorMessage = nil
+        emotion = .listening
         do {
             let granted = await transcriber.requestAuthorization()
             guard granted else {
                 errorMessage = "请在系统设置中允许语音识别权限"
+                emotion = .neutral
                 return
             }
-            try transcriber.startTranscribing(locale: Locale(identifier: "zh-CN")) { text, isFinal in
+            try transcriber.startTranscribing(locale: Locale(identifier: inputLocaleCode)) { text, isFinal in
                 Task { @MainActor in
                     if !text.isEmpty { inputText = text }
-                    if isFinal { isListening = false }
+                    if isFinal {
+                        isListening = false
+                        emotion = .happy
+                    }
                 }
             }
             isListening = true
         } catch {
             errorMessage = userFacingMessage(for: error)
             isListening = false
+            emotion = .neutral
         }
     }
 
@@ -632,36 +1024,270 @@ private struct StackChanDialogView: View {
         stopListening()
         errorMessage = nil
         isSending = true
+        emotion = .thinking
         inputText = ""
         messages.append(StackChanMessage(role: .user, text: text))
+        persistMessages()
 
         do {
             let response = try await StackChanAPI.chat(message: text, conversationId: conversationId)
             conversationId = response.conversationId ?? conversationId
             messages.append(StackChanMessage(role: .assistant, text: response.reply))
-            SpeechService.shared.speak(response.reply, language: "zh-CN")
+            petPoints = min(petPoints + 1, 9999)
+            dailyChatCount = min(dailyChatCount + 1, 999)
+            emotion = inferredEmotion(from: response.reply)
+            updateMemory(from: text)
+            unlockBadgesIfNeeded()
+            SpeechService.shared.speak(replyWithMoodPrefix(response.reply), language: outputLocaleCode)
+            persistMessages()
         } catch {
-            let msg = userFacingMessage(for: error)
-            errorMessage = msg
-            messages.append(StackChanMessage(role: .assistant, text: "我刚刚有点走神了，请再试一次。"))
+            errorMessage = userFacingMessage(for: error)
+            messages.append(StackChanMessage(role: .assistant, text: "哎呀，我走神了。再说一次吧。"))
+            emotion = .neutral
+            persistMessages()
         }
         isSending = false
     }
+
+    private func inferredEmotion(from reply: String) -> StackChanEmotion {
+        let text = reply.lowercased()
+        if text.contains("哈哈") || text.contains("太棒") || text.contains("开心") || text.contains("赞") { return .happy }
+        if text.contains("稍等") || text.contains("思考") || text.contains("让我看看") { return .thinking }
+        return .neutral
+    }
+
+    private func runIdleFaceAnimation() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: UInt64(Int.random(in: 1_800_000_000...3_300_000_000)))
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.1)) { blink = true }
+            }
+            try? await Task.sleep(nanoseconds: 110_000_000)
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    blink = false
+                    gazeX = CGFloat.random(in: -5...5)
+                }
+            }
+        }
+    }
+
+    private func runMouthAnimation() async {
+        while speechService.isPlaying && !Task.isCancelled {
+            await MainActor.run { withAnimation(.easeInOut(duration: 0.09)) { mouthOpen.toggle() } }
+            try? await Task.sleep(nanoseconds: 90_000_000)
+        }
+        await MainActor.run { mouthOpen = false }
+    }
+
+    private func resetDailyTaskIfNeeded() {
+        let today = StackChanDateUtil.todayString()
+        guard dailyTaskDate != today else { return }
+        dailyTaskDate = today
+        dailyChatCount = 0
+    }
+
+    private func unlockBadgesIfNeeded() {
+        if dailyChatCount >= dailyGoal { badgeChatNovice = true }
+        if streakDays >= 7 { badgeStreak7 = true }
+        if petPoints >= 100 { badgePetLover = true }
+    }
+
+    private func replyWithMoodPrefix(_ reply: String) -> String {
+        switch emotion {
+        case .happy:
+            return "耶，\(reply)"
+        case .thinking:
+            return "我想到了，\(reply)"
+        case .listening:
+            return "我听到了，\(reply)"
+        case .neutral:
+            return reply
+        }
+    }
+
+    private func updateMemory(from text: String) {
+        let lower = text.lowercased()
+        if lower.contains("英语") || lower.contains("口语") { favoriteTopic = "口语练习" }
+        else if lower.contains("学习") { favoriteTopic = "学习" }
+        else if lower.contains("翻译") { favoriteTopic = "翻译" }
+        else if lower.contains("写作") { favoriteTopic = "写作" }
+    }
+
+    private func updateDailyStreak() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let today = formatter.string(from: Date())
+        guard lastActiveDate != today else { return }
+        if let last = formatter.date(from: lastActiveDate),
+           let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()),
+           Calendar.current.isDate(last, inSameDayAs: yesterday) {
+            streakDays += 1
+        } else if !lastActiveDate.isEmpty {
+            streakDays = 1
+        }
+        lastActiveDate = today
+    }
+
+    private func prepareDailyEventIfNeeded() {
+        let today = StackChanDateUtil.todayString()
+        if dailyEventDate != today {
+            dailyEventDate = today
+            dailyEventDone = false
+            let randomEvent = StackChanPetEvent.library.randomElement() ?? StackChanPetEvent.library[0]
+            dailyEventId = randomEvent.id
+            currentEvent = randomEvent
+            return
+        }
+        currentEvent = StackChanPetEvent.library.first(where: { $0.id == dailyEventId }) ?? StackChanPetEvent.library[0]
+    }
+
+    private func switchEvent() {
+        let options = StackChanPetEvent.library.filter { $0.id != currentEvent?.id }
+        guard let next = options.randomElement() else { return }
+        currentEvent = next
+        dailyEventId = next.id
+        dailyEventDone = false
+    }
+
+    private func completeEvent(_ event: StackChanPetEvent) {
+        guard !dailyEventDone else { return }
+        dailyEventDone = true
+        petPoints = min(petPoints + event.reward, 9999)
+        dailyChatCount = min(dailyChatCount + 1, 999)
+        emotion = .happy
+        unlockBadgesIfNeeded()
+        messages.append(StackChanMessage(role: .assistant, text: "事件完成！奖励你 +\(event.reward) 亲密度，太棒了。"))
+        persistMessages()
+    }
+
+    private var currentSkin: StackChanSkin {
+        StackChanSkin(rawValue: skinRawValue) ?? .classic
+    }
+
+    private func appendDailyGreetingIfNeeded() {
+        let today = StackChanDateUtil.todayString()
+        guard lastGreetingDate != today else { return }
+        lastGreetingDate = today
+        let hour = Calendar.current.component(.hour, from: Date())
+        let greet: String
+        if hour < 11 {
+            greet = "早上好，我已经上线陪你啦。"
+        } else if hour < 17 {
+            greet = "下午好，想先聊天、翻译还是学习？"
+        } else {
+            greet = "晚上好，辛苦一天了，我陪你放松一下。"
+        }
+        messages.append(StackChanMessage(role: .assistant, text: greet))
+        persistMessages()
+    }
+
+    private var activeInputLanguage: StackChanLanguageOption {
+        StackChanLanguageOption(localeCode: inputLocaleCode) ?? .chinese
+    }
+
+    private func clearConversation() {
+        stopListening()
+        SpeechService.shared.stopSpeaking()
+        conversationId = nil
+        errorMessage = nil
+        messages = [StackChanMessage(role: .assistant, text: "会话已重置。你好，我是\(petName)机器人。")]
+        persistMessages()
+    }
+
+    private func loadCachedMessages() {
+        guard let data = messageCache.data(using: .utf8),
+              let cached = try? JSONDecoder().decode([StackChanMessage].self, from: data),
+              !cached.isEmpty else { return }
+        messages = cached
+    }
+
+    private func persistMessages() {
+        guard let data = try? JSONEncoder().encode(messages),
+              let text = String(data: data, encoding: .utf8) else { return }
+        messageCache = text
+    }
 }
 
-private enum StackChanRole {
+private struct StackChanFacePanel: View {
+    let emotion: StackChanEmotion
+    let blink: Bool
+    let mouthOpen: Bool
+    let gazeX: CGFloat
+    let skin: StackChanSkin
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(skin.faceBackground)
+                .frame(width: 210, height: 102)
+
+            HStack(spacing: 30) {
+                eye
+                eye
+            }
+            .offset(x: gazeX)
+
+            mouth
+                .offset(y: 24)
+        }
+    }
+
+    private var eye: some View {
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .fill(Color.white)
+            .frame(width: 24, height: blink ? 4 : 24)
+    }
+
+    private var mouth: some View {
+        RoundedRectangle(cornerRadius: 4, style: .continuous)
+            .fill(skin.accent.opacity(0.95))
+            .frame(width: emotion == .happy ? 34 : 22, height: mouthOpen ? 8 : 3)
+    }
+}
+
+private enum StackChanRole: String, Codable {
     case user
     case assistant
 }
 
-private struct StackChanMessage: Identifiable {
+private struct StackChanMessage: Identifiable, Codable {
     let id = UUID()
     let role: StackChanRole
     let text: String
 }
 
+private enum StackChanLanguageOption: String, CaseIterable, Identifiable {
+    case chinese = "zh-CN"
+    case english = "en-US"
+    case indonesian = "id-ID"
+
+    var id: String { rawValue }
+    var localeCode: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .chinese: return "中文"
+        case .english: return "英语"
+        case .indonesian: return "印尼语"
+        }
+    }
+
+    var shortTitle: String {
+        switch self {
+        case .chinese: return "中"
+        case .english: return "EN"
+        case .indonesian: return "印"
+        }
+    }
+
+    init?(localeCode: String) {
+        self.init(rawValue: localeCode)
+    }
+}
+
 private enum StackChanAPI {
-    static let systemPrompt = "你是一个可爱、简短的机器人助手。回答要友好、简洁，尽量不超过两句话。"
+    static let systemPrompt = "你是“豆豆”，一个可爱、简短、像机器人宠物一样陪伴用户的助手。回答要友好、口语化、温暖，尽量不超过两句话；必要时先给结论再补一句建议。"
 
     static func chat(message: String, conversationId: String?) async throws -> (conversationId: String?, reply: String) {
         let base = ServerConfigStore.shared.baseURLString
@@ -677,7 +1303,14 @@ private enum StackChanAPI {
 
         var body: [String: Any] = [
             "message": message,
-            "systemPrompt": systemPrompt
+            "systemPrompt": systemPrompt,
+            "role": "pet_robot"
+        ]
+        let petName = UserDefaults.standard.string(forKey: "stack_chan_pet_name") ?? "豆豆"
+        let favoriteTopic = UserDefaults.standard.string(forKey: "stack_chan_favorite_topic") ?? "聊天"
+        body["memory"] = [
+            "petName": petName,
+            "favoriteTopic": favoriteTopic
         ]
         if let conversationId, !conversationId.isEmpty {
             body["conversationId"] = conversationId
@@ -694,6 +1327,14 @@ private enum StackChanAPI {
         }
 
         if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let choices = object["choices"] as? [[String: Any]],
+               let first = choices.first,
+               let message = first["message"] as? [String: Any],
+               let content = message["content"] as? String,
+               !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return (object["conversationId"] as? String, content)
+            }
+
             let reply = (object["reply"] as? String)
                 ?? (object["text"] as? String)
                 ?? (object["message"] as? String)
@@ -709,6 +1350,254 @@ private enum StackChanAPI {
             return (conversationId, rawText)
         }
         throw APIClientError.serverError("接口返回为空")
+    }
+}
+
+private enum StackChanDateUtil {
+    static func todayString() -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = .current
+        formatter.locale = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
+    }
+}
+
+private struct StackChanPetEvent: Identifiable {
+    let id: String
+    let title: String
+    let detail: String
+    let reward: Int
+
+    static let library: [StackChanPetEvent] = [
+        .init(id: "e1", title: "晨间问候", detail: "对豆豆说一句早安，开始今天的陪伴。", reward: 5),
+        .init(id: "e2", title: "口语挑战", detail: "和豆豆完成 1 句英语口语练习。", reward: 8),
+        .init(id: "e3", title: "翻译训练", detail: "让豆豆帮你翻译一条短句。", reward: 6),
+        .init(id: "e4", title: "情绪安抚", detail: "向豆豆倾诉今天的一件小烦恼。", reward: 7),
+        .init(id: "e5", title: "学习打卡", detail: "问豆豆一个学习问题并记录答案。", reward: 9)
+    ]
+}
+
+private struct StackChanPetRoomView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var petName: String
+    @Binding var favoriteTopic: String
+    @Binding var petPoints: Int
+    @Binding var streakDays: Int
+    @Binding var dailyChatCount: Int
+    let dailyGoal: Int
+    @Binding var badgeChatNovice: Bool
+    @Binding var badgeStreak7: Bool
+    @Binding var badgePetLover: Bool
+    @Binding var skinRawValue: String
+    @AppStorage("stack_chan_skin_mint_unlocked") private var skinMintUnlocked = false
+    @AppStorage("stack_chan_skin_sunset_unlocked") private var skinSunsetUnlocked = false
+
+    @State private var energy: Int = 70
+    @State private var mood: Int = 80
+
+    private var currentSkin: StackChanSkin {
+        StackChanSkin(rawValue: skinRawValue) ?? .classic
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(LinearGradient(colors: [Color(red: 0.86, green: 0.93, blue: 1.0), Color.white], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(height: 180)
+                        .overlay {
+                            VStack(spacing: 8) {
+                                StackChanFacePanel(emotion: .happy, blink: false, mouthOpen: false, gazeX: 0, skin: currentSkin)
+                                Text("\(petName) 的房间")
+                                    .font(.headline.weight(.semibold))
+                            }
+                        }
+
+                    VStack(spacing: 10) {
+                        statRow("亲密度", "\(petPoints)")
+                        statRow("连续陪伴", "\(streakDays) 天")
+                        statRow("最爱话题", favoriteTopic)
+                        statRow("体力", "\(energy)%")
+                        statRow("心情", "\(mood)%")
+                        statRow("今日互动", "\(dailyChatCount)/\(dailyGoal)")
+                    }
+                    .padding(14)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("成就墙")
+                            .font(.subheadline.weight(.bold))
+                        HStack(spacing: 8) {
+                            badgeCell("新手聊天", unlocked: badgeChatNovice)
+                            badgeCell("7日陪伴", unlocked: badgeStreak7)
+                            badgeCell("宠物达人", unlocked: badgePetLover)
+                        }
+                    }
+                    .padding(14)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("皮肤工坊")
+                            .font(.subheadline.weight(.bold))
+                        skinShopRow(
+                            skin: .classic,
+                            description: "默认外观",
+                            cost: 0,
+                            unlocked: true
+                        )
+                        skinShopRow(
+                            skin: .mint,
+                            description: "清新绿色主题",
+                            cost: 40,
+                            unlocked: skinMintUnlocked
+                        )
+                        skinShopRow(
+                            skin: .sunset,
+                            description: "暖色晚霞主题",
+                            cost: 80,
+                            unlocked: skinSunsetUnlocked
+                        )
+                    }
+                    .padding(14)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                    HStack(spacing: 10) {
+                        actionButton("喂食", "fork.knife") {
+                            energy = min(energy + 12, 100)
+                            mood = min(mood + 5, 100)
+                            petPoints += 2
+                        }
+                        actionButton("玩耍", "figure.play") {
+                            energy = max(energy - 8, 0)
+                            mood = min(mood + 12, 100)
+                            petPoints += 3
+                        }
+                        actionButton("休息", "bed.double.fill") {
+                            energy = min(energy + 18, 100)
+                            mood = min(mood + 8, 100)
+                        }
+                    }
+                }
+                .padding(16)
+            }
+            .background(AppTheme.pageBackground.ignoresSafeArea())
+            .navigationTitle("宠物房间")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func statRow(_ title: String, _ value: String) -> some View {
+        HStack {
+            Text(title)
+                .foregroundStyle(AppTheme.textSecondary)
+            Spacer()
+            Text(value)
+                .fontWeight(.semibold)
+                .foregroundStyle(AppTheme.textPrimary)
+        }
+    }
+
+    private func actionButton(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .bold))
+                Text(title)
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 54)
+            .background(AppTheme.primary)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func badgeCell(_ title: String, unlocked: Bool) -> some View {
+        VStack(spacing: 5) {
+            Image(systemName: unlocked ? "rosette" : "lock")
+                .font(.system(size: 14, weight: .bold))
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+        }
+        .foregroundStyle(unlocked ? Color.orange : AppTheme.textSecondary)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(unlocked ? Color.orange.opacity(0.12) : AppTheme.surfaceMuted)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func skinShopRow(
+        skin: StackChanSkin,
+        description: String,
+        cost: Int,
+        unlocked: Bool
+    ) -> some View {
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(skin.faceBackground)
+                .frame(width: 44, height: 34)
+                .overlay(
+                    HStack(spacing: 4) {
+                        Circle().fill(Color.white).frame(width: 5, height: 5)
+                        Circle().fill(Color.white).frame(width: 5, height: 5)
+                    }
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(skin.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer()
+
+            Button {
+                applyOrUnlockSkin(skin, cost: cost, unlocked: unlocked)
+            } label: {
+                Text(currentSkin == skin ? "使用中" : (unlocked ? "使用" : "解锁 \(cost)"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(currentSkin == skin ? Color.gray : skin.accent)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(currentSkin == skin)
+        }
+        .padding(10)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func applyOrUnlockSkin(_ skin: StackChanSkin, cost: Int, unlocked: Bool) {
+        if skin == .classic {
+            skinRawValue = StackChanSkin.classic.rawValue
+            return
+        }
+        if unlocked {
+            skinRawValue = skin.rawValue
+            return
+        }
+        guard petPoints >= cost else { return }
+        petPoints -= cost
+        if skin == .mint { skinMintUnlocked = true }
+        if skin == .sunset { skinSunsetUnlocked = true }
+        skinRawValue = skin.rawValue
     }
 }
 
