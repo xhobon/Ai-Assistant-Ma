@@ -863,6 +863,7 @@ final class RealTimeTranslateViewModel: ObservableObject {
     private let silenceTimeout: TimeInterval = 1.2
 
     func toggleLeft() {
+        SpeechService.shared.stopSpeaking()
         if isLeftRecording {
             stopRecording()
         } else {
@@ -872,6 +873,7 @@ final class RealTimeTranslateViewModel: ObservableObject {
     }
 
     func toggleRight() {
+        SpeechService.shared.stopSpeaking()
         if isRightRecording {
             stopRecording()
         } else {
@@ -956,7 +958,9 @@ final class RealTimeTranslateViewModel: ObservableObject {
                         entries.append(RealtimeTranslateEntry(indonesian: source, chinese: result, sourceLanguage: .indonesian))
                         leftText = ""
                         rightTranslated = ""
-                        SpeechService.shared.speak(result, language: "zh-CN")
+                        if !isLeftRecording && !isRightRecording {
+                            SpeechService.shared.speak(result, language: "zh-CN")
+                        }
                     }
                 } else {
                     result = try await APIClient.shared.translate(text: source, sourceLang: "zh-CN", targetLang: "id-ID")
@@ -965,7 +969,9 @@ final class RealTimeTranslateViewModel: ObservableObject {
                         entries.append(RealtimeTranslateEntry(indonesian: result, chinese: source, sourceLanguage: .chinese))
                         rightText = ""
                         leftTranslated = ""
-                        SpeechService.shared.speak(result, language: "id-ID")
+                        if !isLeftRecording && !isRightRecording {
+                            SpeechService.shared.speak(result, language: "id-ID")
+                        }
                     }
                 }
             } catch {

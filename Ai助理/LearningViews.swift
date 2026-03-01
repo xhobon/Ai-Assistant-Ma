@@ -1719,15 +1719,16 @@ struct VocabularyCard: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
+                Text("例句")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(AppTheme.textSecondary)
                 ExampleSentenceRow(
-                    title: "中文例句",
-                    text: item.exampleZh,
+                    text: "中文：\(item.exampleZh)",
                     language: "zh-CN",
                     onCopy: { ClipboardService.copy(item.exampleZh) }
                 )
                 ExampleSentenceRow(
-                    title: "印尼语例句",
-                    text: item.exampleId,
+                    text: "印尼文：\(item.exampleId)",
                     language: "id-ID",
                     onCopy: { ClipboardService.copy(item.exampleId) }
                 )
@@ -1748,25 +1749,18 @@ struct VocabularyCard: View {
 }
 
 struct ExampleSentenceRow: View {
-    let title: String
     let text: String
     let language: String
     var onCopy: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.caption2)
-                    .foregroundStyle(AppTheme.textSecondary)
-                Text(text)
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textPrimary)
-            }
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(AppTheme.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
-
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 CircleIconButton(systemImage: "speaker.wave.2") {
                     SpeechService.shared.speak(text, language: language)
                 }
@@ -1776,7 +1770,9 @@ struct ExampleSentenceRow: View {
                     }
                 }
             }
+            .frame(width: 60, alignment: .trailing)
         }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 
@@ -1801,12 +1797,12 @@ struct CircleIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(AppTheme.unifiedButtonBorder)
-                .frame(width: 32, height: 32)
-                .background(AppTheme.surface)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.primary)
+                .frame(width: 28, height: 28)
+                .background(AppTheme.primary.opacity(0.12))
                 .clipShape(Circle())
-                .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 0.9))
+                .overlay(Circle().stroke(AppTheme.primary.opacity(0.7), lineWidth: 0.8))
         }
         .buttonStyle(.plain)
     }
