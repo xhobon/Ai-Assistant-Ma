@@ -43,36 +43,47 @@ struct AIAssistantDesignedHomeView: View {
         .background(AppTheme.pageBackground.ignoresSafeArea())
         .navigationDestination(isPresented: $showSearch) {
             AssistantServiceSearchView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showHistory) {
             AssistantHistoryView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showTranslateFromImport) {
             AITranslateHomeView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showWritingStudio) {
             WritingStudioView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showPPTStudio) {
             PPTStudioView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showNotesWorkspace) {
             NotesWorkspaceView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showSummaryWorkspace) {
             SummaryWorkspaceView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showRealtimeTranslate) {
             RealTimeTranslationView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showTranslateHome) {
             AITranslateHomeView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showLearningHome) {
             IndonesianLearningView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showAssistantChat) {
             AIAssistantChatView(title: "AI助理", allowLocalExecution: false)
+                .toolbar(.hidden, for: .tabBar)
         }
         .alert("导入失败", isPresented: Binding(
             get: { importAlertMessage != nil },

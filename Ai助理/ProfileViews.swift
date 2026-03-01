@@ -94,39 +94,51 @@ struct ProfileCenterView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showMemberRecharge) {
             MemberRechargeView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showTaskCenter) {
             TaskCenterView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showSettings) {
             AppSettingsView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showFavorites) {
             MyFavoritesView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showWallet) {
             MyWalletView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showShareGift) {
             ShareGiftView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showAccount) {
             AccountSecurityView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showAccountCenter) {
             AccountProfileCenterView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showAssistantMemory) {
             AssistantMemoryView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showFAQ) {
             FAQView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showAbout) {
             AboutView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showSupport) {
             SupportView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .sheet(isPresented: $showAuthSheet) {
             AuthView(mode: authMode)
@@ -1325,12 +1337,15 @@ struct AppSettingsView: View {
         .toast(message: $toastMessage)
         .navigationDestination(isPresented: $showAccountSecurity) {
             AccountSecurityView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showFAQ) {
             FAQView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showSupport) {
             SupportView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .confirmationDialog(
             "清除所有本地记录？",
@@ -2538,6 +2553,7 @@ struct SupportView: View {
         }
         .navigationDestination(isPresented: $showFAQ) {
             FAQView()
+                .toolbar(.hidden, for: .tabBar)
         }
     }
 }

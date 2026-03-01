@@ -66,9 +66,11 @@ struct AITranslateHomeView: View {
         }
         .navigationDestination(isPresented: $showRealtimeTranslation) {
             RealTimeTranslationView()
+                .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showAllHistory) {
             AllTranslationRecordsView(history: viewModel.history)
+                .toolbar(.hidden, for: .tabBar)
         }
     }
 
