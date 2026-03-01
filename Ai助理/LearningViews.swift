@@ -58,8 +58,6 @@ struct IndonesianLearningView: View {
             AppTheme.pageBackground
                 .ignoresSafeArea(edges: .top)
         )
-        .navigationTitle("学习")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var filteredItems: [VocabItem] {

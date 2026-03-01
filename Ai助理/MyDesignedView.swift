@@ -15,38 +15,33 @@ struct MyDesignedView: View {
     @State private var showClearDone = false
     @State private var showMemberRecharge = false
 
-    private let quickStats: [(String, String)] = [
-        ("连续使用", "12天"),
-        ("今日提问", "8次"),
-        ("已生成", "32条")
+    private let coreItems: [MyActionItem] = [
+        .init(id: "account", title: "账户中心", subtitle: "登录状态、资料与安全", icon: "person.crop.circle"),
+        .init(id: "settings", title: "通用设置", subtitle: "语音、外观、隐私与通知", icon: "gearshape"),
+        .init(id: "memory", title: "助理记忆", subtitle: "管理偏好与长期上下文", icon: "brain.head.profile")
     ]
 
-    private let actionItems: [MyActionItem] = [
-        .init(id: "settings", title: "通用设置", subtitle: "语音、外观、隐私", icon: "gearshape"),
-        .init(id: "account", title: "账户中心", subtitle: "登录状态与资料", icon: "person.crop.circle"),
-        .init(id: "memory", title: "助理记忆", subtitle: "长期偏好与上下文", icon: "brain.head.profile"),
+    private let supportItems: [MyActionItem] = [
         .init(id: "faq", title: "常见问题", subtitle: "快速排查与使用说明", icon: "questionmark.circle"),
         .init(id: "support", title: "在线客服", subtitle: "工作日 9:00-18:00", icon: "headphones"),
-        .init(id: "about", title: "关于与文档", subtitle: "版本信息与协议", icon: "info.circle")
+        .init(id: "about", title: "关于与文档", subtitle: "版本信息与协议条款", icon: "info.circle")
     ]
+
     private var pageMaxWidth: CGFloat {
         horizontalSizeClass == .compact ? .infinity : 760
     }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
-                motivationBanner
-                headerCard
-                delegationCard
-                statsRow
+            VStack(spacing: 12) {
+                profileCard
                 vipCard
-                shortcutsCard
-                actionGrid
-                dangerCard
+                sectionCard(title: "账户与设置", items: coreItems)
+                sectionCard(title: "帮助与支持", items: supportItems)
+                localDataCard
             }
             .padding(.horizontal, 16)
-            .padding(.top, 10)
+            .padding(.top, 12)
             .padding(.bottom, 36)
             .frame(maxWidth: pageMaxWidth)
             .frame(maxWidth: .infinity)
@@ -94,36 +89,7 @@ struct MyDesignedView: View {
         }
     }
 
-    private var motivationBanner: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Hi，又是充满干劲的一天")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color(red: 0.35, green: 0.45, blue: 0.95), Color(red: 0.84, green: 0.35, blue: 0.72)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-            Text("近30天已完成 17 条任务，接待 11 次咨询")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.textSecondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.93, green: 0.95, blue: 1.0), Color(red: 0.98, green: 0.94, blue: 1.0)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        )
-    }
-
-    private var headerCard: some View {
+    private var profileCard: some View {
         HStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -136,7 +102,7 @@ struct MyDesignedView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(tokenStore.isLoggedIn ? "已登录账号" : "未登录账号")
-                    .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 20, weight: .bold))
                 Text(tokenStore.isLoggedIn ? "账号同步已开启" : "登录后可同步收藏与历史")
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.textSecondary)
@@ -144,48 +110,44 @@ struct MyDesignedView: View {
 
             Spacer()
 
-            Button {
-                if tokenStore.isLoggedIn {
-                    showAccountCenter = true
-                } else {
-                    authMode = .login
-                    showAuthSheet = true
+            VStack(alignment: .trailing, spacing: 8) {
+                Button {
+                    if tokenStore.isLoggedIn {
+                        showAccountCenter = true
+                    } else {
+                        authMode = .login
+                        showAuthSheet = true
+                    }
+                } label: {
+                    Text(tokenStore.isLoggedIn ? "个人中心" : "去登录")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.9))
+                        .clipShape(Capsule())
                 }
-            } label: {
-                Text(tokenStore.isLoggedIn ? "个人中心" : "去登录")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.9))
-                    .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .foregroundStyle(AppTheme.primary)
+
+                Button {
+                    showSettings = true
+                } label: {
+                    Text("设置")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.72))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(AppTheme.textSecondary)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(AppTheme.primary)
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(LinearGradient(colors: [Color(red: 0.88, green: 0.93, blue: 1.0), Color(red: 0.95, green: 0.90, blue: 1.0)], startPoint: .topLeading, endPoint: .bottomTrailing))
         )
-    }
-
-    private var statsRow: some View {
-        HStack(spacing: 10) {
-            ForEach(quickStats, id: \.0) { item in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.0)
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                    Text(item.1)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-        }
     }
 
     private var vipCard: some View {
@@ -213,126 +175,81 @@ struct MyDesignedView: View {
         .foregroundStyle(AppTheme.textPrimary)
     }
 
-    private var actionGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-            ForEach(actionItems) { item in
+    private func sectionCard(title: String, items: [MyActionItem]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(AppTheme.textPrimary)
+
+            ForEach(items) { item in
                 Button {
                     handleTap(item.id)
                 } label: {
-                    HStack(alignment: .top, spacing: 10) {
+                    HStack(spacing: 10) {
                         Image(systemName: item.icon)
                             .font(.body.weight(.semibold))
                             .foregroundStyle(AppTheme.primary)
                             .frame(width: 30, height: 30)
                             .background(Color(red: 0.92, green: 0.95, blue: 1.0))
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        VStack(alignment: .leading, spacing: 3) {
+
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(item.title)
                                 .font(.system(size: 17, weight: .bold))
                                 .foregroundStyle(AppTheme.textPrimary)
                             Text(item.subtitle)
                                 .font(.caption)
                                 .foregroundStyle(AppTheme.textSecondary)
-                                .lineLimit(2)
+                                .lineLimit(1)
                         }
-                        Spacer(minLength: 0)
+
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(AppTheme.textSecondary)
                     }
                     .padding(12)
-                    .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
-                    .background(AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
         }
-    }
-
-    private var delegationCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("托管中 (1)")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Spacer()
-                Button("取消托管") {}
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-                Button("添加宝贝") {}
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(AppTheme.primary)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("【活动价】Haier/海尔 智能设备")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text("在售价 ¥280")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-                Text("底价 ¥280")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(10)
-            .background(AppTheme.surfaceMuted)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
         .padding(14)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private var shortcutsCard: some View {
+    private var localDataCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("常用快捷工具")
+            Text("本地数据")
                 .font(.headline.weight(.bold))
                 .foregroundStyle(AppTheme.textPrimary)
 
-            HStack(spacing: 8) {
-                shortcutPill("闪记录音", icon: "waveform")
-                shortcutPill("工作总结", icon: "list.bullet.clipboard")
-                shortcutPill("AI祝福", icon: "heart.text.square")
-                shortcutPill("助理推荐", icon: "person.3.fill")
+            Button {
+                showClearConfirm = true
+            } label: {
+                HStack {
+                    Image(systemName: "trash")
+                    Text("清除本地记录")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                }
+                .padding(12)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(.red)
+
+            Text("仅清除本机收藏、翻译历史、学习记录，不影响账号信息。")
+                .font(.caption)
+                .foregroundStyle(AppTheme.textSecondary)
         }
         .padding(14)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    private func shortcutPill(_ title: String, icon: String) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppTheme.primary)
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(AppTheme.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(AppTheme.surfaceMuted)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-
-    private var dangerCard: some View {
-        Button {
-            showClearConfirm = true
-        } label: {
-            HStack {
-                Image(systemName: "trash")
-                Text("清除本地记录")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Image(systemName: "chevron.right")
-            }
-            .padding(12)
-            .background(AppTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.red)
     }
 
     private func handleTap(_ id: String) {

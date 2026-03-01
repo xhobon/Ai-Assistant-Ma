@@ -47,8 +47,6 @@ struct AITranslateHomeView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .scrollIndicators(.automatic)
         .background(AppTheme.pageBackground.ignoresSafeArea())
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle("翻译")
         .onTapGesture {
             hideKeyboard()
         }
@@ -1398,18 +1396,16 @@ struct RealTimeTranslationView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                RealTimeCompactHeader(isRecording: isRecording)
-                    .padding(.horizontal, 14)
-                    .padding(.top, 10)
+        VStack(spacing: 12) {
+            RealTimeCompactHeader(isRecording: isRecording)
+                .padding(.horizontal, 14)
+                .padding(.top, 10)
 
-                conversationPanel
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 6)
-            }
+            conversationPanel
+                .padding(.horizontal, 14)
+                .padding(.bottom, 0)
+                .frame(maxHeight: .infinity)
         }
-        .scrollIndicators(.automatic)
         .safeAreaInset(edge: .bottom) {
             RealtimeBottomDock(
                 isLeftRecording: viewModel.isLeftRecording,
@@ -1482,6 +1478,7 @@ struct RealTimeTranslationView: View {
                                         title: "中文",
                                         text: entry.chinese,
                                         placeholder: "",
+                                        languageKind: .chinese,
                                         languageTint: AppTheme.accentWarm,
                                         alignTrailing: true,
                                         isSource: true,
@@ -1492,6 +1489,7 @@ struct RealTimeTranslationView: View {
                                         title: "印度尼西亚语",
                                         text: entry.indonesian,
                                         placeholder: "",
+                                        languageKind: .indonesian,
                                         languageTint: AppTheme.brandBlue,
                                         isSource: false,
                                         languageForSpeech: "id-ID",
@@ -1502,6 +1500,7 @@ struct RealTimeTranslationView: View {
                                         title: "印度尼西亚语",
                                         text: entry.indonesian,
                                         placeholder: "",
+                                        languageKind: .indonesian,
                                         languageTint: AppTheme.brandBlue,
                                         isSource: true,
                                         languageForSpeech: "id-ID",
@@ -1511,6 +1510,7 @@ struct RealTimeTranslationView: View {
                                         title: "中文",
                                         text: entry.chinese,
                                         placeholder: "",
+                                        languageKind: .chinese,
                                         languageTint: AppTheme.accentWarm,
                                         alignTrailing: true,
                                         isSource: false,
@@ -1531,6 +1531,7 @@ struct RealTimeTranslationView: View {
                                     title: "中文",
                                     text: chineseText,
                                     placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "请开始说话",
+                                    languageKind: .chinese,
                                     languageTint: AppTheme.accentWarm,
                                     alignTrailing: true,
                                     isSource: true,
@@ -1541,6 +1542,7 @@ struct RealTimeTranslationView: View {
                                     title: "印度尼西亚语",
                                     text: indonesianText,
                                     placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "将显示翻译结果",
+                                    languageKind: .indonesian,
                                     languageTint: AppTheme.brandBlue,
                                     isSource: false,
                                     languageForSpeech: "id-ID",
@@ -1553,6 +1555,7 @@ struct RealTimeTranslationView: View {
                                     title: "印度尼西亚语",
                                     text: indonesianText,
                                     placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "请开始说话",
+                                    languageKind: .indonesian,
                                     languageTint: AppTheme.brandBlue,
                                     isSource: true,
                                     languageForSpeech: "id-ID",
@@ -1562,6 +1565,7 @@ struct RealTimeTranslationView: View {
                                     title: "中文",
                                     text: chineseText,
                                     placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "将显示翻译结果",
+                                    languageKind: .chinese,
                                     languageTint: AppTheme.accentWarm,
                                     alignTrailing: true,
                                     isSource: false,
@@ -1576,7 +1580,7 @@ struct RealTimeTranslationView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
             }
-            .frame(maxHeight: 420)
+            .frame(maxHeight: .infinity)
             .background(AppTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
@@ -2003,10 +2007,16 @@ struct SpeechBubbleCard: View {
 }
 
 /// 实时语音翻译：对话式气泡（贴近 AI 助理对话样式）
+enum RealtimeLanguageKind {
+    case chinese
+    case indonesian
+}
+
 struct RealtimeSpeechBubble: View {
     let title: String
     let text: String
     let placeholder: String
+    let languageKind: RealtimeLanguageKind
     let languageTint: Color
     var alignTrailing: Bool = false
     var isSource: Bool = false
@@ -2014,23 +2024,34 @@ struct RealtimeSpeechBubble: View {
     var onCopy: (() -> Void)? = nil
 
     @ObservedObject private var speechService = SpeechService.shared
+    private var bubbleBaseTint: Color {
+        switch languageKind {
+        case .chinese:
+            return AppTheme.accentWarm
+        case .indonesian:
+            return AppTheme.brandBlue
+        }
+    }
+    private var bubbleFillOpacity: Double {
+        isSource ? 0.22 : 0.10
+    }
     private var bubbleBackground: Color {
-        isSource ? AppTheme.primaryVariant : AppTheme.surface
+        bubbleBaseTint.opacity(bubbleFillOpacity)
     }
     private var bubbleTextColor: Color {
-        isSource ? AppTheme.textOnPrimary : AppTheme.textPrimary
+        AppTheme.textPrimary
     }
     private var bubbleMetaColor: Color {
-        isSource ? AppTheme.textOnPrimary.opacity(0.9) : languageTint
+        isSource ? bubbleBaseTint.opacity(0.96) : bubbleBaseTint
     }
     private var bubbleActionColor: Color {
-        isSource ? AppTheme.textOnPrimary.opacity(0.92) : AppTheme.textSecondary
+        bubbleBaseTint.opacity(0.95)
     }
     private var bubbleStrokeColor: Color {
-        isSource ? AppTheme.primaryVariant.opacity(0.95) : AppTheme.borderStrong.opacity(0.55)
+        isSource ? bubbleBaseTint.opacity(0.48) : bubbleBaseTint.opacity(0.30)
     }
     private var bubbleTailColor: Color {
-        isSource ? AppTheme.primaryVariant : AppTheme.surface
+        bubbleBaseTint.opacity(bubbleFillOpacity)
     }
 
     private var displayedText: String { text }
@@ -2125,7 +2146,7 @@ private struct RealtimeMiniIconButton: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(tint)
                 .frame(width: 24, height: 24)
-                .background(tint.opacity(isSource ? 0.18 : 0.11))
+                .background(isSource ? Color.white.opacity(0.72) : tint.opacity(0.12))
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
