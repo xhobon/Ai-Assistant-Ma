@@ -683,6 +683,7 @@ struct AIAssistantChatView: View {
     /// 仅首页入口为 true，其他（法律/投资/面试等）保持原样，不显示本机执行
     var allowLocalExecution: Bool = false
 
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: ChatViewModel
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
 
@@ -709,7 +710,20 @@ struct AIAssistantChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             #if os(iOS)
-            EmptyView()
+            AIAssistantChatTopBar(
+                title: title,
+                isMuted: speechSettings.playbackMuted,
+                onBack: { dismiss() },
+                onMute: {
+                    speechSettings.playbackMuted.toggle()
+                    if speechSettings.playbackMuted { viewModel.stopSpeaking() }
+                },
+                onVoiceCall: { showVoiceCall = true },
+                onMore: { showChatMenu = true }
+            )
+            .padding(.horizontal, 14)
+            .padding(.top, 6)
+            .padding(.bottom, 6)
             #else
             AIAssistantChatHeader(
                 title: title,
@@ -916,28 +930,8 @@ struct AIAssistantChatView: View {
         }
         .background(AppTheme.pageBackground.ignoresSafeArea())
         #if os(iOS)
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button {
-                    speechSettings.playbackMuted.toggle()
-                    if speechSettings.playbackMuted { viewModel.stopSpeaking() }
-                } label: {
-                    Image(systemName: speechSettings.playbackMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                }
-                Button {
-                    showVoiceCall = true
-                } label: {
-                    Image(systemName: "phone.fill")
-                }
-                Button {
-                    showChatMenu = true
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-            }
-        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         #elseif os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
             // 窗口失焦时停止播放
@@ -1658,6 +1652,63 @@ struct AIAssistantChatHeader: View {
     }
 }
 
+#if os(iOS)
+private struct AIAssistantChatTopBar: View {
+    let title: String
+    let isMuted: Bool
+    let onBack: () -> Void
+    let onMute: () -> Void
+    let onVoiceCall: () -> Void
+    let onMore: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: onBack) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .frame(width: 42, height: 42)
+                    .background(AppTheme.surface)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("返回")
+
+            Text(title)
+                .font(.system(size: 37.0 / 2, weight: .bold))
+                .foregroundStyle(AppTheme.textPrimary)
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 6) {
+                topActionButton(system: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", action: onMute)
+                    .accessibilityLabel(isMuted ? "取消静音" : "静音")
+                topActionButton(system: "phone.fill", action: onVoiceCall)
+                    .accessibilityLabel("语音通话")
+                topActionButton(system: "ellipsis", action: onMore)
+                    .accessibilityLabel("更多操作")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(AppTheme.surface)
+            .clipShape(Capsule())
+        }
+    }
+
+    private func topActionButton(system: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+                .frame(width: 34, height: 34)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+#endif
+
 struct ChatPromptRow: View {
     var body: some View {
         HStack(spacing: 12) {
@@ -1721,7 +1772,7 @@ struct ChatComposerBar: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 8) {
             iconButton("camera.fill", isPrimary: false) {
                 onAttach()
             }
@@ -1744,10 +1795,12 @@ struct ChatComposerBar: View {
                 .foregroundStyle(AppTheme.inputText)
                 .tint(AppTheme.primary)
                 .lineLimit(1...4)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
                 .background(AppTheme.surfaceMuted)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .frame(minHeight: 44)
+                .layoutPriority(1)
                 .onSubmit { onSend() }
             #else
             TextField("发消息或按住说话...", text: $text, axis: .vertical)
@@ -1756,10 +1809,12 @@ struct ChatComposerBar: View {
                 .foregroundStyle(AppTheme.inputText)
                 .tint(AppTheme.primary)
                 .lineLimit(1...4)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
                 .background(AppTheme.surfaceMuted)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .frame(minHeight: 44)
+                .layoutPriority(1)
                 .onSubmit { onSend() }
             #endif
 
@@ -1774,34 +1829,38 @@ struct ChatComposerBar: View {
             .disabled(!canSend)
             .accessibilityLabel("发送")
 
-            iconButton("plus.circle.fill", isPrimary: false) {
+            iconButton("plus", isPrimary: false) {
                 onPlus()
             }
             .accessibilityLabel("更多功能")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AppTheme.unifiedButtonBorder.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(AppTheme.unifiedButtonBorder.opacity(0.45), lineWidth: 1)
         )
-        .shadow(color: AppTheme.softShadow.opacity(0.6), radius: 8, x: 0, y: 3)
+        .shadow(color: AppTheme.softShadow.opacity(0.45), radius: 6, x: 0, y: 2)
     }
 
     private func iconButton(_ systemName: String, isPrimary: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(isPrimary ? .white : AppTheme.primary)
-                .frame(width: 34, height: 34)
-                .background(
-                    isPrimary
-                    ? AnyShapeStyle(AppTheme.primary)
-                    : AnyShapeStyle(Color(red: 0.92, green: 0.95, blue: 1.0))
-                )
-                .clipShape(Circle())
+            ZStack {
+                Circle()
+                    .fill(
+                        isPrimary
+                        ? AnyShapeStyle(AppTheme.primary)
+                        : AnyShapeStyle(Color(red: 0.92, green: 0.95, blue: 1.0))
+                    )
+                    .frame(width: 34, height: 34)
+                Image(systemName: systemName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(isPrimary ? .white : AppTheme.primary)
+            }
+            .frame(width: 40, height: 40)
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
     }

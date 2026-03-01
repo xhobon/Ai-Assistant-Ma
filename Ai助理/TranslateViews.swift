@@ -1398,13 +1398,10 @@ struct RealTimeTranslationView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
-            RealTimeCompactHeader(isRecording: isRecording)
-                .padding(.horizontal, 14)
-                .padding(.top, 10)
-
+        VStack(spacing: 0) {
             conversationPanel
                 .padding(.horizontal, 14)
+                .padding(.top, 10)
                 .padding(.bottom, 0)
                 .frame(maxHeight: .infinity)
         }
@@ -1617,60 +1614,6 @@ private struct RealtimeEmptyStateCard: View {
         .padding(.vertical, 26)
         .background(AppTheme.surfaceMuted.opacity(0.65))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
-}
-
-struct RealTimeHeader: View {
-    let isRecording: Bool
-    var onClose: () -> Void
-
-    var body: some View {
-        UnifiedHeroHeader(
-            systemImage: "chevron.left",
-            title: "实时语音翻译",
-            subtitle: "双语对话实时输出",
-            badgeText: isRecording ? "录音中" : "待机",
-            headline: "轻触下方按钮开始对话",
-            subheadline: "系统将自动识别语言并实时生成文本",
-            leadingAction: onClose
-        )
-    }
-}
-
-// 实时翻译页紧凑页头（二级页面用）
-struct RealTimeCompactHeader: View {
-    let isRecording: Bool
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: isRecording ? "waveform.badge.mic" : "mic.slash")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isRecording ? AppTheme.primary : AppTheme.textSecondary)
-                .frame(width: 34, height: 34)
-                .background(AppTheme.surfaceMuted)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("实时语音翻译")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text(isRecording ? "正在识别并翻译" : "点击底部麦克风开始")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-            Spacer(minLength: 0)
-            Circle()
-                .fill(isRecording ? AppTheme.accentWarm : AppTheme.textTertiary.opacity(0.4))
-                .frame(width: 10, height: 10)
-        }
-        .padding(12)
-        .background(AppTheme.surface.opacity(0.9))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(AppTheme.border, lineWidth: 1)
-        )
-        .shadow(color: AppTheme.softShadow, radius: 8, x: 0, y: 3)
     }
 }
 

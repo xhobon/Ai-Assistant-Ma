@@ -33,7 +33,7 @@ struct MyDesignedView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: 14) {
                 profileCard
                 vipCard
                 sectionCard(title: "账户与设置", items: coreItems)
@@ -41,13 +41,26 @@ struct MyDesignedView: View {
                 localDataCard
             }
             .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 36)
+            .padding(.top, 10)
+            .padding(.bottom, 28)
             .frame(maxWidth: pageMaxWidth)
             .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(AppTheme.pageBackground.ignoresSafeArea())
+        .background(
+            ZStack {
+                AppTheme.pageBackground
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.22),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .ignoresSafeArea()
+        )
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showAuthSheet) {
             AuthView(mode: authMode)
@@ -97,27 +110,35 @@ struct MyDesignedView: View {
     }
 
     private var profileCard: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(LinearGradient(colors: [Color(red: 0.78, green: 0.86, blue: 1.0), Color(red: 0.89, green: 0.82, blue: 1.0)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 62, height: 62)
-                Image(systemName: "person.crop.circle.badge.sparkles")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Color.white)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(red: 0.47, green: 0.63, blue: 1.0), Color(red: 0.66, green: 0.52, blue: 1.0)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 56, height: 56)
+                    Image(systemName: "person.crop.circle.fill")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.95))
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tokenStore.isLoggedIn ? "已登录账号" : "未登录账号")
+                        .font(.system(size: 24, weight: .heavy))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text(tokenStore.isLoggedIn ? "账号同步已开启" : "登录后可同步收藏、翻译与学习记录")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                Spacer(minLength: 0)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(tokenStore.isLoggedIn ? "已登录账号" : "未登录账号")
-                .font(.system(size: 20, weight: .bold))
-                Text(tokenStore.isLoggedIn ? "账号同步已开启" : "登录后可同步收藏与历史")
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 8) {
+            HStack(spacing: 10) {
                 Button {
                     if tokenStore.isLoggedIn {
                         showAccountCenter = true
@@ -128,32 +149,54 @@ struct MyDesignedView: View {
                 } label: {
                     Text(tokenStore.isLoggedIn ? "个人中心" : "去登录")
                         .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.9))
+                        .foregroundStyle(.white)
+                        .frame(height: 40)
+                        .frame(maxWidth: .infinity)
+                        .background(AppTheme.unifiedButtonPrimary)
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(AppTheme.primary)
 
                 Button {
                     showSettings = true
                 } label: {
-                    Text("设置")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.white.opacity(0.72))
+                    Label("设置", systemImage: "slider.horizontal.3")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .frame(height: 40)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.white.opacity(0.9))
                         .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(AppTheme.border, lineWidth: 1)
+                        )
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(AppTheme.textSecondary)
+            }
+
+            HStack(spacing: 8) {
+                profileMetaPill("本机数据", value: "已保护")
+                profileMetaPill("同步状态", value: tokenStore.isLoggedIn ? "已开启" : "未开启")
             }
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(LinearGradient(colors: [Color(red: 0.88, green: 0.93, blue: 1.0), Color(red: 0.95, green: 0.90, blue: 1.0)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.89, green: 0.93, blue: 1.0),
+                            Color(red: 0.95, green: 0.91, blue: 1.0)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
         )
     }
 
@@ -161,25 +204,40 @@ struct MyDesignedView: View {
         Button {
             showMemberRecharge = true
         } label: {
-            HStack {
+            HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("会员中心")
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.system(size: 21, weight: .heavy))
+                        .foregroundStyle(AppTheme.textPrimary)
                     Text("解锁更长上下文、更快响应与高级工具")
-                    .font(.subheadline)
+                        .font(.subheadline)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
                 Spacer()
-                Image(systemName: "crown.fill")
-                    .font(.title)
-                    .foregroundStyle(Color(red: 0.98, green: 0.73, blue: 0.33))
+                HStack(spacing: 10) {
+                    Image(systemName: "crown.fill")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(Color(red: 0.98, green: 0.73, blue: 0.33))
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
             }
             .padding(14)
-            .background(AppTheme.surface)
+            .background(
+                LinearGradient(
+                    colors: [AppTheme.surface, Color.white.opacity(0.85)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(AppTheme.border, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
-        .foregroundStyle(AppTheme.textPrimary)
     }
 
     private func sectionCard(title: String, items: [MyActionItem]) -> some View {
@@ -188,43 +246,56 @@ struct MyDesignedView: View {
                 .font(.headline.weight(.bold))
                 .foregroundStyle(AppTheme.textPrimary)
 
-            ForEach(items) { item in
-                Button {
-                    handleTap(item.id)
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: item.icon)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(AppTheme.primary)
-                            .frame(width: 30, height: 30)
-                            .background(Color(red: 0.92, green: 0.95, blue: 1.0))
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    Button {
+                        handleTap(item.id)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: item.icon)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(AppTheme.primary)
+                                .frame(width: 32, height: 32)
+                                .background(Color(red: 0.91, green: 0.95, blue: 1.0))
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.title)
-                                .font(.system(size: 17, weight: .bold))
-                                .foregroundStyle(AppTheme.textPrimary)
-                            Text(item.subtitle)
-                                .font(.caption)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title)
+                                    .font(.system(size: 17, weight: .bold))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Text(item.subtitle)
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                                    .lineLimit(1)
+                            }
+
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
                                 .foregroundStyle(AppTheme.textSecondary)
-                                .lineLimit(1)
                         }
-
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(AppTheme.textSecondary)
+                        .padding(.horizontal, 12)
+                        .frame(height: 66)
+                        .contentShape(Rectangle())
                     }
-                    .padding(12)
-                    .background(AppTheme.surfaceMuted)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .buttonStyle(.plain)
+
+                    if index < items.count - 1 {
+                        Divider()
+                            .padding(.leading, 54)
+                    }
                 }
-                .buttonStyle(.plain)
             }
+            .background(AppTheme.surfaceMuted.opacity(0.55))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .padding(14)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
     }
 
     private var localDataCard: some View {
@@ -244,8 +315,12 @@ struct MyDesignedView: View {
                     Image(systemName: "chevron.right")
                 }
                 .padding(12)
-                .background(AppTheme.surfaceMuted)
+                .background(Color.red.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.red.opacity(0.18), lineWidth: 1)
+                )
             }
             .buttonStyle(.plain)
             .foregroundStyle(.red)
@@ -257,6 +332,25 @@ struct MyDesignedView: View {
         .padding(14)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+
+    private func profileMetaPill(_ title: String, value: String) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.white.opacity(0.72))
+        .clipShape(Capsule())
     }
 
     private func handleTap(_ id: String) {
