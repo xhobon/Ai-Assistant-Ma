@@ -944,6 +944,7 @@ struct AIAssistantChatView: View {
 // MARK: - 语音通话（参考图：浅色渐变 + 底部四键 + 进入即实时对话）
 struct VoiceCallView: View {
     @ObservedObject var viewModel: ChatViewModel
+    @ObservedObject private var speechService = SpeechService.shared
     var onEnd: () -> Void
     @State private var lastReplyText: String = ""
     @State private var isProcessing = false
@@ -951,6 +952,8 @@ struct VoiceCallView: View {
     @State private var hasAutoStarted = false
     @State private var showCamera = false
     @State private var toastMessage: String?
+    @State private var conversationTask: Task<Void, Never>?
+    @State private var suppressNextCapturedTurn = false
 
     private let softIndigo = Color(red: 0.97, green: 0.96, blue: 1.0)
     private let softViolet = Color(red: 0.96, green: 0.95, blue: 1.0)
@@ -970,9 +973,12 @@ struct VoiceCallView: View {
                 HStack {
                     Button(action: {
                         if viewModel.isListening {
-                            viewModel.stopListening()
+                            suppressNextCapturedTurn = true
+                            _ = viewModel.stopListeningForRealtime()
                         }
+                        conversationTask?.cancel()
                         SpeechService.shared.stopSpeaking()
+                        isProcessing = false
                         withAnimation(.easeInOut(duration: 0.2)) {
                             toastMessage = "已暂停语音"
                         }
@@ -991,7 +997,7 @@ struct VoiceCallView: View {
                         .clipShape(Capsule())
                     Spacer()
                     Button(action: {
-                        viewModel.stopListening()
+                        stopAllAndReset()
                         onEnd()
                     }) {
                         Text("字")
@@ -1057,12 +1063,8 @@ struct VoiceCallView: View {
                     VoiceCallControlButton(
                         systemImage: viewModel.isListening ? "waveform" : "mic.fill",
                         tint: controlGray,
-                        action: {
-                            if viewModel.isListening { viewModel.stopListening() }
-                            else if !isProcessing { viewModel.toggleListening() }
-                        }
+                        action: handleMicrophoneTap
                     )
-                    .disabled(isProcessing)
                     .accessibilityLabel(viewModel.isListening ? "暂停" : "麦克风")
 
                     VoiceCallControlButton(systemImage: "square.and.arrow.up", tint: controlGray) {
@@ -1086,7 +1088,7 @@ struct VoiceCallView: View {
                     .accessibilityLabel("打开摄像头")
 
                     Button(action: {
-                        viewModel.stopListening()
+                        stopAllAndReset()
                         onEnd()
                     }) {
                         Image(systemName: "xmark")
@@ -1109,33 +1111,30 @@ struct VoiceCallView: View {
         }
         .toast(message: $toastMessage)
         .onChange(of: viewModel.isListening) { _, isListening in
-            if wasListening && !isListening && !viewModel.inputText.isEmpty {
-                let textToSend = viewModel.inputText
-                viewModel.inputText = ""
-                Task {
-                    isProcessing = true
-                    do {
-                        let reply = try await viewModel.sendAndWaitForReply(text: textToSend)
-                        await MainActor.run {
-                            lastReplyText = reply
-                            SpeechService.shared.speak(reply, language: "zh-CN")
-                        }
-                    } catch {
-                        await MainActor.run {
-                            viewModel.alertMessage = userFacingMessage(for: error)
-                        }
-                    }
-                    isProcessing = false
+            if wasListening && !isListening {
+                if suppressNextCapturedTurn {
+                    suppressNextCapturedTurn = false
+                    _ = viewModel.consumeLatestVoiceCapturedText()
+                    wasListening = isListening
+                    return
+                }
+                let textToSend = viewModel.consumeLatestVoiceCapturedText()
+                if !textToSend.isEmpty {
+                    processVoiceTurn(textToSend)
                 }
             }
             wasListening = isListening
         }
         .onAppear {
-            wasListening = viewModel.isListening
-            if !hasAutoStarted && !viewModel.isListening && !isProcessing {
+            stopAllAndReset()
+            wasListening = false
+            if !hasAutoStarted && !isProcessing {
                 hasAutoStarted = true
-                viewModel.toggleListening()
+                viewModel.startListeningForRealtime(localeIdentifier: "zh-CN")
             }
+        }
+        .onDisappear {
+            stopAllAndReset()
         }
         .fullScreenCoverOrSheet(isPresented: $showCamera) {
             #if os(iOS)
@@ -1162,9 +1161,105 @@ struct VoiceCallView: View {
     }
 
     private var voicePromptText: String {
-        if isProcessing { return "AI 正在思考…" }
+        if isProcessing { return "AI 正在回答…" }
+        if speechService.isPlaying { return "AI 正在说话…" }
         if viewModel.isListening { return "正在听你说…" }
         return "你可以开始说话"
+    }
+
+    private func handleMicrophoneTap() {
+        if viewModel.isListening {
+            _ = viewModel.stopListeningForRealtime()
+            return
+        }
+        if isProcessing || speechService.isPlaying {
+            conversationTask?.cancel()
+            SpeechService.shared.stopSpeaking()
+            isProcessing = false
+        }
+        viewModel.startListeningForRealtime(localeIdentifier: "zh-CN")
+    }
+
+    private func processVoiceTurn(_ text: String) {
+        conversationTask?.cancel()
+        conversationTask = Task {
+            await MainActor.run {
+                isProcessing = true
+                if lastReplyText.count > 240 {
+                    lastReplyText = ""
+                }
+            }
+            do {
+                let reply = try await viewModel.sendAndWaitForReply(text: text)
+                if Task.isCancelled { return }
+                let chunks = makeReplyChunks(reply)
+                await MainActor.run { lastReplyText = "" }
+                for chunk in chunks {
+                    try Task.checkCancellation()
+                    await MainActor.run {
+                        lastReplyText += chunk
+                        SpeechService.shared.speakOnline(chunk, language: "zh-CN")
+                    }
+                    await waitForSpeechFinish()
+                }
+            } catch is CancellationError {
+                // 用户手动打断
+            } catch {
+                await MainActor.run {
+                    viewModel.alertMessage = userFacingMessage(for: error)
+                }
+            }
+            await MainActor.run {
+                isProcessing = false
+                if !viewModel.isListening {
+                    viewModel.startListeningForRealtime(localeIdentifier: "zh-CN")
+                }
+            }
+        }
+    }
+
+    private func waitForSpeechFinish() async {
+        while true {
+            if Task.isCancelled {
+                await MainActor.run { SpeechService.shared.stopSpeaking() }
+                break
+            }
+            let playing = await MainActor.run { speechService.isPlaying }
+            if !playing { break }
+            try? await Task.sleep(nanoseconds: 120_000_000)
+        }
+    }
+
+    private func makeReplyChunks(_ reply: String) -> [String] {
+        let trimmed = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        var chunks: [String] = []
+        var current = ""
+
+        for char in trimmed {
+            current.append(char)
+            let strongBreak = "。！？!?；;\n".contains(char)
+            let softBreak = "，,、".contains(char)
+            if strongBreak || (softBreak && current.count >= 12) || current.count >= 26 {
+                let piece = current.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !piece.isEmpty { chunks.append(piece) }
+                current = ""
+            }
+        }
+        let tail = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !tail.isEmpty { chunks.append(tail) }
+        return chunks.isEmpty ? [trimmed] : chunks
+    }
+
+    private func stopAllAndReset() {
+        suppressNextCapturedTurn = true
+        wasListening = false
+        conversationTask?.cancel()
+        conversationTask = nil
+        _ = viewModel.stopListeningForRealtime()
+        _ = viewModel.consumeLatestVoiceCapturedText()
+        SpeechService.shared.stopSpeaking()
+        isProcessing = false
     }
 }
 

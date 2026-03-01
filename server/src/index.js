@@ -15,17 +15,32 @@ dotenv.config();
 
 const TTS_MAX_LENGTH = 2000;
 const TTS_VOICES = {
-  // 更自然的中文神经网络音色（可按需替换：zh-CN-YunxiNeural / zh-CN-XiaoyiNeural 等）
+  // 更自然的神经网络音色
   "zh-CN": "zh-CN-XiaoxiaoNeural",
   "id-ID": "id-ID-GadisNeural",
   "en-US": "en-US-JennyNeural"
 };
+const TTS_PRESETS = {
+  "zh-CN": { style: "assistant", rate: -4, pitch: 0 },
+  "id-ID": { style: "", rate: -2, pitch: 0 },
+  "en-US": { style: "", rate: -2, pitch: 0 }
+};
+
 function getTTSVoice(lang) {
   const prefix = (lang || "").slice(0, 2);
   if (lang && TTS_VOICES[lang]) return TTS_VOICES[lang];
   if (prefix === "zh") return TTS_VOICES["zh-CN"];
   if (prefix === "id") return TTS_VOICES["id-ID"];
   return TTS_VOICES["zh-CN"];
+}
+
+function getTTSPreset(lang) {
+  const l = normalizeLang(lang || "zh-CN");
+  if (TTS_PRESETS[l]) return TTS_PRESETS[l];
+  if (l.startsWith("zh")) return TTS_PRESETS["zh-CN"];
+  if (l.startsWith("id")) return TTS_PRESETS["id-ID"];
+  if (l.startsWith("en")) return TTS_PRESETS["en-US"];
+  return TTS_PRESETS["zh-CN"];
 }
 
 function normalizeLang(lang) {
@@ -1271,16 +1286,16 @@ app.post("/api/tts", async (req, res) => {
   const voice = (voiceOverride && String(voiceOverride).trim()) ? String(voiceOverride).trim() : getTTSVoice(langNorm);
   const safeText = escapeTTS(text);
   if (!safeText) return res.status(400).json({ error: "text required" });
+  const preset = getTTSPreset(langNorm);
 
-  // 默认策略：中文使用更“聊天感”的风格（若不支持会自动回退）
+  // 默认策略：使用更自然的助手风格（若不支持会自动回退）
   const defaultStyle = (() => {
     if (style) return style;
-    if (langNorm.startsWith("zh") && voice === "zh-CN-XiaoxiaoNeural") return "chat";
-    return "";
+    return preset.style || "";
   })();
 
-  const ratePct = clampNumber(rate, -30, 30);
-  const pitchPct = clampNumber(pitch, -30, 30);
+  const ratePct = clampNumber(rate, -30, 30) ?? preset.rate;
+  const pitchPct = clampNumber(pitch, -30, 30) ?? preset.pitch;
   const ssml = buildSSML({
     textEscaped: safeText,
     lang: langNorm,
@@ -1291,7 +1306,7 @@ app.post("/api/tts", async (req, res) => {
   });
   try {
     const tts = new MsEdgeTTS({});
-    await tts.setMetadata(voice, OUTPUT_FORMAT.WEBM_24KHZ_16BIT_MONO_OPUS);
+    await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
     let readable;
     try {
       // 优先走 SSML（更自然：停顿/语气/韵律）
@@ -1300,7 +1315,7 @@ app.post("/api/tts", async (req, res) => {
       // 若风格/SSML 不被该音色支持，则回退为纯文本
       readable = tts.toStream(safeText);
     }
-    res.setHeader("Content-Type", "audio/webm");
+    res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Cache-Control", "no-store");
     readable.pipe(res);
     readable.on("error", (err) => {

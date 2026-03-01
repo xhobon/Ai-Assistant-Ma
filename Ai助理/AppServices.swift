@@ -634,6 +634,13 @@ final class SpeechService: NSObject, ObservableObject {
     private var lastOnlineText: String?
     private var lastOnlineLang: String?
 
+    private struct OnlineVoicePreset {
+        let voice: String
+        let style: String
+        let rate: Int
+        let pitch: Int
+    }
+
     override init() {
         super.init()
         synthesizer.delegate = self
@@ -677,7 +684,17 @@ final class SpeechService: NSObject, ObservableObject {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = ["text": text, "lang": language]
+        let preset = onlineVoicePreset(for: language)
+        var body: [String: Any] = [
+            "text": text,
+            "lang": language,
+            "voice": preset.voice,
+            "rate": preset.rate,
+            "pitch": preset.pitch
+        ]
+        if !preset.style.isEmpty {
+            body["style"] = preset.style
+        }
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
         URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
             guard let self else { return }
@@ -694,7 +711,9 @@ final class SpeechService: NSObject, ObservableObject {
                 lastOnlineText = textCopy
                 lastOnlineLang = language
                 let tempDir = FileManager.default.temporaryDirectory
-                let fileURL = tempDir.appendingPathComponent(UUID().uuidString + ".webm")
+                let mime = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type")?.lowercased() ?? ""
+                let fileExt = mime.contains("mpeg") || mime.contains("mp3") ? "mp3" : "webm"
+                let fileURL = tempDir.appendingPathComponent(UUID().uuidString + ".\(fileExt)")
                 do {
                     try dataCopy.write(to: fileURL)
                     currentTempURL = fileURL
@@ -708,6 +727,20 @@ final class SpeechService: NSObject, ObservableObject {
                 }
             }
         }.resume()
+    }
+
+    private func onlineVoicePreset(for language: String) -> OnlineVoicePreset {
+        let lower = language.lowercased()
+        if lower.hasPrefix("zh") {
+            return OnlineVoicePreset(voice: "zh-CN-XiaoxiaoNeural", style: "assistant", rate: -4, pitch: 0)
+        }
+        if lower.hasPrefix("id") {
+            return OnlineVoicePreset(voice: "id-ID-GadisNeural", style: "", rate: -2, pitch: 0)
+        }
+        if lower.hasPrefix("en") {
+            return OnlineVoicePreset(voice: "en-US-JennyNeural", style: "", rate: -2, pitch: 0)
+        }
+        return OnlineVoicePreset(voice: "zh-CN-XiaoxiaoNeural", style: "assistant", rate: -4, pitch: 0)
     }
 
     private func speakLocal(text: String, language: String) {

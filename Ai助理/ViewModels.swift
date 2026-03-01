@@ -21,6 +21,7 @@ final class ChatViewModel: ObservableObject {
     @Published var statusText = "AI 已就绪"
     @Published var isSending = false
     @Published var alertMessage: String?
+    @Published private(set) var latestVoiceCapturedText: String = ""
     /// 本机执行模式：助理返回 [CMD] 时等待用户确认执行
     @Published var pendingCommand: (displayText: String, command: String, conversationId: String?)?
     /// 命令已执行，等待用户确认后再将结果发送至服务器（保护隐私）
@@ -33,6 +34,7 @@ final class ChatViewModel: ObservableObject {
     private var voiceStopWorkItem: DispatchWorkItem?
     private var lastVoiceText: String?
     private var isStoppingVoice = false
+    private var voiceShouldAutoSend = true
     private var pendingImageData: Data? = nil
     private var cancellables = Set<AnyCancellable>()
     
@@ -329,11 +331,29 @@ final class ChatViewModel: ObservableObject {
         if isListening {
             stopListening()
         } else {
-            startListening()
+            startListening(localeIdentifier: "zh-CN", autoSendOnStop: true)
         }
     }
 
-    private func startListening() {
+    /// 语音通话页使用：只做 STT，不自动触发 sendMessage
+    func startListeningForRealtime(localeIdentifier: String = "zh-CN") {
+        startListening(localeIdentifier: localeIdentifier, autoSendOnStop: false)
+    }
+
+    /// 语音通话页使用：停止 STT 并返回本轮识别文本，不自动发送
+    @discardableResult
+    func stopListeningForRealtime() -> String {
+        stopListening(autoSendOverride: false)
+    }
+
+    /// 读取并清空最新一次语音识别文本
+    func consumeLatestVoiceCapturedText() -> String {
+        let text = latestVoiceCapturedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        latestVoiceCapturedText = ""
+        return text
+    }
+
+    private func startListening(localeIdentifier: String, autoSendOnStop: Bool) {
         SpeechService.shared.stopSpeaking()
         Task {
             let granted = await speechTranscriber.requestAuthorization()
@@ -345,11 +365,13 @@ final class ChatViewModel: ObservableObject {
             await MainActor.run {
                 do {
                     lastVoiceText = nil
+                    latestVoiceCapturedText = ""
                     isStoppingVoice = false
+                    voiceShouldAutoSend = autoSendOnStop
                     voiceStopWorkItem?.cancel()
                     isListening = true
                     statusText = "语音监听中"
-                    try speechTranscriber.startTranscribing(locale: Locale(identifier: "zh-CN")) { [weak self] text, isFinal in
+                    try speechTranscriber.startTranscribing(locale: Locale(identifier: localeIdentifier)) { [weak self] text, isFinal in
                         Task { @MainActor in
                             guard let self else { return }
                             if !text.isEmpty { self.inputText = text }
@@ -369,23 +391,42 @@ final class ChatViewModel: ObservableObject {
     }
 
     func stopListening() {
-        if isStoppingVoice { return }
+        _ = stopListening(autoSendOverride: nil)
+    }
+
+    @discardableResult
+    private func stopListening(autoSendOverride: Bool?) -> String {
+        if isStoppingVoice {
+            return latestVoiceCapturedText
+        }
+        guard isListening else {
+            return ""
+        }
         isStoppingVoice = true
         voiceStopWorkItem?.cancel()
         speechTranscriber.stopTranscribing()
         isListening = false
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty, trimmed != lastVoiceText {
-            lastVoiceText = trimmed
-            sendMessage()
-            // 确保输入框被清空（防止某些情况下 sendMessage 没有清空）
-            inputText = ""
+        latestVoiceCapturedText = trimmed
+
+        let shouldAutoSend = autoSendOverride ?? voiceShouldAutoSend
+        if shouldAutoSend {
+            if !trimmed.isEmpty, trimmed != lastVoiceText {
+                lastVoiceText = trimmed
+                sendMessage()
+                // 确保输入框被清空（防止某些情况下 sendMessage 没有清空）
+                inputText = ""
+            } else {
+                // 即使不发送消息，也要清空输入框
+                inputText = ""
+            }
         } else {
-            // 即使不发送消息，也要清空输入框
+            // 实时模式：仅返回识别结果给调用方，由调用方决定何时发送
             inputText = ""
         }
         statusText = "AI 已就绪"
         isStoppingVoice = false
+        return trimmed
     }
 
     /// 手动打断 AI 朗读

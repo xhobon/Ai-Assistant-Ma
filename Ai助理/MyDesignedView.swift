@@ -110,30 +110,33 @@ struct MyDesignedView: View {
     }
 
     private var profileCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 ZStack {
                     Circle()
                         .fill(
                             LinearGradient(
-                                colors: [Color(red: 0.47, green: 0.63, blue: 1.0), Color(red: 0.66, green: 0.52, blue: 1.0)],
+                                colors: [Color(red: 0.44, green: 0.63, blue: 1.0), Color(red: 0.63, green: 0.53, blue: 1.0)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
                         .frame(width: 56, height: 56)
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 28, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.95))
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.96))
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(tokenStore.isLoggedIn ? "已登录账号" : "未登录账号")
-                        .font(.system(size: 24, weight: .heavy))
+                        .font(.system(size: 20, weight: .heavy))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text(tokenStore.isLoggedIn ? "账号同步已开启" : "登录后可同步收藏、翻译与学习记录")
-                        .font(.subheadline)
+                        .lineLimit(1)
+
+                    Text(tokenStore.isLoggedIn ? "收藏、翻译与学习记录正在同步" : "登录后可同步收藏、翻译与学习记录")
+                        .font(.system(size: 16))
                         .foregroundStyle(AppTheme.textSecondary)
+                        .lineLimit(2)
                 }
                 Spacer(minLength: 0)
             }
@@ -147,10 +150,10 @@ struct MyDesignedView: View {
                         showAuthSheet = true
                     }
                 } label: {
-                    Text(tokenStore.isLoggedIn ? "个人中心" : "去登录")
+                    Label(tokenStore.isLoggedIn ? "个人中心" : "去登录", systemImage: tokenStore.isLoggedIn ? "person.crop.circle" : "person.badge.plus")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
-                        .frame(height: 40)
+                        .frame(height: 44)
                         .frame(maxWidth: .infinity)
                         .background(AppTheme.unifiedButtonPrimary)
                         .clipShape(Capsule())
@@ -163,9 +166,9 @@ struct MyDesignedView: View {
                     Label("设置", systemImage: "slider.horizontal.3")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
-                        .frame(height: 40)
+                        .frame(height: 44)
                         .frame(maxWidth: .infinity)
-                        .background(Color.white.opacity(0.9))
+                        .background(Color.white.opacity(0.96))
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
@@ -176,28 +179,20 @@ struct MyDesignedView: View {
             }
 
             HStack(spacing: 8) {
-                profileMetaPill("本机数据", value: "已保护")
-                profileMetaPill("同步状态", value: tokenStore.isLoggedIn ? "已开启" : "未开启")
+                profileMetaPill(title: "本机数据", value: "已保护")
+                profileMetaPill(title: "同步状态", value: tokenStore.isLoggedIn ? "已开启" : "未开启")
             }
         }
-        .padding(14)
+        .padding(15)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.89, green: 0.93, blue: 1.0),
-                            Color(red: 0.95, green: 0.91, blue: 1.0)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(Color.white.opacity(0.84))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(AppTheme.border, lineWidth: 1)
         )
+        .shadow(color: AppTheme.softShadow.opacity(0.16), radius: 4, x: 0, y: 2)
     }
 
     private var vipCard: some View {
@@ -338,7 +333,7 @@ struct MyDesignedView: View {
         )
     }
 
-    private func profileMetaPill(_ title: String, value: String) -> some View {
+    private func profileMetaPill(title: String, value: String) -> some View {
         HStack(spacing: 6) {
             Text(title)
                 .font(.caption)
