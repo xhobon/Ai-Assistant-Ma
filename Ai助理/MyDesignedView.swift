@@ -38,8 +38,10 @@ struct MyDesignedView: View {
             VStack(spacing: 14) {
                 motivationBanner
                 headerCard
+                delegationCard
                 statsRow
                 vipCard
+                shortcutsCard
                 actionGrid
                 dangerCard
             }
@@ -243,6 +245,75 @@ struct MyDesignedView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private var delegationCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("托管中 (1)")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Button("取消托管") {}
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                Button("添加宝贝") {}
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("【活动价】Haier/海尔 智能设备")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("在售价 ¥280")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                Text("底价 ¥280")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(AppTheme.surfaceMuted)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .padding(14)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var shortcutsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("常用快捷工具")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(AppTheme.textPrimary)
+
+            HStack(spacing: 8) {
+                shortcutPill("闪记录音", icon: "waveform")
+                shortcutPill("工作总结", icon: "list.bullet.clipboard")
+                shortcutPill("AI祝福", icon: "heart.text.square")
+                shortcutPill("助理推荐", icon: "person.3.fill")
+            }
+        }
+        .padding(14)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func shortcutPill(_ title: String, icon: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppTheme.primary)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var dangerCard: some View {

@@ -1,7 +1,7 @@
 import SwiftUI
 #if os(iOS)
 import UIKit
-import AVFoundation
+@preconcurrency import AVFoundation
 import Speech
 #elseif os(macOS)
 import AppKit
@@ -10,19 +10,11 @@ import UniformTypeIdentifiers
 
 struct AITranslateHomeView: View {
     @StateObject private var viewModel = TranslateViewModel()
+    @ObservedObject private var mediaImportCoordinator = MediaImportCoordinator.shared
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var showAudioImporter = false
-    @State private var showVideoImporter = false
     @State private var showRealtimeTranslation = false
-    @State private var isImportingMedia = false
-    @State private var importStatusText: String?
-    @State private var importAlertMessage: String?
-    private let quickPhrases = [
-        "你好，很高兴认识你",
-        "请问洗手间在哪里？",
-        "谢谢你的帮助",
-        "我想预订一个房间"
-    ]
+    @State private var showFeatureHub = false
+    @State private var showAllHistory = false
     private var pageMaxWidth: CGFloat {
         horizontalSizeClass == .compact ? .infinity : 760
     }
@@ -30,38 +22,25 @@ struct AITranslateHomeView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 14) {
-                TranslateShowcaseCard(viewModel: viewModel)
+                TranslateNativeHeaderCard()
                     .padding(.horizontal, 16)
 
                 TranslateMediaToolsCard(
-                    isImporting: isImportingMedia,
-                    statusText: importStatusText,
                     onOpenRealtime: { showRealtimeTranslation = true },
-                    onImportAudio: { showAudioImporter = true },
-                    onImportVideo: { showVideoImporter = true }
+                    onOpenHistory: { showAllHistory = true }
                 )
                 .padding(.horizontal, 16)
 
-                ModernTranslationQuickLinksRow(history: viewModel.history)
+                TranslateMainInputCard(viewModel: viewModel)
                     .padding(.horizontal, 16)
 
-                DualTranslationInputCard(viewModel: viewModel)
+                TranslateBottomActionBar(viewModel: viewModel)
                     .padding(.horizontal, 16)
 
-                ModernTranslationActionBar(viewModel: viewModel)
-                    .padding(.horizontal, 16)
-
-                TranslateQuickPhraseSection(
-                    phrases: quickPhrases,
-                    onSelect: { phrase in
-                        viewModel.sourceText = phrase
-                        viewModel.translatedText = ""
-                        viewModel.scheduleAutoTranslate()
-                    }
+                TranslateHistoryPreviewCard(
+                    history: viewModel.history,
+                    onViewAll: { showAllHistory = true }
                 )
-                .padding(.horizontal, 16)
-
-                ModernTranslationHistorySection(history: viewModel.history)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 28)
             }
@@ -73,8 +52,24 @@ struct AITranslateHomeView: View {
         .scrollIndicators(.automatic)
         .background(AppTheme.pageBackground.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("翻译")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showFeatureHub = true
+                } label: {
+                    Image(systemName: "square.grid.2x2")
+                }
+            }
+        }
         .onTapGesture {
             hideKeyboard()
+        }
+        .onAppear {
+            applyPendingImportedTextIfNeeded()
+        }
+        .onReceive(mediaImportCoordinator.$pendingText) { _ in
+            applyPendingImportedTextIfNeeded()
         }
         .alert("提示", isPresented: Binding(
             get: { viewModel.alertMessage != nil },
@@ -84,88 +79,370 @@ struct AITranslateHomeView: View {
         } message: {
             Text(viewModel.alertMessage ?? "")
         }
-        .alert("导入失败", isPresented: Binding(
-            get: { importAlertMessage != nil },
-            set: { if !$0 { importAlertMessage = nil } }
-        )) {
-            Button("确定", role: .cancel) {}
-        } message: {
-            Text(importAlertMessage ?? "")
-        }
-        .fileImporter(
-            isPresented: $showAudioImporter,
-            allowedContentTypes: [.audio],
-            allowsMultipleSelection: false
-        ) { result in
-            guard case .success(let urls) = result, let url = urls.first else { return }
-            Task { await handleImportedMedia(url: url, isVideo: false) }
-        }
-        .fileImporter(
-            isPresented: $showVideoImporter,
-            allowedContentTypes: [.movie],
-            allowsMultipleSelection: false
-        ) { result in
-            guard case .success(let urls) = result, let url = urls.first else { return }
-            Task { await handleImportedMedia(url: url, isVideo: true) }
-        }
         .navigationDestination(isPresented: $showRealtimeTranslation) {
             RealTimeTranslationView()
         }
+        .navigationDestination(isPresented: $showAllHistory) {
+            AllTranslationRecordsView(history: viewModel.history)
+        }
+        .navigationDestination(isPresented: $showFeatureHub) {
+            FeatureHubView()
+        }
     }
 
-    private func handleImportedMedia(url: URL, isVideo: Bool) async {
-        await MainActor.run {
-            isImportingMedia = true
-            importStatusText = isVideo ? "正在提取视频音频并转写..." : "正在转写音频..."
+    private func applyPendingImportedTextIfNeeded() {
+        guard let text = mediaImportCoordinator.consumePendingText() else { return }
+        viewModel.sourceText = text
+        viewModel.translatedText = ""
+        viewModel.translate()
+    }
+}
+
+private struct TranslateNativeHeaderCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("AI翻译")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Text("文本输入、语音识别、实时会话翻译")
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.textSecondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.89, green: 0.94, blue: 1.0), Color(red: 0.95, green: 0.97, blue: 1.0)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+    }
+}
 
-        do {
-            let secured = url.startAccessingSecurityScopedResource()
-            defer {
-                if secured { url.stopAccessingSecurityScopedResource() }
+private struct TranslateLanguageBar: View {
+    let source: String
+    let target: String
+    let onSwap: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(source)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(Capsule())
+            Button(action: onSwap) {
+                Image(systemName: "arrow.left.arrow.right")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+                    .frame(width: 34, height: 34)
+                    .background(AppTheme.surface)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(AppTheme.border, lineWidth: 1))
             }
+            .buttonStyle(.plain)
+            Text(target)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(Capsule())
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+}
 
-            let tempURL = try copyToTemp(url)
-            let transcript = try await MediaSpeechTranscriber.transcribe(
-                from: tempURL,
-                localeIdentifier: viewModel.sourceLang.speechCode,
-                isVideo: isVideo
-            )
+private struct TranslateMainInputCard: View {
+    @ObservedObject var viewModel: TranslateViewModel
 
-            await MainActor.run {
-                isImportingMedia = false
-                importStatusText = nil
-                viewModel.sourceText = transcript
-                viewModel.translatedText = ""
+    var body: some View {
+        VStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(viewModel.sourceLang.name)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppTheme.textSecondary)
+                    Spacer()
+                    iconButton(system: "speaker.wave.2.fill", enabled: !viewModel.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                        SpeechService.shared.speak(viewModel.sourceText, language: viewModel.sourceLang.speechCode)
+                    }
+                    iconButton(system: "doc.on.doc", enabled: !viewModel.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                        ClipboardService.copy(viewModel.sourceText)
+                    }
+                    micButton(active: viewModel.isListening && viewModel.listeningSide == .left) {
+                        viewModel.toggleListening(side: .left)
+                    }
+                }
+                TextEditor(text: $viewModel.sourceText)
+                    .frame(minHeight: 120)
+                    .scrollContentBackground(.hidden)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .onChange(of: viewModel.sourceText) { _, _ in
+                        viewModel.scheduleAutoTranslate()
+                    }
+            }
+            .padding(12)
+            .background(AppTheme.surfaceMuted)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(viewModel.targetLang.name)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppTheme.textSecondary)
+                    Spacer()
+                    iconButton(system: "speaker.wave.2.fill", enabled: !viewModel.translatedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                        viewModel.playResult()
+                    }
+                    iconButton(system: "doc.on.doc", enabled: !viewModel.translatedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                        viewModel.copyResult()
+                    }
+                    micButton(active: viewModel.isListening && viewModel.listeningSide == .right) {
+                        viewModel.toggleListening(side: .right)
+                    }
+                }
+                TextEditor(text: $viewModel.translatedText)
+                    .frame(minHeight: 120)
+                    .scrollContentBackground(.hidden)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .onChange(of: viewModel.translatedText) { _, _ in
+                        viewModel.scheduleAutoTranslate()
+                    }
+            }
+            .padding(12)
+            .background(AppTheme.surfaceMuted)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+
+    private func micButton(active: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: active ? "stop.fill" : "mic.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(active ? AppTheme.accentWarm : AppTheme.primary)
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func iconButton(system: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(enabled ? AppTheme.primary : AppTheme.textTertiary.opacity(0.45))
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+    }
+}
+
+private struct TranslateBottomActionBar: View {
+    @ObservedObject var viewModel: TranslateViewModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button {
+                viewModel.swapLanguages()
+            } label: {
+                Label("语言切换", systemImage: "arrow.left.arrow.right")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(AppTheme.surface)
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+            }.buttonStyle(.plain)
+
+            Button {
                 viewModel.translate()
+            } label: {
+                Label(viewModel.isTranslating ? "翻译中..." : "翻译", systemImage: "paperplane.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(AppTheme.primary)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-        } catch {
-            await MainActor.run {
-                isImportingMedia = false
-                importStatusText = nil
-                importAlertMessage = error.localizedDescription
-            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.isTranslating)
         }
     }
+}
 
-    private func copyToTemp(_ sourceURL: URL) throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-        let ext = sourceURL.pathExtension.isEmpty ? "tmp" : sourceURL.pathExtension
-        let target = tempDir.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
-        if FileManager.default.fileExists(atPath: target.path) {
-            try FileManager.default.removeItem(at: target)
+private struct TranslateHistoryPreviewCard: View {
+    let history: [TranslationEntry]
+    let onViewAll: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("最近记录")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Button("查看全部", action: onViewAll)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+            if history.isEmpty {
+                Text("暂无翻译记录")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .padding(.vertical, 6)
+            } else {
+                ForEach(Array(history.prefix(3))) { item in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.sourceText)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .lineLimit(1)
+                        Text(item.targetText)
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+            }
         }
-        try FileManager.default.copyItem(at: sourceURL, to: target)
-        return target
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+}
+
+private struct TranslateCapabilityGrid: View {
+    let onOpenRealtime: () -> Void
+    let onImportAudio: () -> Void
+    let onImportVideo: () -> Void
+    let onOpenHistory: () -> Void
+
+    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("推荐功能")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(AppTheme.textPrimary)
+
+            LazyVGrid(columns: columns, spacing: 10) {
+                capabilityCard(
+                    title: "实时对话翻译",
+                    subtitle: "边说边译，自动播报",
+                    icon: "waveform.badge.mic",
+                    tint: Color(red: 0.82, green: 0.90, blue: 1.0),
+                    action: onOpenRealtime
+                )
+                capabilityCard(
+                    title: "导入音频转写",
+                    subtitle: "本地音频一键转文字",
+                    icon: "music.note.list",
+                    tint: Color(red: 0.86, green: 0.95, blue: 1.0),
+                    action: onImportAudio
+                )
+                capabilityCard(
+                    title: "导入视频转写",
+                    subtitle: "自动提取音轨并翻译",
+                    icon: "video.badge.plus",
+                    tint: Color(red: 0.90, green: 0.92, blue: 1.0),
+                    action: onImportVideo
+                )
+                capabilityCard(
+                    title: "翻译历史",
+                    subtitle: "快速回看之前内容",
+                    icon: "clock.arrow.circlepath",
+                    tint: Color(red: 0.92, green: 0.95, blue: 1.0),
+                    action: onOpenHistory
+                )
+            }
+        }
+        .padding(14)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+
+    private func capabilityCard(
+        title: String,
+        subtitle: String,
+        icon: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppTheme.primary)
+                    .frame(width: 30, height: 30)
+                    .background(Color.white.opacity(0.84))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
+            .padding(10)
+            .background(tint)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }
 
 private struct TranslateMediaToolsCard: View {
-    let isImporting: Bool
-    let statusText: String?
     let onOpenRealtime: () -> Void
-    let onImportAudio: () -> Void
-    let onImportVideo: () -> Void
+    let onOpenHistory: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -183,30 +460,12 @@ private struct TranslateMediaToolsCard: View {
                 )
 
                 toolButton(
-                    title: "导入音频",
-                    subtitle: "本地音频转写",
-                    icon: "music.note",
-                    tint: Color(red: 0.32, green: 0.69, blue: 0.97),
-                    action: onImportAudio
+                    title: "翻译历史",
+                    subtitle: "查看全部记录",
+                    icon: "clock.arrow.circlepath",
+                    tint: Color(red: 0.75, green: 0.82, blue: 0.97),
+                    action: onOpenHistory
                 )
-
-                toolButton(
-                    title: "导入视频",
-                    subtitle: "视频音轨转写",
-                    icon: "video.fill",
-                    tint: Color(red: 0.47, green: 0.56, blue: 0.98),
-                    action: onImportVideo
-                )
-            }
-
-            if isImporting {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text(statusText ?? "处理中...")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
             }
         }
         .padding(14)
@@ -243,7 +502,7 @@ private struct TranslateMediaToolsCard: View {
                     .foregroundStyle(AppTheme.textSecondary)
                     .lineLimit(2)
             }
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
             .padding(10)
             .background(tint.opacity(0.16))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -254,7 +513,7 @@ private struct TranslateMediaToolsCard: View {
 }
 
 #if os(iOS)
-private enum MediaSpeechTranscriber {
+enum MediaSpeechTranscriber {
     static func transcribe(from url: URL, localeIdentifier: String, isVideo: Bool) async throws -> String {
         let audioURL = isVideo ? try await extractAudio(from: url) : url
         return try await recognize(url: audioURL, localeIdentifier: localeIdentifier)
@@ -334,7 +593,7 @@ private enum MediaSpeechTranscriber {
     }
 }
 #else
-private enum MediaSpeechTranscriber {
+enum MediaSpeechTranscriber {
     static func transcribe(from url: URL, localeIdentifier: String, isVideo: Bool) async throws -> String {
         throw NSError(domain: "Translate", code: 100, userInfo: [NSLocalizedDescriptionKey: "当前平台暂不支持媒体转写"])
     }
@@ -1057,150 +1316,52 @@ struct CircleSwapButton: View {
 
 struct RealTimeTranslationView: View {
     @StateObject private var viewModel = RealTimeTranslateViewModel()
-    @Environment(\.dismiss) private var dismiss
+    @State private var showFeatureHub = false
 
     private var isRecording: Bool {
         viewModel.isLeftRecording || viewModel.isRightRecording
     }
 
     var body: some View {
-        ZStack {
-            AppTheme.pageBackground
-                .ignoresSafeArea()
-
-            VStack(spacing: 12) {
-                RealTimeCompactHeader(isRecording: isRecording, onClose: { dismiss() })
+        ScrollView {
+            VStack(spacing: 14) {
+                RealTimeCompactHeader(isRecording: isRecording)
                     .padding(.horizontal, 14)
                     .padding(.top, 10)
 
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(spacing: 12) {
-                            ForEach(viewModel.entries) { entry in
-                                VStack(spacing: 8) {
-                                    if entry.sourceLanguage == .chinese {
-                                        // 原文是中文：中文为“原文气泡”，印尼文为“译文气泡”
-                                        RealtimeSpeechBubble(
-                                            title: "中文",
-                                            text: entry.chinese,
-                                            placeholder: "",
-                                            languageTint: AppTheme.accentWarm,
-                                            alignTrailing: true,
-                                            isSource: true,
-                                            languageForSpeech: "zh-CN",
-                                            onCopy: { ClipboardService.copy(entry.chinese) }
-                                        )
-                                        RealtimeSpeechBubble(
-                                            title: "印度尼西亚语",
-                                            text: entry.indonesian,
-                                            placeholder: "",
-                                            languageTint: AppTheme.brandBlue,
-                                            isSource: false,
-                                            languageForSpeech: "id-ID",
-                                            onCopy: { ClipboardService.copy(entry.indonesian) }
-                                        )
-                                    } else {
-                                        // 原文是印尼文：印尼文为“原文气泡”，中文为“译文气泡”
-                                        RealtimeSpeechBubble(
-                                            title: "印度尼西亚语",
-                                            text: entry.indonesian,
-                                            placeholder: "",
-                                            languageTint: AppTheme.brandBlue,
-                                            isSource: true,
-                                            languageForSpeech: "id-ID",
-                                            onCopy: { ClipboardService.copy(entry.indonesian) }
-                                        )
-                                        RealtimeSpeechBubble(
-                                            title: "中文",
-                                            text: entry.chinese,
-                                            placeholder: "",
-                                            languageTint: AppTheme.accentWarm,
-                                            alignTrailing: true,
-                                            isSource: false,
-                                            languageForSpeech: "zh-CN",
-                                            onCopy: { ClipboardService.copy(entry.chinese) }
-                                        )
-                                    }
-                                }
-                            }
-                            VStack(spacing: 8) {
-                                if viewModel.currentSourceLanguage == .chinese {
-                                    // 当前原文预期为中文：中文为“原文气泡”，印尼文为“译文气泡”
-                                    let chineseText = viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText
-                                    let indonesianText = viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText
-                                    RealtimeSpeechBubble(
-                                        title: "中文",
-                                        text: chineseText,
-                                        placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
-                                        languageTint: AppTheme.accentWarm,
-                                        alignTrailing: true,
-                                        isSource: true,
-                                        languageForSpeech: "zh-CN",
-                                        onCopy: { ClipboardService.copy(chineseText) }
-                                    )
-                                    RealtimeSpeechBubble(
-                                        title: "印度尼西亚语",
-                                        text: indonesianText,
-                                        placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
-                                        languageTint: AppTheme.brandBlue,
-                                        isSource: false,
-                                        languageForSpeech: "id-ID",
-                                        onCopy: { ClipboardService.copy(indonesianText) }
-                                    )
-                                } else {
-                                    // 当前原文预期为印尼文：印尼文为“原文气泡”，中文为“译文气泡”
-                                    let indonesianText = viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText
-                                    let chineseText = viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText
-                                    RealtimeSpeechBubble(
-                                        title: "印度尼西亚语",
-                                        text: indonesianText,
-                                        placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
-                                        languageTint: AppTheme.brandBlue,
-                                        isSource: true,
-                                        languageForSpeech: "id-ID",
-                                        onCopy: { ClipboardService.copy(indonesianText) }
-                                    )
-                                    RealtimeSpeechBubble(
-                                        title: "中文",
-                                        text: chineseText,
-                                        placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
-                                        languageTint: AppTheme.accentWarm,
-                                        alignTrailing: true,
-                                        isSource: false,
-                                        languageForSpeech: "zh-CN",
-                                        onCopy: { ClipboardService.copy(chineseText) }
-                                    )
-                                }
-                            }
-                            .id("current")
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                    }
-                    .background(AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(AppTheme.borderStrong.opacity(0.85), lineWidth: 1.1)
-                    )
-                    .shadow(color: AppTheme.softShadow, radius: 12, x: 0, y: 5)
-                    .onChange(of: viewModel.entries.count) { _, _ in
-                        withAnimation { proxy.scrollTo("current", anchor: .bottom) }
-                    }
-                }
-                .padding(.horizontal, 14)
+                statusCard
+                    .padding(.horizontal, 14)
 
-                VoiceControlBar(
-                    isLeftRecording: viewModel.isLeftRecording,
-                    isRightRecording: viewModel.isRightRecording,
-                    onLeft: viewModel.toggleLeft,
-                    onRight: viewModel.toggleRight
-                )
-                .padding(.horizontal, 14)
-                .padding(.bottom, 14)
+                conversationPanel
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 6)
             }
         }
-        .navigationTitle("实时语音翻译")
+        .scrollIndicators(.automatic)
+        .safeAreaInset(edge: .bottom) {
+            RealtimeBottomDock(
+                isLeftRecording: viewModel.isLeftRecording,
+                isRightRecording: viewModel.isRightRecording,
+                onLeft: viewModel.toggleLeft,
+                onRight: viewModel.toggleRight
+            )
+            .padding(.horizontal, 14)
+            .padding(.bottom, 8)
+            .background(.clear)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.94, green: 0.95, blue: 0.99),
+                    Color(red: 0.91, green: 0.93, blue: 0.98),
+                    Color(red: 0.96, green: 0.97, blue: 0.995)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
         .alert("提示", isPresented: Binding(
             get: { viewModel.alertMessage != nil },
             set: { if !$0 { viewModel.alertMessage = nil } }
@@ -1209,7 +1370,166 @@ struct RealTimeTranslationView: View {
         } message: {
             Text(viewModel.alertMessage ?? "")
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationTitle("实时语音翻译")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showFeatureHub = true
+                } label: {
+                    Image(systemName: "square.grid.2x2")
+                }
+            }
+        }
+        .navigationDestination(isPresented: $showFeatureHub) {
+            FeatureHubView()
+        }
+    }
+
+    private var statusCard: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(isRecording ? "正在实时记录" : "等待开始记录")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("双语对话实时翻译 · 源语言：\(viewModel.currentSourceLanguage == .chinese ? "中文" : "印度尼西亚语")")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("记录数")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textTertiary)
+                Text("\(viewModel.entries.count)")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(AppTheme.primary)
+            }
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+
+    private var conversationPanel: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 12) {
+                    ForEach(viewModel.entries) { entry in
+                        VStack(spacing: 8) {
+                            if entry.sourceLanguage == .chinese {
+                                RealtimeSpeechBubble(
+                                    title: "中文",
+                                    text: entry.chinese,
+                                    placeholder: "",
+                                    languageTint: AppTheme.accentWarm,
+                                    alignTrailing: true,
+                                    isSource: true,
+                                    languageForSpeech: "zh-CN",
+                                    onCopy: { ClipboardService.copy(entry.chinese) }
+                                )
+                                RealtimeSpeechBubble(
+                                    title: "印度尼西亚语",
+                                    text: entry.indonesian,
+                                    placeholder: "",
+                                    languageTint: AppTheme.brandBlue,
+                                    isSource: false,
+                                    languageForSpeech: "id-ID",
+                                    onCopy: { ClipboardService.copy(entry.indonesian) }
+                                )
+                            } else {
+                                RealtimeSpeechBubble(
+                                    title: "印度尼西亚语",
+                                    text: entry.indonesian,
+                                    placeholder: "",
+                                    languageTint: AppTheme.brandBlue,
+                                    isSource: true,
+                                    languageForSpeech: "id-ID",
+                                    onCopy: { ClipboardService.copy(entry.indonesian) }
+                                )
+                                RealtimeSpeechBubble(
+                                    title: "中文",
+                                    text: entry.chinese,
+                                    placeholder: "",
+                                    languageTint: AppTheme.accentWarm,
+                                    alignTrailing: true,
+                                    isSource: false,
+                                    languageForSpeech: "zh-CN",
+                                    onCopy: { ClipboardService.copy(entry.chinese) }
+                                )
+                            }
+                        }
+                    }
+                    VStack(spacing: 8) {
+                        if viewModel.currentSourceLanguage == .chinese {
+                            let chineseText = viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText
+                            let indonesianText = viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText
+                            RealtimeSpeechBubble(
+                                title: "中文",
+                                text: chineseText,
+                                placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
+                                languageTint: AppTheme.accentWarm,
+                                alignTrailing: true,
+                                isSource: true,
+                                languageForSpeech: "zh-CN",
+                                onCopy: { ClipboardService.copy(chineseText) }
+                            )
+                            RealtimeSpeechBubble(
+                                title: "印度尼西亚语",
+                                text: indonesianText,
+                                placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
+                                languageTint: AppTheme.brandBlue,
+                                isSource: false,
+                                languageForSpeech: "id-ID",
+                                onCopy: { ClipboardService.copy(indonesianText) }
+                            )
+                        } else {
+                            let indonesianText = viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText
+                            let chineseText = viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText
+                            RealtimeSpeechBubble(
+                                title: "印度尼西亚语",
+                                text: indonesianText,
+                                placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
+                                languageTint: AppTheme.brandBlue,
+                                isSource: true,
+                                languageForSpeech: "id-ID",
+                                onCopy: { ClipboardService.copy(indonesianText) }
+                            )
+                            RealtimeSpeechBubble(
+                                title: "中文",
+                                text: chineseText,
+                                placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
+                                languageTint: AppTheme.accentWarm,
+                                alignTrailing: true,
+                                isSource: false,
+                                languageForSpeech: "zh-CN",
+                                onCopy: { ClipboardService.copy(chineseText) }
+                            )
+                        }
+                    }
+                    .id("current")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+            }
+            .frame(minHeight: 300, maxHeight: 420)
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AppTheme.borderStrong.opacity(0.85), lineWidth: 1.1)
+            )
+            .shadow(color: AppTheme.softShadow, radius: 12, x: 0, y: 5)
+            .onChange(of: viewModel.entries.count) { _, _ in
+                withAnimation { proxy.scrollTo("current", anchor: .bottom) }
+            }
+        }
     }
 }
 
@@ -1233,37 +1553,28 @@ struct RealTimeHeader: View {
 // 实时翻译页紧凑页头（二级页面用）
 struct RealTimeCompactHeader: View {
     let isRecording: Bool
-    var onClose: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Button(action: onClose) {
-                Image(systemName: "chevron.left")
-                    .font(.body.weight(.bold))
-                    .foregroundStyle(AppTheme.textOnPrimary)
-                    .frame(width: 34, height: 34)
-                    .background(AppTheme.primaryGradient)
-                    .clipShape(Circle())
-                    .shadow(color: AppTheme.primary.opacity(0.24), radius: 8, x: 0, y: 4)
-            }
-            .buttonStyle(.plain)
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: isRecording ? "waveform.badge.mic" : "mic.slash")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isRecording ? AppTheme.primary : AppTheme.textSecondary)
+                .frame(width: 34, height: 34)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("实时语音翻译")
                     .font(.headline.weight(.bold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text("双语对话实时输出")
+                Text(isRecording ? "正在识别并翻译" : "点击底部麦克风开始")
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
             }
-            Spacer(minLength: 10)
-            Text(isRecording ? "录音中" : "待机")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(isRecording ? AppTheme.accentWarm : AppTheme.textSecondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(AppTheme.surfaceMuted)
-                .clipShape(Capsule())
+            Spacer(minLength: 0)
+            Circle()
+                .fill(isRecording ? AppTheme.accentWarm : AppTheme.textTertiary.opacity(0.4))
+                .frame(width: 10, height: 10)
         }
         .padding(12)
         .background(AppTheme.surface.opacity(0.9))
@@ -1273,6 +1584,78 @@ struct RealTimeCompactHeader: View {
                 .stroke(AppTheme.border, lineWidth: 1)
         )
         .shadow(color: AppTheme.softShadow, radius: 8, x: 0, y: 3)
+    }
+}
+
+private struct RealtimeBottomDock: View {
+    let isLeftRecording: Bool
+    let isRightRecording: Bool
+    let onLeft: () -> Void
+    let onRight: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            BottomMicButton(
+                title: "印尼语",
+                icon: "mic.fill",
+                tint: AppTheme.brandBlue,
+                isRecording: isLeftRecording,
+                action: onLeft
+            )
+
+            VStack(spacing: 5) {
+                Text(isLeftRecording || isRightRecording ? "正在录音" : "点击开始")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("自动静音检测并翻译")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            .frame(maxWidth: .infinity)
+
+            BottomMicButton(
+                title: "中文",
+                icon: "mic.fill",
+                tint: AppTheme.accentWarm,
+                isRecording: isRightRecording,
+                action: onRight
+            )
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(AppTheme.surface.opacity(0.95))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(AppTheme.borderStrong.opacity(0.85), lineWidth: 1)
+        )
+        .shadow(color: AppTheme.softShadow, radius: 10, x: 0, y: 4)
+    }
+}
+
+private struct BottomMicButton: View {
+    let title: String
+    let icon: String
+    let tint: Color
+    let isRecording: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                Image(systemName: isRecording ? "stop.fill" : icon)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(isRecording ? tint : tint.opacity(0.78))
+                    .clipShape(Circle())
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+            }
+            .frame(minWidth: 76)
+        }
+        .buttonStyle(.plain)
     }
 }
 

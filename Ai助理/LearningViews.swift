@@ -9,17 +9,9 @@ struct IndonesianLearningView: View {
     @State private var searchText = ""
     @State private var selectedDifficulty = "全部"
     @State private var showFavoritesOnly = false
+    @State private var showFeatureHub = false
 
     private let difficulties = ["全部", "入门", "进阶", "高级"]
-    private let quickTiles: [LearningQuickTile] = [
-        .init(title: "AI解题", subtitle: "有解析，有步骤", icon: "checkmark.seal.fill", tint: Color(red: 0.85, green: 0.93, blue: 1.0)),
-        .init(title: "AI写作文", subtitle: "每一篇都不一样", icon: "square.and.pencil", tint: Color(red: 1.0, green: 0.93, blue: 0.86)),
-        .init(title: "英语写作", subtitle: "中英对照，句句精彩", icon: "character.book.closed.fill", tint: Color(red: 0.98, green: 0.90, blue: 0.96)),
-        .init(title: "话题/游戏", subtitle: "和AI伙伴边学边玩", icon: "gamecontroller.fill", tint: Color(red: 0.85, green: 0.97, blue: 1.0)),
-        .init(title: "作业批改", subtitle: "错题有讲解，不懂接着问", icon: "doc.text.magnifyingglass", tint: Color(red: 0.85, green: 0.98, blue: 0.92)),
-        .init(title: "英语翻译", subtitle: "不用打字，一拍就翻", icon: "globe.asia.australia.fill", tint: Color(red: 0.92, green: 0.90, blue: 0.99))
-    ]
-
     private let horizontalPadding: CGFloat = 14
     private let sectionSpacing: CGFloat = 12
     private var pageMaxWidth: CGFloat {
@@ -29,17 +21,8 @@ struct IndonesianLearningView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: sectionSpacing) {
-                LearningDiscoverHero()
+                learningHeader
                     .padding(.horizontal, horizontalPadding)
-
-                LearningQuickTilesGrid(
-                    tiles: quickTiles,
-                    onTap: { tile in
-                        searchText = tile.title
-                        selectedCategoryIdFromTile(tile.title)
-                    }
-                )
-                .padding(.horizontal, horizontalPadding)
 
                 LearningSearchPanel(
                     searchText: $searchText,
@@ -48,6 +31,9 @@ struct IndonesianLearningView: View {
                     difficulties: difficulties
                 )
                 .padding(.horizontal, horizontalPadding)
+
+                LearningPlanCard()
+                    .padding(.horizontal, horizontalPadding)
 
                 LearningOverviewRow(viewModel: viewModel)
                     .padding(.horizontal, horizontalPadding)
@@ -79,7 +65,20 @@ struct IndonesianLearningView: View {
             AppTheme.pageBackground
                 .ignoresSafeArea(edges: .top)
         )
+        .navigationTitle("学习")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showFeatureHub = true
+                } label: {
+                    Image(systemName: "square.grid.2x2")
+                }
+            }
+        }
+        .navigationDestination(isPresented: $showFeatureHub) {
+            FeatureHubView()
+        }
     }
 
     private var filteredItems: [VocabItem] {
@@ -115,95 +114,67 @@ struct IndonesianLearningView: View {
         return "高级"
     }
 
-    private func selectedCategoryIdFromTile(_ keyword: String) {
-        if let matched = viewModel.categories.first(where: { category in
-            category.nameZh.localizedCaseInsensitiveContains(keyword)
-        }) {
-            viewModel.selectedCategoryId = matched.id
-        }
-    }
-}
-
-private struct LearningDiscoverHero: View {
-    var body: some View {
+    private var learningHeader: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("有问题，快问AI")
-                    .font(.system(size: 28, weight: .heavy))
+                Text("学习中心")
+                    .font(.system(size: 22, weight: .heavy))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text("学习助手 · 词汇/短句/场景练习")
-                    .font(.subheadline)
+                Text("词汇 / 短句 / 场景练习")
+                    .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
             }
             Spacer(minLength: 0)
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.72))
-                    .frame(width: 48, height: 48)
-                Image(systemName: "sparkles")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(AppTheme.primary)
-            }
+            Image(systemName: "book.fill")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(AppTheme.primary)
+                .frame(width: 44, height: 44)
+                .background(AppTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.90, green: 0.97, blue: 1.0), Color(red: 0.96, green: 0.95, blue: 1.0)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(Color(red: 0.92, green: 0.96, blue: 1.0))
         )
     }
 }
 
-private struct LearningQuickTilesGrid: View {
-    let tiles: [LearningQuickTile]
-    let onTap: (LearningQuickTile) -> Void
-
-    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
-
+private struct LearningPlanCard: View {
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 10) {
-            ForEach(tiles) { tile in
-                Button {
-                    onTap(tile)
-                } label: {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Image(systemName: tile.icon)
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(AppTheme.primary)
-                            .frame(width: 34, height: 34)
-                            .background(Color.white.opacity(0.72))
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        Text(tile.title)
-                            .font(.system(size: 21, weight: .bold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Text(tile.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                            .lineLimit(2)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 130, alignment: .leading)
-                    .padding(12)
-                    .background(tile.tint)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
+        HStack(spacing: 8) {
+            planItem("今日目标", value: "20分钟", icon: "timer")
+            planItem("待复习", value: "12词", icon: "arrow.clockwise")
+            planItem("连胜天数", value: "5天", icon: "flame.fill")
         }
+        .padding(10)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+
+    private func planItem(_ title: String, value: String, icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Image(systemName: icon)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.primary)
+            Text(value)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
-private struct LearningQuickTile: Identifiable {
-    let id = UUID()
-    let title: String
-    let subtitle: String
-    let icon: String
-    let tint: Color
-}
 
 struct LearningHeroHeader: View {
     var body: some View {
@@ -284,7 +255,7 @@ struct LearningSearchPanel: View {
     let difficulties: [String]
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
             SearchBar(text: $searchText)
         }
         .padding(12)
@@ -364,9 +335,8 @@ struct LearningResourceSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                // 左侧：主标题 + 小标题
-                VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("学习主题")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
@@ -375,21 +345,20 @@ struct LearningResourceSection: View {
                         .foregroundStyle(AppTheme.textSecondary)
                 }
 
-                Spacer(minLength: 8)
-
-                // 右侧：难度筛选 + 仅看收藏，与标题垂直居中对齐
-                HStack(spacing: 6) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
                     ForEach(difficulties, id: \.self) { item in
                         Button {
                             selectedDifficulty = item
                         } label: {
                             Text(item)
-                                .font(.caption.weight(selectedDifficulty == item ? .semibold : .regular))
+                                .font(.caption.weight(selectedDifficulty == item ? .semibold : .medium))
                                 .foregroundStyle(selectedDifficulty == item ? .white : AppTheme.textSecondary)
                                 .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
+                                .padding(.vertical, 7)
+                                .frame(minWidth: 46)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
                                         .fill(selectedDifficulty == item ? AppTheme.accentStrong : AppTheme.surface)
                                 )
                         }
@@ -406,13 +375,14 @@ struct LearningResourceSection: View {
                         }
                         .foregroundStyle(showFavoritesOnly ? AppTheme.accentStrong : AppTheme.textSecondary)
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.vertical, 7)
                         .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .fill(showFavoritesOnly ? AppTheme.accentStrong.opacity(0.15) : AppTheme.surface)
                         )
                     }
                     .buttonStyle(.plain)
+                }
                 }
             }
             ScrollView(.horizontal, showsIndicators: false) {
