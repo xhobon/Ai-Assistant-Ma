@@ -2816,6 +2816,7 @@ struct MemoryDetailView: View {
                 .padding(20)
             }
             .navigationTitle("长期记忆")
+            .navigationBarTitleDisplayMode(.inline)
             .task(id: tokenStore.token) {
                 await statsViewModel.load()
             }

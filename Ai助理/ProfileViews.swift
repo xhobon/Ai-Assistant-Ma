@@ -340,20 +340,6 @@ struct AccountProfileCenterView: View {
         } message: {
             Text(message ?? "")
         }
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                        Text("返回")
-                    }
-                    .foregroundStyle(AppTheme.textPrimary)
-                }
-                .buttonStyle(.plain)
-            }
-        }
     }
 
     private func loadProfile() async {
@@ -405,6 +391,9 @@ struct ProfileEditSheet: View {
             .padding(20)
             .background(AppTheme.pageBackground.ignoresSafeArea())
             .navigationTitle("资料设置")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
@@ -849,7 +838,6 @@ struct ProfileMenuItem: Identifiable, Hashable {
 // MARK: - Member Recharge
 
 struct MemberRechargeView: View {
-    @Environment(\.dismiss) private var dismiss
     @State private var selectedPlanId: String = "life"
     @State private var selectedPaymentId: String = "wechat"
 
@@ -872,11 +860,28 @@ struct MemberRechargeView: View {
     ]
 
     var body: some View {
-        AppPageScaffold(maxWidth: 960, spacing: 18) {
-            MemberRechargeHeader {
-                dismiss()
+        SettingsPage(title: "会员中心") {
+            SettingsCard(title: "会员权益", subtitle: "升级解锁全部功能") {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("VIP会员")
+                            .font(.headline)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text("升级解锁全部功能")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    Spacer()
+                    ZStack {
+                        Circle()
+                            .fill(AppTheme.accentWarm.opacity(0.22))
+                            .frame(width: 56, height: 56)
+                        Image(systemName: "crown.fill")
+                            .font(.title3)
+                            .foregroundStyle(AppTheme.accentWarm)
+                    }
+                }
             }
-
             MemberBenefitsCard(benefits: benefits)
 
             ProfileSectionHeader(title: "充值会员", subtitle: "推荐永久会员方案")
@@ -884,74 +889,6 @@ struct MemberRechargeView: View {
             }
             PaymentOptionCard(options: paymentOptions, selectedId: $selectedPaymentId)
         }
-    }
-}
-
-struct MemberRechargeHeader: View {
-    var onBack: () -> Void
-
-    var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .frame(width: 36, height: 36)
-                        .background(AppTheme.surface)
-                        .clipShape(Circle())
-                }
-
-                Spacer()
-
-                Text("会员中心")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.textPrimary)
-
-                Spacer()
-
-                Color.clear
-                    .frame(width: 36, height: 36)
-            }
-
-            ZStack(alignment: .trailing) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                AppTheme.primary.opacity(0.9),
-                                AppTheme.secondary.opacity(0.85)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("VIP会员")
-                            .font(.headline)
-                            .foregroundStyle(AppTheme.textOnPrimary)
-                        Text("升级解锁全部功能")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textOnPrimary.opacity(0.7))
-                    }
-
-                    Spacer()
-
-                    ZStack {
-                        Circle()
-                            .fill(AppTheme.accentWarm.opacity(0.9))
-                            .frame(width: 68, height: 68)
-                        Image(systemName: "crown.fill")
-                            .font(.title2)
-                            .foregroundStyle(AppTheme.textOnPrimary)
-                    }
-                }
-                .padding(16)
-            }
-            .frame(height: 120)
-        }
-        .padding(.top, 16)
     }
 }
 
@@ -991,6 +928,8 @@ struct TaskCenterView: View {
 
             TaskListCard(tasks: tasks)
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
@@ -1008,30 +947,30 @@ struct TaskCenterHeader: View {
     var onBack: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .frame(width: 36, height: 36)
-                        .background(AppTheme.surface)
-                        .clipShape(Circle())
-                }
-
-                Spacer()
-
-                Text("每日奖励任务")
-                    .font(.headline)
+        HStack(spacing: 12) {
+            Button(action: onBack) {
+                Image(systemName: "chevron.left")
+                    .font(.title3.weight(.bold))
                     .foregroundStyle(AppTheme.textPrimary)
-
-                Spacer()
-
-                Color.clear
-                    .frame(width: 36, height: 36)
+                    .frame(width: 52, height: 52)
+                    .background(AppTheme.surface)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
             }
+            .buttonStyle(.plain)
+            Spacer(minLength: 0)
+            Color.clear
+                .frame(width: 52, height: 52)
         }
-        .padding(.top, 16)
+        .overlay {
+            Text("每日奖励任务")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(AppTheme.textPrimary)
+        }
+        .frame(height: 52)
     }
 }
 
@@ -1439,6 +1378,9 @@ struct AssistantMemoryView: View {
         }
         .background(AppTheme.pageBackground.ignoresSafeArea())
         .navigationTitle("助理记忆")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -1638,6 +1580,9 @@ struct AuthView: View {
             }
             .background(AppTheme.pageBackground.ignoresSafeArea())
             .navigationTitle("账户")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar { backToolbarItem }
         }
         .alert("提示", isPresented: Binding(

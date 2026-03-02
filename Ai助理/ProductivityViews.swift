@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - 写作
 struct WritingStudioView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var topic = ""
     @State private var keywords = ""
@@ -22,89 +23,101 @@ struct WritingStudioView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("AI写作")
-                            .font(.system(size: 40, weight: .heavy))
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Spacer()
-                        Image(systemName: "xmark")
+        AppPageScaffold(maxWidth: pageMaxWidth, horizontalPadding: 16, topPadding: 10, bottomPadding: 24, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 12) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(AppTheme.textSecondary)
-                            .frame(width: 36, height: 36)
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .frame(width: 52, height: 52)
                             .background(AppTheme.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(AppTheme.border, lineWidth: 1))
                     }
+                    .buttonStyle(.plain)
+                    Spacer(minLength: 0)
+                    Color.clear
+                        .frame(width: 52, height: 52)
+                }
+                .overlay {
+                    Text("AI写作")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+                .frame(height: 52)
 
-                    HStack(spacing: 10) {
-                        writingTopCard("文案创作", "生活灵感/爆款文案", "doc.text.fill", Color(red: 0.84, green: 0.93, blue: 1.0))
-                        writingTopCard("作文写作", "写作思路论点论据", "doc.plaintext.fill", Color(red: 0.99, green: 0.91, blue: 0.84))
-                        writingTopCard("长文写作", "分步式万字长文", "book.closed.fill", Color(red: 0.90, green: 0.88, blue: 0.98))
-                    }
+                HStack(spacing: 10) {
+                    writingTopCard("文案创作", "生活灵感/爆款文案", "doc.text.fill", Color(red: 0.84, green: 0.93, blue: 1.0))
+                    writingTopCard("作文写作", "写作思路论点论据", "doc.plaintext.fill", Color(red: 0.99, green: 0.91, blue: 0.84))
+                    writingTopCard("长文写作", "分步式万字长文", "book.closed.fill", Color(red: 0.90, green: 0.88, blue: 0.98))
+                }
 
-                    HStack(spacing: 12) {
-                        quickAction("润色", "line.3.horizontal.decrease")
-                        quickAction("扩写", "square.and.pencil")
-                        quickAction("仿写", "line.3.horizontal")
-                        quickAction("续写", "film")
-                        quickAction("作文批改", "doc.text.magnifyingglass")
-                    }
-                    .padding(.top, 4)
+                HStack(spacing: 12) {
+                    quickAction("润色", "line.3.horizontal.decrease")
+                    quickAction("扩写", "square.and.pencil")
+                    quickAction("仿写", "line.3.horizontal")
+                    quickAction("续写", "film")
+                    quickAction("作文批改", "doc.text.magnifyingglass")
+                }
+                .padding(.top, 2)
 
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 18) {
-                            ForEach(topTabs, id: \.self) { tab in
-                                Button {
-                                    selectedTab = tab
-                                } label: {
-                                    Text(tab)
-                                        .font(.system(size: 22, weight: selectedTab == tab ? .bold : .medium))
-                                        .foregroundStyle(selectedTab == tab ? AppTheme.textPrimary : AppTheme.textSecondary)
-                                        .overlay(alignment: .bottom) {
-                                            if selectedTab == tab {
-                                                Capsule()
-                                                    .fill(AppTheme.primary)
-                                                    .frame(height: 3)
-                                                    .offset(y: 9)
-                                            }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 14) {
+                        ForEach(topTabs, id: \.self) { tab in
+                            Button {
+                                selectedTab = tab
+                            } label: {
+                                Text(tab)
+                                    .font(.system(size: 16, weight: selectedTab == tab ? .bold : .medium))
+                                    .foregroundStyle(selectedTab == tab ? AppTheme.textPrimary : AppTheme.textSecondary)
+                                    .overlay(alignment: .bottom) {
+                                        if selectedTab == tab {
+                                            Capsule()
+                                                .fill(AppTheme.primary)
+                                                .frame(height: 3)
+                                                .offset(y: 8)
                                         }
-                                }
-                                .buttonStyle(.plain)
+                                    }
                             }
+                            .buttonStyle(.plain)
                         }
-                        .padding(.vertical, 8)
                     }
+                    .padding(.vertical, 6)
                 }
+            }
 
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                    ForEach(presets, id: \.self) { preset in
-                        Button {
-                            topic = preset
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: "sparkles")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(AppTheme.primary)
-                                Text(preset)
-                                    .font(.system(size: 22, weight: .medium))
-                                    .foregroundStyle(AppTheme.textPrimary)
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 14)
-                            .background(AppTheme.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                ForEach(presets, id: \.self) { preset in
+                    Button {
+                        topic = preset
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "sparkles")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppTheme.primary)
+                            Text(preset)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .background(AppTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
+                    .buttonStyle(.plain)
                 }
+            }
 
-                VStack(spacing: 10) {
+            VStack(spacing: 10) {
+                ZStack(alignment: .topLeading) {
                     TextEditor(text: $draft)
-                        .frame(minHeight: 120)
+                        .font(.system(size: 16))
+                        .frame(minHeight: 132)
                         .padding(10)
                         .background(AppTheme.surface)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -112,83 +125,83 @@ struct WritingStudioView: View {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(AppTheme.border, lineWidth: 1)
                         )
-                        .onAppear {
-                            if draft.isEmpty { draft = "输入想要的创作内容" }
-                        }
 
-                    HStack(spacing: 10) {
-                        miniChipInput("上传素材", "arrow.up.doc")
-                        Spacer()
-                        Button {
-                            let cleaned = draft == "输入想要的创作内容" ? "" : draft
-                            draft = WritingGenerator.generate(
-                                topic: topic.isEmpty ? cleaned : topic,
-                                keywords: keywords,
-                                style: style,
-                                tone: tone,
-                                length: length
-                            )
-                        } label: {
-                            Image(systemName: "waveform.circle")
-                                .font(.title3.weight(.semibold))
-                                .foregroundStyle(AppTheme.primary)
-                        }
+                    if draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("输入想要的创作内容")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(AppTheme.inputPlaceholder)
+                            .padding(.leading, 22)
+                            .padding(.top, 20)
                     }
                 }
-                .padding(12)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-                SectionCard {
-                    VStack(spacing: 10) {
-                        HStack {
-                            Text("草稿箱")
-                                .font(.headline.weight(.semibold))
-                            Spacer()
-                            Button("保存当前草稿") {
-                                let cleaned = draft == "输入想要的创作内容" ? "" : draft
-                                guard !cleaned.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                                drafts.insert(
-                                    WritingDraft(
-                                        title: topic.isEmpty ? "未命名主题" : topic,
-                                        content: cleaned,
-                                        style: style,
-                                        tone: tone,
-                                        length: length,
-                                        createdAt: Date()
-                                    ),
-                                    at: 0
-                                )
-                            }
-                            .font(.caption.weight(.semibold))
+                HStack(spacing: 10) {
+                    miniChipInput("上传素材", "arrow.up.doc")
+                    Spacer()
+                    Button {
+                        let cleaned = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                        draft = WritingGenerator.generate(
+                            topic: topic.isEmpty ? cleaned : topic,
+                            keywords: keywords,
+                            style: style,
+                            tone: tone,
+                            length: length
+                        )
+                    } label: {
+                        Image(systemName: "waveform.circle")
+                            .font(.title3.weight(.semibold))
                             .foregroundStyle(AppTheme.primary)
-                        }
+                    }
+                }
+            }
+            .padding(12)
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-                        if drafts.isEmpty {
-                            EmptyStateRow(text: "还没有保存草稿")
-                        } else {
-                            ForEach(drafts.prefix(4)) { item in
-                                DraftRow(draft: item) {
-                                    draft = item.content
-                                    topic = item.title
-                                    style = item.style
-                                    tone = item.tone
-                                    length = item.length
-                                }
+            SectionCard {
+                VStack(spacing: 10) {
+                    HStack {
+                        Text("草稿箱")
+                            .font(.headline.weight(.semibold))
+                        Spacer()
+                        Button("保存当前草稿") {
+                            let cleaned = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !cleaned.isEmpty else { return }
+                            drafts.insert(
+                                WritingDraft(
+                                    title: topic.isEmpty ? "未命名主题" : topic,
+                                    content: cleaned,
+                                    style: style,
+                                    tone: tone,
+                                    length: length,
+                                    createdAt: Date()
+                                ),
+                                at: 0
+                            )
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppTheme.primary)
+                    }
+
+                    if drafts.isEmpty {
+                        EmptyStateRow(text: "还没有保存草稿")
+                    } else {
+                        ForEach(drafts.prefix(4)) { item in
+                            DraftRow(draft: item) {
+                                draft = item.content
+                                topic = item.title
+                                style = item.style
+                                tone = item.tone
+                                length = item.length
                             }
                         }
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 24)
-            .frame(maxWidth: pageMaxWidth)
-            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(AppTheme.pageBackground.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     private func writingTopCard(_ title: String, _ subtitle: String, _ icon: String, _ tint: Color) -> some View {
@@ -197,10 +210,10 @@ struct WritingStudioView: View {
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(AppTheme.primary)
             Text(title)
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(AppTheme.textPrimary)
             Text(subtitle)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(AppTheme.textSecondary)
                 .lineLimit(2)
         }
@@ -236,7 +249,6 @@ struct WritingStudioView: View {
 
 // MARK: - PPT
 struct PPTStudioView: View {
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var topic = ""
     @State private var audience = ""
     @State private var slideCount = 10
@@ -244,136 +256,209 @@ struct PPTStudioView: View {
     @State private var outlines: [SlideOutline] = []
 
     private let styles = ["商务", "科技", "教育", "营销", "极简"]
-    private let templates = ["文档转PPT", "课程报告", "活动策划", "图片生成", "改写润色", "有奖招募"]
     @State private var tab = "论文"
     private let bottomTabs = ["论文", "PPT模板", "求职简历", "心得体会", "更多"]
-    private var pageMaxWidth: CGFloat {
-        horizontalSizeClass == .compact ? .infinity : 760
+    private let templateEntries: [TemplateEntry] = [
+        TemplateEntry(title: "文档转PPT", subtitle: "生成高级排版", icon: "doc.text", tint: Color(red: 0.93, green: 0.97, blue: 1.0)),
+        TemplateEntry(title: "课程报告", subtitle: "教学场景生成", icon: "graduationcap", tint: Color(red: 0.95, green: 0.97, blue: 1.0)),
+        TemplateEntry(title: "活动策划", subtitle: "方案结构输出", icon: "calendar", tint: Color(red: 0.95, green: 0.98, blue: 0.97)),
+        TemplateEntry(title: "图片生成", subtitle: "图文组合提案", icon: "photo", tint: Color(red: 0.95, green: 0.96, blue: 1.0)),
+        TemplateEntry(title: "改写润色", subtitle: "语义优化表达", icon: "wand.and.stars", tint: Color(red: 0.97, green: 0.95, blue: 1.0)),
+        TemplateEntry(title: "有奖招募", subtitle: "活动文案模板", icon: "megaphone", tint: Color(red: 0.98, green: 0.96, blue: 0.94))
+    ]
+
+    private var columns: [GridItem] {
+        [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                HStack {
-                    Text("AI工具")
-                        .font(.system(size: 40, weight: .heavy))
-                    Spacer()
-                    Image(systemName: "magnifyingglass")
-                        .font(.title3.weight(.semibold))
-                        .frame(width: 34, height: 34)
-                        .background(AppTheme.surface)
-                        .clipShape(Circle())
-                }
-                .foregroundStyle(AppTheme.textPrimary)
+        AppPageScaffold(maxWidth: 780, horizontalPadding: 16, topPadding: 10, bottomPadding: 24, spacing: 14) {
+            heroCard
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("AI写长文")
-                        .font(.system(size: 42, weight: .heavy))
-                    Text("单篇可生成1.5万字+参考文献")
-                        .font(.title3)
-                        .foregroundStyle(AppTheme.textSecondary)
+            LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(templateEntries) { item in
                     Button {
-                        outlines = PPTGenerator.generate(topic: topic, audience: audience, slideCount: slideCount, style: style)
+                        topic = item.title
                     } label: {
-                        Text("立即写作")
-                            .font(.system(size: 30, weight: .bold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.white.opacity(0.9))
-                            .clipShape(Capsule())
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.leading)
+                                Text(item.subtitle)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(AppTheme.textSecondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: item.icon)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(AppTheme.primary)
+                                .frame(width: 30, height: 30)
+                                .background(Color.white.opacity(0.86))
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+                        .background(item.tint)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(AppTheme.border.opacity(0.6), lineWidth: 1)
+                        )
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(AppTheme.textPrimary)
                 }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(LinearGradient(colors: [Color(red: 0.77, green: 0.86, blue: 1.0), Color(red: 0.81, green: 0.88, blue: 1.0)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                )
+            }
 
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                    ForEach(templates, id: \.self) { t in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(bottomTabs, id: \.self) { item in
                         Button {
-                            topic = t
+                            tab = item
                         } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(t)
-                                        .font(.system(size: 28, weight: .bold))
-                                        .foregroundStyle(AppTheme.textPrimary)
-                                    Text("生成高级排版")
-                                        .font(.caption)
-                                        .foregroundStyle(AppTheme.textSecondary)
-                                }
-                                Spacer()
-                                Image(systemName: "doc.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(AppTheme.primary.opacity(0.8))
-                            }
-                            .padding(12)
-                            .background(AppTheme.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            Text(item)
+                                .font(.subheadline.weight(tab == item ? .semibold : .medium))
+                                .foregroundStyle(tab == item ? AppTheme.textPrimary : AppTheme.textSecondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(tab == item ? AppTheme.surface : AppTheme.surfaceMuted)
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        .stroke(tab == item ? AppTheme.primary.opacity(0.35) : AppTheme.border.opacity(0.6), lineWidth: 1)
+                                )
                         }
                         .buttonStyle(.plain)
                     }
                 }
+                .padding(.vertical, 1)
+            }
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 18) {
-                        ForEach(bottomTabs, id: \.self) { item in
-                            Button {
-                                tab = item
-                            } label: {
-                                Text(item)
-                                    .font(.system(size: 22, weight: tab == item ? .bold : .medium))
-                                    .foregroundStyle(tab == item ? AppTheme.textPrimary : AppTheme.textSecondary)
-                                    .overlay(alignment: .bottom) {
-                                        if tab == item {
-                                            Capsule().fill(AppTheme.primary).frame(height: 3).offset(y: 8)
-                                        }
-                                    }
-                            }
-                            .buttonStyle(.plain)
+            SectionCard {
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("大纲预览")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Spacer()
+                        Button("复制大纲") {
+                            ClipboardService.copy(outlines.map(\.text).joined(separator: "\n"))
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppTheme.primary)
+                        .disabled(outlines.isEmpty)
+                    }
+
+                    if outlines.isEmpty {
+                        EmptyStateRow(text: "点击上方“立即写作”后展示大纲")
+                    } else {
+                        ForEach(outlines.prefix(6)) { outline in
+                            SlideOutlineRow(outline: outline)
                         }
                     }
-                }
 
-                SectionCard {
-                    VStack(spacing: 12) {
-                        HStack {
-                            Text("大纲预览")
-                                .font(.headline.weight(.semibold))
-                            Spacer()
-                            Button("复制大纲") {
-                                ClipboardService.copy(outlines.map(\.text).joined(separator: "\n"))
-                            }
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(AppTheme.primary)
-                        }
-                        if outlines.isEmpty {
-                            EmptyStateRow(text: "点击上方“立即写作”后展示大纲")
-                        } else {
-                            ForEach(outlines.prefix(6)) { outline in
-                                SlideOutlineRow(outline: outline)
-                            }
-                        }
-                        HStack(spacing: 10) {
-                            LabeledField(title: "主题", placeholder: "例如：AI 助理产品路演", text: $topic)
-                            LabeledField(title: "受众", placeholder: "例如：管理层/客户/团队成员", text: $audience)
-                        }
-                        ChipPicker(title: "风格", options: styles, selection: $style)
+                    HStack(spacing: 10) {
+                        LabeledField(title: "主题", placeholder: "例如：AI 助理产品路演", text: $topic)
+                        LabeledField(title: "受众", placeholder: "例如：管理层/客户/团队成员", text: $audience)
                     }
+
+                    HStack {
+                        Text("页数")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        Spacer()
+                        Stepper(value: $slideCount, in: 6...20) {
+                            Text("\(slideCount) 页")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                        }
+                        .fixedSize()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                    ChipPicker(title: "风格", options: styles, selection: $style)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 24)
-            .frame(maxWidth: pageMaxWidth)
-            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(AppTheme.pageBackground.ignoresSafeArea())
+        .navigationTitle("AI工具")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {} label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("AI写长文")
+                        .font(.system(size: 28, weight: .heavy))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text("单篇可生成 1.5 万字 + 参考文献")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(AppTheme.primary)
+                    .frame(width: 46, height: 46)
+                    .background(Color.white.opacity(0.72))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+
+            Button {
+                outlines = PPTGenerator.generate(topic: topic, audience: audience, slideCount: slideCount, style: style)
+            } label: {
+                Text("立即写作")
+                    .font(.system(size: 20, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(AppTheme.primary)
+                    .foregroundStyle(Color.white)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.80, green: 0.88, blue: 1.0),
+                            Color(red: 0.84, green: 0.90, blue: 1.0)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(AppTheme.border.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private struct TemplateEntry: Identifiable {
+        let id = UUID()
+        let title: String
+        let subtitle: String
+        let icon: String
+        let tint: Color
     }
 }
 
@@ -436,6 +521,8 @@ struct NotesWorkspaceView: View {
                 }
             }
         }
+        .navigationTitle("笔记中心")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var filteredNotes: [NoteEntry] {
@@ -458,29 +545,108 @@ struct SummaryWorkspaceView: View {
 
     private let modes = ["要点", "行动项", "一句话", "结构化"]
     private let lengths = ["短", "中等", "长"]
+    private var wordCount: Int {
+        sourceText.trimmingCharacters(in: .whitespacesAndNewlines).count
+    }
+    private var isSourceEmpty: Bool {
+        sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    private var isResultEmpty: Bool {
+        result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
-        AppPageScaffold(maxWidth: 960) {
-            ProductivityHeader(
-                title: "内容总结",
-                subtitle: "输入长文本或会议记录，快速提炼重点",
-                systemImage: "doc.text.magnifyingglass",
-                tint: AppTheme.accentPurple
+        AppPageScaffold(maxWidth: 780, horizontalPadding: 16, topPadding: 10, bottomPadding: 24, spacing: 14) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.accentPurple.opacity(0.18))
+                        .frame(width: 52, height: 52)
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(AppTheme.primary)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("内容总结")
+                        .font(.system(size: 30, weight: .heavy))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text("输入长文本或会议记录，快速提炼重点")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AppTheme.border, lineWidth: 1)
             )
 
             SectionCard {
-                VStack(spacing: 12) {
-                    TextEditorField(title: "原始内容", placeholder: "粘贴需要总结的内容", text: $sourceText, minHeight: 180)
-                    ChipPicker(title: "总结方式", options: modes, selection: $mode)
-                    ChipPicker(title: "长度", options: lengths, selection: $length)
-                    HStack(spacing: 12) {
-                        ProductivityActionButton("生成总结", systemImage: "bolt.fill", style: .filled) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("原始内容")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(AppTheme.textPrimary)
+
+                    ZStack(alignment: .topLeading) {
+                        TextEditor(text: $sourceText)
+                            .font(.system(size: 22))
+                            .foregroundStyle(AppTheme.inputText)
+                            .frame(minHeight: 220)
+                            .padding(12)
+                            .background(AppTheme.surfaceMuted)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(AppTheme.border.opacity(0.7), lineWidth: 1)
+                            )
+
+                        if sourceText.isEmpty {
+                            Text("粘贴需要总结的内容")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(AppTheme.inputPlaceholder)
+                                .padding(.horizontal, 24)
+                                .padding(.top, 24)
+                        }
+                    }
+
+                    HStack {
+                        Text("已输入 \(wordCount) 字")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(AppTheme.textSecondary)
+                        Spacer()
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("总结方式")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        summaryOptionChips(options: modes, selection: $mode)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("长度")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        summaryOptionChips(options: lengths, selection: $length)
+                    }
+
+                    HStack(spacing: 10) {
+                        summaryActionButton(title: "生成总结", systemImage: "bolt.fill", style: .filled) {
                             result = SummaryGenerator.generate(text: sourceText, mode: mode, length: length)
                         }
-                        ProductivityActionButton("复制", systemImage: "doc.on.doc", style: .outline) {
+                        .disabled(isSourceEmpty)
+
+                        summaryActionButton(title: "复制", systemImage: "doc.on.doc", style: .outline) {
                             ClipboardService.copy(result)
                         }
-                        ProductivityActionButton("清空", systemImage: "trash", style: .ghost) {
+                        .disabled(isResultEmpty)
+
+                        summaryActionButton(title: "清空", systemImage: "trash", style: .ghost) {
                             sourceText = ""
                             result = ""
                         }
@@ -489,16 +655,99 @@ struct SummaryWorkspaceView: View {
             }
 
             SectionCard {
-                VStack(spacing: 12) {
-                    SectionTitle("总结结果")
-                    if result.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("总结结果")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Spacer()
+                        if !isResultEmpty {
+                            Button("复制结果") {
+                                ClipboardService.copy(result)
+                            }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.primary)
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    if isResultEmpty {
                         EmptyStateRow(text: "生成后显示总结内容")
                     } else {
                         Text(result)
-                            .font(.body)
+                            .font(.system(size: 18))
                             .foregroundStyle(AppTheme.textPrimary)
+                            .lineSpacing(4)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .background(AppTheme.surfaceMuted)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
+                }
+            }
+        }
+        .navigationTitle("内容总结")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private enum SummaryButtonStyle {
+        case filled
+        case outline
+        case ghost
+    }
+
+    @ViewBuilder
+    private func summaryActionButton(
+        title: String,
+        systemImage: String,
+        style: SummaryButtonStyle,
+        action: @escaping () -> Void
+    ) -> some View {
+        let foreground: Color = (style == .filled) ? .white : AppTheme.unifiedButtonBorder
+        let background: AnyShapeStyle = (style == .filled) ? AnyShapeStyle(AppTheme.unifiedButtonPrimary) : AnyShapeStyle(AppTheme.surface)
+
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                Text(title)
+                    .font(.subheadline.weight(.bold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(foreground)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(background)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(style == .filled ? Color.clear : AppTheme.unifiedButtonBorder, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func summaryOptionChips(options: [String], selection: Binding<String>) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(options, id: \.self) { option in
+                    Button {
+                        selection.wrappedValue = option
+                    } label: {
+                        Text(option)
+                            .font(.system(size: 15, weight: selection.wrappedValue == option ? .semibold : .medium))
+                            .foregroundStyle(selection.wrappedValue == option ? AppTheme.textPrimary : AppTheme.textSecondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(selection.wrappedValue == option ? AppTheme.accent.opacity(0.18) : AppTheme.surfaceMuted)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(selection.wrappedValue == option ? AppTheme.primary.opacity(0.35) : AppTheme.border.opacity(0.6), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }

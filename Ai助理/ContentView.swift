@@ -8,7 +8,7 @@ enum MainTab: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .assistant: return "AI助理"
+        case .assistant: return "首页"
         case .translate: return "翻译"
         case .learning: return "学习"
         case .settings: return "我的"

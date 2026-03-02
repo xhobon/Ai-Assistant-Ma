@@ -21,8 +21,8 @@ struct AIAssistantDesignedHomeView: View {
         ScrollView {
             VStack(spacing: 14) {
                 topBar
-                creationSection
                 languageSection
+                creationSection
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
@@ -62,10 +62,14 @@ struct AIAssistantDesignedHomeView: View {
         }
         .navigationDestination(isPresented: $showTranslateHome) {
             AITranslateHomeView()
+                .navigationTitle("翻译")
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showLearningHome) {
             IndonesianLearningView()
+                .navigationTitle("学习")
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showAssistantChat) {

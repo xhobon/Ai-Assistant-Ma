@@ -16,12 +16,14 @@ struct SettingsPage<Content: View>: View {
             }
             .frame(maxWidth: 980, alignment: .topLeading)
             .padding(.horizontal, 20)
-            .padding(.top, 16)
+            .padding(.top, 10)
             .padding(.bottom, 32)
             .frame(maxWidth: .infinity, alignment: .top)
         }
         .scrollIndicators(.automatic)
         .background(AppTheme.pageBackground.ignoresSafeArea())
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .hideNavigationBarOnMac()
     }
 }
@@ -35,49 +37,32 @@ struct SettingsHeader: View {
         HStack(spacing: 12) {
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(AppTheme.textOnPrimary)
-                    .frame(width: 38, height: 38)
-                    .background(AppTheme.primaryGradient)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .frame(width: 52, height: 52)
+                    .background(AppTheme.surface)
                     .clipShape(Circle())
-                    .shadow(color: AppTheme.primary.opacity(0.25), radius: 8, x: 0, y: 4)
+                    .overlay(
+                        Circle()
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
             }
             .buttonStyle(.plain)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text("设置与偏好")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
+            Text(title)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(AppTheme.textPrimary)
 
             Spacer()
 
             if let trailing {
                 trailing
             } else {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(AppTheme.surface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(AppTheme.border, lineWidth: 1)
-                    )
-                    .frame(width: 38, height: 38)
+                Color.clear
+                    .frame(width: 52, height: 52)
                     .opacity(0.001)
             }
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(AppTheme.surface.opacity(0.92))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AppTheme.border, lineWidth: 1)
-        )
-        .shadow(color: AppTheme.softShadow, radius: 10, x: 0, y: 4)
     }
 }
 

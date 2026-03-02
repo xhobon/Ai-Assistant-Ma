@@ -51,6 +51,8 @@ struct FeatureHubView: View {
             }
             FeatureRow(title: "文本翻译主页", subtitle: "导入音频/视频并转写翻译", icon: "character.bubble.fill") {
                 AITranslateHomeView()
+                    .navigationTitle("翻译")
+                    .navigationBarTitleDisplayMode(.inline)
             }
         }
         .padding(14)
@@ -65,6 +67,8 @@ struct FeatureHubView: View {
                 .foregroundStyle(AppTheme.textPrimary)
             FeatureRow(title: "学习页主页", subtitle: "词汇、短句与分类学习", icon: "book.fill") {
                 IndonesianLearningView()
+                    .navigationTitle("学习")
+                    .navigationBarTitleDisplayMode(.inline)
             }
             FeatureRow(title: "写作工作台", subtitle: "全文生成、改写与续写", icon: "square.and.pencil") {
                 WritingStudioView()
@@ -131,4 +135,3 @@ private struct FeatureRow<Destination: View>: View {
         .buttonStyle(.plain)
     }
 }
-
