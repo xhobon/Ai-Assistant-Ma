@@ -1,13 +1,9 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct AIAssistantDesignedHomeView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showSearch = false
     @State private var showHistory = false
-    @State private var showAudioImporter = false
-    @State private var showVideoImporter = false
-    @State private var showTranslateFromImport = false
     @State private var showWritingStudio = false
     @State private var showPPTStudio = false
     @State private var showNotesWorkspace = false
@@ -16,9 +12,6 @@ struct AIAssistantDesignedHomeView: View {
     @State private var showTranslateHome = false
     @State private var showLearningHome = false
     @State private var showAssistantChat = false
-    @State private var isImportingMedia = false
-    @State private var importStatusText: String?
-    @State private var importAlertMessage: String?
 
     private var pageMaxWidth: CGFloat {
         horizontalSizeClass == .compact ? .infinity : 760
@@ -28,10 +21,8 @@ struct AIAssistantDesignedHomeView: View {
         ScrollView {
             VStack(spacing: 14) {
                 topBar
-                quickStartCardButton
                 creationSection
                 languageSection
-                importSection
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
@@ -47,10 +38,6 @@ struct AIAssistantDesignedHomeView: View {
         }
         .navigationDestination(isPresented: $showHistory) {
             AssistantHistoryView()
-                .toolbar(.hidden, for: .tabBar)
-        }
-        .navigationDestination(isPresented: $showTranslateFromImport) {
-            AITranslateHomeView()
                 .toolbar(.hidden, for: .tabBar)
         }
         .navigationDestination(isPresented: $showWritingStudio) {
@@ -84,30 +71,6 @@ struct AIAssistantDesignedHomeView: View {
         .navigationDestination(isPresented: $showAssistantChat) {
             AIAssistantChatView(title: "AI助理", allowLocalExecution: false)
                 .toolbar(.hidden, for: .tabBar)
-        }
-        .alert("导入失败", isPresented: Binding(
-            get: { importAlertMessage != nil },
-            set: { if !$0 { importAlertMessage = nil } }
-        )) {
-            Button("确定", role: .cancel) {}
-        } message: {
-            Text(importAlertMessage ?? "")
-        }
-        .fileImporter(
-            isPresented: $showAudioImporter,
-            allowedContentTypes: [.audio],
-            allowsMultipleSelection: false
-        ) { result in
-            guard case .success(let urls) = result, let url = urls.first else { return }
-            Task { await handleImportedMedia(url: url, isVideo: false) }
-        }
-        .fileImporter(
-            isPresented: $showVideoImporter,
-            allowedContentTypes: [.movie],
-            allowsMultipleSelection: false
-        ) { result in
-            guard case .success(let urls) = result, let url = urls.first else { return }
-            Task { await handleImportedMedia(url: url, isVideo: true) }
         }
     }
 
@@ -149,82 +112,6 @@ struct AIAssistantDesignedHomeView: View {
             }
         }
         .buttonStyle(.plain)
-    }
-
-    private var quickStartCardButton: some View {
-        Button {
-            showAssistantChat = true
-        } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
-                    ZStack {
-                        Circle()
-                            .fill(Color(red: 0.74, green: 0.83, blue: 1.0))
-                            .frame(width: 46, height: 46)
-                        Image(systemName: "brain.head.profile")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(Color(red: 0.26, green: 0.38, blue: 0.93))
-                    }
-                    Text("你好，我是小酱问问～")
-                        .font(.system(size: 24, weight: .heavy))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Spacer(minLength: 0)
-                }
-
-                HStack(spacing: 8) {
-                    tagPill("学习问答")
-                    tagPill("模拟面试")
-                    tagPill("文章创作")
-                }
-
-                HStack(spacing: 10) {
-                    Text("点击输入聊天内容")
-                        .font(.system(size: 17, weight: .regular))
-                        .foregroundStyle(AppTheme.textTertiary)
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(AppTheme.primary)
-                        .frame(width: 38, height: 38)
-                        .background(Color(red: 0.92, green: 0.95, blue: 1.0))
-                        .clipShape(Circle())
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(AppTheme.surface)
-                .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(Color(red: 0.37, green: 0.36, blue: 0.95), lineWidth: 1.8)
-                )
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.81, green: 0.88, blue: 1.0),
-                                Color(red: 0.82, green: 0.92, blue: 1.0)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func tagPill(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(AppTheme.textSecondary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(Color.white.opacity(0.8))
-            .clipShape(Capsule())
     }
 
     private var creationSection: some View {
@@ -305,42 +192,6 @@ struct AIAssistantDesignedHomeView: View {
         .sectionContainerStyle
     }
 
-    private var importSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("素材导入")
-                .font(.system(size: 19, weight: .bold))
-                .foregroundStyle(AppTheme.textPrimary)
-
-            HStack(spacing: 10) {
-                Button {
-                    showAudioImporter = true
-                } label: {
-                    importCard(title: "导入音频", subtitle: "本地音频转写", icon: "music.note")
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    showVideoImporter = true
-                } label: {
-                    importCard(title: "导入视频", subtitle: "视频音轨转写", icon: "video.fill")
-                }
-                .buttonStyle(.plain)
-            }
-
-            if isImportingMedia {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text(importStatusText ?? "处理中...")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-                .padding(.top, 2)
-            }
-        }
-        .sectionContainerStyle
-    }
-
     private func quickToolCard(title: String, subtitle: String, icon: String, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: icon)
@@ -361,75 +212,6 @@ struct AIAssistantDesignedHomeView: View {
         .padding(10)
         .background(tint)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
-
-    private func importCard(title: String, subtitle: String, icon: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AppTheme.primary)
-                .frame(width: 28, height: 28)
-                .background(Color.white.opacity(0.88))
-                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text(subtitle)
-                    .font(.caption2)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(red: 0.89, green: 0.95, blue: 1.0))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-
-    private func handleImportedMedia(url: URL, isVideo: Bool) async {
-        await MainActor.run {
-            isImportingMedia = true
-            importStatusText = isVideo ? "正在提取视频音频并转写..." : "正在转写音频..."
-        }
-
-        do {
-            let secured = url.startAccessingSecurityScopedResource()
-            defer {
-                if secured { url.stopAccessingSecurityScopedResource() }
-            }
-
-            let tempURL = try copyToTemp(url)
-            let transcript = try await MediaSpeechTranscriber.transcribe(
-                from: tempURL,
-                localeIdentifier: "zh-CN",
-                isVideo: isVideo
-            )
-
-            await MainActor.run {
-                isImportingMedia = false
-                importStatusText = nil
-                MediaImportCoordinator.shared.pendingText = transcript
-                showTranslateFromImport = true
-            }
-        } catch {
-            await MainActor.run {
-                isImportingMedia = false
-                importStatusText = nil
-                importAlertMessage = error.localizedDescription
-            }
-        }
-    }
-
-    private func copyToTemp(_ sourceURL: URL) throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-        let ext = sourceURL.pathExtension.isEmpty ? "tmp" : sourceURL.pathExtension
-        let target = tempDir.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
-        if FileManager.default.fileExists(atPath: target.path) {
-            try FileManager.default.removeItem(at: target)
-        }
-        try FileManager.default.copyItem(at: sourceURL, to: target)
-        return target
     }
 }
 
