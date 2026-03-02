@@ -1757,46 +1757,51 @@ private struct AIAssistantChatTopBar: View {
     let onMore: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .frame(width: 42, height: 42)
-                    .background(AppTheme.surface)
-                    .clipShape(Circle())
+        ZStack {
+            HStack(spacing: 10) {
+                Button(action: onBack) {
+                    Image(systemName: "chevron.left")
+                        .font(AppTheme.TopBar.backIconFont)
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .frame(width: AppTheme.TopBar.backButtonSize, height: AppTheme.TopBar.backButtonSize)
+                        .background(AppTheme.surface)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("返回")
+                .frame(width: AppTheme.TopBar.sideSlotWidth, alignment: .leading)
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 4) {
+                    topActionButton(system: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", action: onMute)
+                        .accessibilityLabel(isMuted ? "取消静音" : "静音")
+                    topActionButton(system: "phone.fill", action: onVoiceCall)
+                        .accessibilityLabel("语音通话")
+                    topActionButton(system: "ellipsis", action: onMore)
+                        .accessibilityLabel("更多操作")
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+                .background(AppTheme.surface)
+                .clipShape(Capsule())
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("返回")
 
             Text(title)
-                .font(.system(size: 37.0 / 2, weight: .bold))
+                .font(AppTheme.TopBar.titleFont)
                 .foregroundStyle(AppTheme.textPrimary)
                 .lineLimit(1)
-
-            Spacer(minLength: 8)
-
-            HStack(spacing: 6) {
-                topActionButton(system: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", action: onMute)
-                    .accessibilityLabel(isMuted ? "取消静音" : "静音")
-                topActionButton(system: "phone.fill", action: onVoiceCall)
-                    .accessibilityLabel("语音通话")
-                topActionButton(system: "ellipsis", action: onMore)
-                    .accessibilityLabel("更多操作")
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(AppTheme.surface)
-            .clipShape(Capsule())
+                .padding(.horizontal, AppTheme.TopBar.sideSlotWidth + 12)
         }
+        .frame(height: AppTheme.TopBar.height)
     }
 
     private func topActionButton(system: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: system)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AppTheme.textPrimary)
-                .frame(width: 34, height: 34)
+                .frame(width: 30, height: 30)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

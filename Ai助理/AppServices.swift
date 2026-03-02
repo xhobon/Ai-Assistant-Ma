@@ -189,6 +189,76 @@ final class SpeechSettingsStore: ObservableObject {
     }
 }
 
+enum TranslationProviderMode: String, CaseIterable, Identifiable {
+    case cloud
+    case local
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .cloud:
+            return "云端"
+        case .local:
+            return "本地"
+        }
+    }
+}
+
+/// 翻译模型设置：支持云端与本地（如 Ollama）切换
+final class TranslationModelSettingsStore: ObservableObject {
+    static let shared = TranslationModelSettingsStore()
+
+    private let modeKey = "translation_provider_mode"
+    private let localBaseURLKey = "translation_local_base_url"
+    private let localModelKey = "translation_local_model"
+    private let fallbackToCloudKey = "translation_fallback_to_cloud"
+
+    var providerMode: TranslationProviderMode {
+        get {
+            TranslationProviderMode(rawValue: UserDefaults.standard.string(forKey: modeKey) ?? TranslationProviderMode.local.rawValue) ?? .local
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: modeKey)
+            objectWillChange.send()
+        }
+    }
+
+    /// 例如：http://127.0.0.1:11434（iOS 真机调试可用 http://<电脑局域网IP>:11434）
+    var localBaseURL: String {
+        get { UserDefaults.standard.string(forKey: localBaseURLKey) ?? "http://127.0.0.1:11434" }
+        set {
+            UserDefaults.standard.set(newValue, forKey: localBaseURLKey)
+            objectWillChange.send()
+        }
+    }
+
+    /// 例如：qwen2.5:7b / llama3.1:8b / gemma2:9b
+    var localModel: String {
+        get { UserDefaults.standard.string(forKey: localModelKey) ?? "qwen2.5:7b" }
+        set {
+            UserDefaults.standard.set(newValue, forKey: localModelKey)
+            objectWillChange.send()
+        }
+    }
+
+    /// 本地翻译失败时是否自动回落到云端
+    var fallbackToCloud: Bool {
+        get { UserDefaults.standard.bool(forKey: fallbackToCloudKey) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: fallbackToCloudKey)
+            objectWillChange.send()
+        }
+    }
+
+    var normalizedLocalBaseURL: String {
+        let trimmed = localBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let base = trimmed.isEmpty ? "http://127.0.0.1:11434" : trimmed
+        if base.hasSuffix("/") { return String(base.dropLast()) }
+        return base
+    }
+}
+
 final class APIClient {
     static let shared = APIClient()
     private var webAuthSession: ASWebAuthenticationSession?
@@ -528,8 +598,26 @@ final class APIClient {
         let _: Res = try await request("api/user/memory/\(id)", method: "DELETE", authorized: true)
     }
 
-    /// 服务器翻译
+    /// 翻译入口：可切换云端或本地模型
     func translate(text: String, sourceLang: String, targetLang: String) async throws -> String {
+        let settings = TranslationModelSettingsStore.shared
+        switch settings.providerMode {
+        case .cloud:
+            return try await translateWithCloud(text: text, sourceLang: sourceLang, targetLang: targetLang)
+        case .local:
+            do {
+                return try await translateWithLocalModel(text: text, sourceLang: sourceLang, targetLang: targetLang)
+            } catch {
+                guard settings.fallbackToCloud else { throw error }
+                #if DEBUG
+                print("[APIClient] 本地翻译失败，回落云端：\(error.localizedDescription)")
+                #endif
+                return try await translateWithCloud(text: text, sourceLang: sourceLang, targetLang: targetLang)
+            }
+        }
+    }
+
+    private func translateWithCloud(text: String, sourceLang: String, targetLang: String) async throws -> String {
         struct Res: Codable { let translated: String }
         let res: Res = try await request(
             "api/translate",
@@ -538,6 +626,104 @@ final class APIClient {
             authorized: true
         )
         return res.translated
+    }
+
+    private func translateWithLocalModel(text: String, sourceLang: String, targetLang: String) async throws -> String {
+        struct OllamaMessage: Codable {
+            let role: String?
+            let content: String?
+        }
+        struct OllamaRes: Codable {
+            let message: OllamaMessage?
+            let response: String?
+        }
+
+        let settings = TranslationModelSettingsStore.shared
+        let base = settings.normalizedLocalBaseURL
+        guard let url = URL(string: "\(base)/api/chat") else {
+            throw APIClientError.serverError("本地模型地址无效：\(settings.localBaseURL)")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 90
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let sourceName = languageName(for: sourceLang)
+        let targetName = languageName(for: targetLang)
+
+        let systemPrompt = """
+        你是一个专业翻译引擎。
+        任务：把用户输入从\(sourceName)翻译成\(targetName)。
+        规则：
+        1) 只输出翻译结果；
+        2) 不要解释，不要注释；
+        3) 不要添加引号、前缀或 markdown。
+        """
+
+        let body: [String: Any] = [
+            "model": settings.localModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "qwen2.5:7b" : settings.localModel,
+            "stream": false,
+            "messages": [
+                ["role": "system", "content": systemPrompt],
+                ["role": "user", "content": text]
+            ],
+            "options": [
+                "temperature": 0.1,
+                "top_p": 0.95
+            ]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response): (Data, URLResponse) = try await withCheckedThrowingContinuation { continuation in
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error {
+                    continuation.resume(throwing: APIClientError.serverError("无法连接本地模型服务，请确认已启动：\(base)\n\(error.localizedDescription)"))
+                    return
+                }
+                guard let data, let response else {
+                    continuation.resume(throwing: APIClientError.invalidResponse)
+                    return
+                }
+                DispatchQueue.main.async { continuation.resume(returning: (data, response)) }
+            }
+            .resume()
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIClientError.invalidResponse
+        }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "请求失败"
+            throw APIClientError.serverError("本地模型返回错误（HTTP \(httpResponse.statusCode)）：\(message)")
+        }
+
+        let decoded = try JSONDecoder().decode(OllamaRes.self, from: data)
+        let raw = (decoded.message?.content ?? decoded.response ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleaned = cleanTranslationOutput(raw)
+        guard !cleaned.isEmpty else {
+            throw APIClientError.serverError("本地模型未返回有效翻译结果，请检查模型是否已拉起：\(settings.localModel)")
+        }
+        return cleaned
+    }
+
+    private func languageName(for code: String) -> String {
+        let normalized = code.lowercased()
+        if normalized.hasPrefix("zh") { return "中文" }
+        if normalized.hasPrefix("id") { return "印尼文" }
+        if normalized.hasPrefix("en") { return "英语" }
+        return code
+    }
+
+    private func cleanTranslationOutput(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("\""), trimmed.hasSuffix("\""), trimmed.count > 1 {
+            return String(trimmed.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if trimmed.hasPrefix("“"), trimmed.hasSuffix("”"), trimmed.count > 1 {
+            return String(trimmed.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return trimmed
     }
     
     /// 保存翻译到云端

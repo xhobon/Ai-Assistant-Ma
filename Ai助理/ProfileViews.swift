@@ -947,12 +947,12 @@ struct TaskCenterHeader: View {
     var onBack: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 0) {
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
-                    .font(.title3.weight(.bold))
+                    .font(AppTheme.TopBar.backIconFont)
                     .foregroundStyle(AppTheme.textPrimary)
-                    .frame(width: 52, height: 52)
+                    .frame(width: AppTheme.TopBar.backButtonSize, height: AppTheme.TopBar.backButtonSize)
                     .background(AppTheme.surface)
                     .clipShape(Circle())
                     .overlay(
@@ -961,16 +961,17 @@ struct TaskCenterHeader: View {
                     )
             }
             .buttonStyle(.plain)
-            Spacer(minLength: 0)
+            .frame(width: AppTheme.TopBar.sideSlotWidth, alignment: .leading)
+
             Color.clear
-                .frame(width: 52, height: 52)
+                .frame(width: AppTheme.TopBar.sideSlotWidth, height: AppTheme.TopBar.backButtonSize)
         }
         .overlay {
             Text("每日奖励任务")
-                .font(.title3.weight(.bold))
+                .font(AppTheme.TopBar.titleFont)
                 .foregroundStyle(AppTheme.textPrimary)
         }
-        .frame(height: 52)
+        .frame(height: AppTheme.TopBar.height)
     }
 }
 
@@ -1081,6 +1082,7 @@ struct AppSettingsView: View {
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
     @ObservedObject private var appearance = AppearanceStore.shared
     @ObservedObject private var tokenStore = TokenStore.shared
+    @ObservedObject private var translationModelSettings = TranslationModelSettingsStore.shared
     @State private var showClearConfirm = false
     @State private var toastMessage: String?
     @State private var showAccountSecurity = false
@@ -1123,6 +1125,98 @@ struct AppSettingsView: View {
                     showChevron: true
                 ) {
                     showSupport = true
+                }
+            }
+
+            SettingsCard(
+                title: "翻译模型",
+                subtitle: "可切换云端/本地翻译。本地模式默认走 Ollama 接口。"
+            ) {
+                Picker("翻译来源", selection: Binding(
+                    get: { translationModelSettings.providerMode },
+                    set: { translationModelSettings.providerMode = $0 }
+                )) {
+                    ForEach(TranslationProviderMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if translationModelSettings.providerMode == .local {
+                    VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("本地服务地址")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.textSecondary)
+                            TextField(
+                                "http://127.0.0.1:11434",
+                                text: Binding(
+                                    get: { translationModelSettings.localBaseURL },
+                                    set: { translationModelSettings.localBaseURL = $0 }
+                                )
+                            )
+                            .textFieldStyle(.plain)
+                            .foregroundStyle(AppTheme.inputText)
+                            .padding(10)
+                            .background(AppTheme.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(AppTheme.border, lineWidth: 1)
+                            )
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("本地模型名")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.textSecondary)
+                            TextField(
+                                "qwen2.5:7b",
+                                text: Binding(
+                                    get: { translationModelSettings.localModel },
+                                    set: { translationModelSettings.localModel = $0 }
+                                )
+                            )
+                            .textFieldStyle(.plain)
+                            .foregroundStyle(AppTheme.inputText)
+                            .padding(10)
+                            .background(AppTheme.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(AppTheme.border, lineWidth: 1)
+                            )
+                        }
+
+                        SettingsInlineToggleRow(
+                            systemImage: "arrow.trianglehead.2.clockwise",
+                            title: "本地失败回落云端",
+                            subtitle: "开启后本地不可用时自动调用云端翻译",
+                            isOn: Binding(
+                                get: { translationModelSettings.fallbackToCloud },
+                                set: { translationModelSettings.fallbackToCloud = $0 }
+                            )
+                        )
+
+                        HStack(spacing: 8) {
+                            Image(systemName: "link")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.primary)
+                            Text("当前连接：\(translationModelSettings.normalizedLocalBaseURL)/api/chat")
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                        .background(AppTheme.surfaceMuted.opacity(0.6))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                        Text("提示：模拟器可用 127.0.0.1；真机请改为电脑局域网 IP（例如 192.168.x.x）。")
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textTertiary)
+                    }
                 }
             }
 
@@ -1601,13 +1695,9 @@ struct AuthView: View {
             Button {
                 dismiss()
             } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("返回")
-                        .font(.subheadline.weight(.semibold))
-                }
-                .foregroundStyle(AppTheme.textPrimary)
+                Image(systemName: "chevron.left")
+                    .font(AppTheme.TopBar.backIconFont)
+                    .foregroundStyle(AppTheme.textPrimary)
             }
             .buttonStyle(.plain)
         }

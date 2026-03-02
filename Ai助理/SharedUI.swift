@@ -218,6 +218,14 @@ struct AppTheme {
     static let primaryVariant = Color(red: 0.03, green: 0.29, blue: 0.66)
     static let secondary = Color(red: 0.03, green: 0.56, blue: 0.62)
 
+    struct TopBar {
+        static let height: CGFloat = 44
+        static let backButtonSize: CGFloat = 44
+        static let sideSlotWidth: CGFloat = 52
+        static let backIconFont = Font.system(size: 18, weight: .semibold)
+        static let titleFont = Font.system(size: 18, weight: .semibold)
+    }
+
     private static var isDark: Bool {
         AppearanceStore.shared.mode == .dark
     }

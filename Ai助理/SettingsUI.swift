@@ -34,12 +34,12 @@ struct SettingsHeader: View {
     var onBack: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 0) {
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
-                    .font(.title3.weight(.bold))
+                    .font(AppTheme.TopBar.backIconFont)
                     .foregroundStyle(AppTheme.textPrimary)
-                    .frame(width: 52, height: 52)
+                    .frame(width: AppTheme.TopBar.backButtonSize, height: AppTheme.TopBar.backButtonSize)
                     .background(AppTheme.surface)
                     .clipShape(Circle())
                     .overlay(
@@ -48,21 +48,24 @@ struct SettingsHeader: View {
                     )
             }
             .buttonStyle(.plain)
-
-            Text(title)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(AppTheme.textPrimary)
-
-            Spacer()
+            .frame(width: AppTheme.TopBar.sideSlotWidth, alignment: .leading)
 
             if let trailing {
                 trailing
+                    .frame(width: AppTheme.TopBar.sideSlotWidth, alignment: .trailing)
             } else {
                 Color.clear
-                    .frame(width: 52, height: 52)
+                    .frame(width: AppTheme.TopBar.sideSlotWidth, height: AppTheme.TopBar.backButtonSize)
                     .opacity(0.001)
             }
         }
+        .overlay {
+            Text(title)
+                .font(AppTheme.TopBar.titleFont)
+                .foregroundStyle(AppTheme.textPrimary)
+                .lineLimit(1)
+        }
+        .frame(height: AppTheme.TopBar.height)
     }
 }
 

@@ -836,6 +836,8 @@ final class TranslateViewModel: ObservableObject {
     
     /// 同步翻译到云端
     private func syncTranslationToCloud(_ entry: TranslationEntry) async {
+        let settings = TranslationModelSettingsStore.shared
+        guard settings.providerMode == .cloud || settings.fallbackToCloud else { return }
         do {
             try await APIClient.shared.saveTranslation(
                 sourceLang: entry.sourceLang.code,
@@ -853,6 +855,8 @@ final class TranslateViewModel: ObservableObject {
     
     /// 从云端同步翻译历史
     private func syncTranslationsFromCloud() async {
+        let settings = TranslationModelSettingsStore.shared
+        guard settings.providerMode == .cloud || settings.fallbackToCloud else { return }
         do {
             let cloudTranslations = try await APIClient.shared.getTranslationHistory()
             await MainActor.run {

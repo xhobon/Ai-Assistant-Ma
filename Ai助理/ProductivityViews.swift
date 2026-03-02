@@ -17,7 +17,15 @@ struct WritingStudioView: View {
     private let lengths = ["短", "中等", "长"]
     private let presets = ["外卖好评神器", "小红书爆款", "模拟面试提问", "社媒文案撰写", "新人部门发言稿", "大学实习自我介绍"]
     @State private var selectedTab = "热门"
+    @State private var selectedQuickActionID: String = "polish"
     private let topTabs = ["热门", "职场办公", "社媒营销", "文学创作", "生活场景"]
+    private let quickActions: [WritingQuickActionItem] = [
+        WritingQuickActionItem(id: "polish", title: "润色", icon: "wand.and.stars", keywords: "润色,表达优化", style: "通用", tone: "专业", length: "中等"),
+        WritingQuickActionItem(id: "expand", title: "扩写", icon: "text.badge.plus", keywords: "扩写,细节补充", style: "通用", tone: "温暖", length: "长"),
+        WritingQuickActionItem(id: "imitate", title: "仿写", icon: "doc.on.doc", keywords: "仿写,风格对齐", style: "营销文案", tone: "正式", length: "中等"),
+        WritingQuickActionItem(id: "continue", title: "续写", icon: "text.append", keywords: "续写,承接上下文", style: "通用", tone: "简洁", length: "长"),
+        WritingQuickActionItem(id: "review", title: "作文批改", icon: "checkmark.bubble", keywords: "作文批改,错因分析", style: "工作汇报", tone: "学术", length: "中等")
+    ]
     private var pageMaxWidth: CGFloat {
         horizontalSizeClass == .compact ? .infinity : 760
     }
@@ -25,29 +33,30 @@ struct WritingStudioView: View {
     var body: some View {
         AppPageScaffold(maxWidth: pageMaxWidth, horizontalPadding: 16, topPadding: 10, bottomPadding: 24, spacing: 14) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
+                HStack(spacing: 0) {
                     Button {
                         dismiss()
                     } label: {
                         Image(systemName: "chevron.left")
-                            .font(.title3.weight(.bold))
+                            .font(AppTheme.TopBar.backIconFont)
                             .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 52, height: 52)
+                            .frame(width: AppTheme.TopBar.backButtonSize, height: AppTheme.TopBar.backButtonSize)
                             .background(AppTheme.surface)
                             .clipShape(Circle())
                             .overlay(Circle().stroke(AppTheme.border, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
-                    Spacer(minLength: 0)
+                    .frame(width: AppTheme.TopBar.sideSlotWidth, alignment: .leading)
+
                     Color.clear
-                        .frame(width: 52, height: 52)
+                        .frame(width: AppTheme.TopBar.sideSlotWidth, height: AppTheme.TopBar.backButtonSize)
                 }
                 .overlay {
                     Text("AI写作")
-                        .font(.title3.weight(.bold))
+                        .font(AppTheme.TopBar.titleFont)
                         .foregroundStyle(AppTheme.textPrimary)
                 }
-                .frame(height: 52)
+                .frame(height: AppTheme.TopBar.height)
 
                 HStack(spacing: 10) {
                     writingTopCard("文案创作", "生活灵感/爆款文案", "doc.text.fill", Color(red: 0.84, green: 0.93, blue: 1.0))
@@ -55,14 +64,7 @@ struct WritingStudioView: View {
                     writingTopCard("长文写作", "分步式万字长文", "book.closed.fill", Color(red: 0.90, green: 0.88, blue: 0.98))
                 }
 
-                HStack(spacing: 12) {
-                    quickAction("润色", "line.3.horizontal.decrease")
-                    quickAction("扩写", "square.and.pencil")
-                    quickAction("仿写", "line.3.horizontal")
-                    quickAction("续写", "film")
-                    quickAction("作文批改", "doc.text.magnifyingglass")
-                }
-                .padding(.top, 2)
+                quickActionStrip
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 14) {
@@ -139,19 +141,21 @@ struct WritingStudioView: View {
                     miniChipInput("上传素材", "arrow.up.doc")
                     Spacer()
                     Button {
-                        let cleaned = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                        draft = WritingGenerator.generate(
-                            topic: topic.isEmpty ? cleaned : topic,
-                            keywords: keywords,
-                            style: style,
-                            tone: tone,
-                            length: length
-                        )
+                        generateDraft()
                     } label: {
-                        Image(systemName: "waveform.circle")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(AppTheme.primary)
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.subheadline.weight(.bold))
+                            Text("AI生成")
+                                .font(.subheadline.weight(.bold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(AppTheme.unifiedButtonPrimary)
+                        .clipShape(Capsule())
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(12)
@@ -223,14 +227,61 @@ struct WritingStudioView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func quickAction(_ title: String, _ icon: String) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.body.weight(.semibold))
-            Text(title)
-                .font(.caption)
+    private var quickActionStrip: some View {
+        HStack(spacing: 8) {
+            ForEach(quickActions) { item in
+                Button {
+                    selectedQuickActionID = item.id
+                    applyQuickAction(item)
+                } label: {
+                    VStack(spacing: 6) {
+                        ZStack {
+                            Circle()
+                                .fill(selectedQuickActionID == item.id ? AppTheme.primary.opacity(0.18) : AppTheme.surfaceMuted)
+                                .frame(width: 34, height: 34)
+                            Image(systemName: item.icon)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(selectedQuickActionID == item.id ? AppTheme.primary : AppTheme.textSecondary)
+                        }
+                        Text(item.title)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.78)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(selectedQuickActionID == item.id ? AppTheme.surface : AppTheme.surfaceMuted.opacity(0.88))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(selectedQuickActionID == item.id ? AppTheme.primary.opacity(0.35) : AppTheme.border.opacity(0.65), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .foregroundStyle(AppTheme.textPrimary)
+        .padding(.top, 2)
+    }
+
+    private func applyQuickAction(_ item: WritingQuickActionItem) {
+        keywords = item.keywords
+        style = item.style
+        tone = item.tone
+        length = item.length
+    }
+
+    private func generateDraft() {
+        let cleaned = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        draft = WritingGenerator.generate(
+            topic: topic.isEmpty ? cleaned : topic,
+            keywords: keywords,
+            style: style,
+            tone: tone,
+            length: length
+        )
     }
 
     private func miniChipInput(_ title: String, _ icon: String) -> some View {
@@ -245,6 +296,16 @@ struct WritingStudioView: View {
         .background(AppTheme.surfaceMuted)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
+}
+
+private struct WritingQuickActionItem: Identifiable {
+    let id: String
+    let title: String
+    let icon: String
+    let keywords: String
+    let style: String
+    let tone: String
+    let length: String
 }
 
 // MARK: - PPT
