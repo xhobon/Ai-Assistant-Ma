@@ -15,32 +15,17 @@ dotenv.config();
 
 const TTS_MAX_LENGTH = 2000;
 const TTS_VOICES = {
-  // 更自然的神经网络音色
+  // 更自然的中文神经网络音色（可按需替换：zh-CN-YunxiNeural / zh-CN-XiaoyiNeural 等）
   "zh-CN": "zh-CN-XiaoxiaoNeural",
   "id-ID": "id-ID-GadisNeural",
   "en-US": "en-US-JennyNeural"
 };
-const TTS_PRESETS = {
-  "zh-CN": { style: "assistant", rate: -4, pitch: 0 },
-  "id-ID": { style: "", rate: -2, pitch: 0 },
-  "en-US": { style: "", rate: -2, pitch: 0 }
-};
-
 function getTTSVoice(lang) {
   const prefix = (lang || "").slice(0, 2);
   if (lang && TTS_VOICES[lang]) return TTS_VOICES[lang];
   if (prefix === "zh") return TTS_VOICES["zh-CN"];
   if (prefix === "id") return TTS_VOICES["id-ID"];
   return TTS_VOICES["zh-CN"];
-}
-
-function getTTSPreset(lang) {
-  const l = normalizeLang(lang || "zh-CN");
-  if (TTS_PRESETS[l]) return TTS_PRESETS[l];
-  if (l.startsWith("zh")) return TTS_PRESETS["zh-CN"];
-  if (l.startsWith("id")) return TTS_PRESETS["id-ID"];
-  if (l.startsWith("en")) return TTS_PRESETS["en-US"];
-  return TTS_PRESETS["zh-CN"];
 }
 
 function normalizeLang(lang) {
@@ -183,28 +168,36 @@ async function extractMemoriesFromConversation(userMessage, assistantReply) {
   }
 }
 
-// 专用于翻译的模型调用：走千问（DashScope）免费/低价模型，避免和聊天共用 Groq
+// 专用于翻译的模型调用：走本地/自建 Ollama，避免和聊天共用 Groq
 async function llmTranslate(messages) {
-  const qwenKeyRaw = process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY || "";
-  const qwenKey = qwenKeyRaw.trim().replace(/^["']|["']$/g, "");
-  if (!qwenKey || qwenKey.length < 10) {
-    throw new Error(
-      "请配置 QWEN_API_KEY（千问 Model Studio 的 API Key）。在 .env/.env.local 与 Vercel 环境变量中设置 QWEN_API_KEY 后重新部署。"
-    );
+  const ollamaRaw = process.env.OLLAMA_API || "";
+  const ollamaBase = ollamaRaw.trim().replace(/^["']|["']$/g, "").replace(/\/+$/, "");
+  if (!ollamaBase) {
+    throw new Error("请配置 OLLAMA_API（例如：http://你的服务器IP:11434）");
   }
-  const baseURL = (process.env.QWEN_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1").replace(/\/+$/, "");
-  const model = process.env.QWEN_TRANSLATE_MODEL || "qwen-plus";
 
-  const res = await fetch(`${baseURL}/chat/completions`, {
+  const model = (process.env.OLLAMA_TRANSLATE_MODEL || process.env.MODEL_NAME || "qwen2.5:3b")
+    .trim()
+    .replace(/^["']|["']$/g, "");
+
+  const prompt = (Array.isArray(messages) ? messages : [])
+    .map((m) => {
+      const role = m?.role || "user";
+      const content = typeof m?.content === "string" ? m.content : JSON.stringify(m?.content || "");
+      return `[${role}] ${content}`;
+    })
+    .join("\n\n")
+    .trim();
+
+  const res = await fetch(`${ollamaBase}/api/generate`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${qwenKey}`
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       model,
-      messages,
-      temperature: 0 // 纯翻译，尽量减少生成花样
+      prompt,
+      stream: false
     })
   });
   const raw = await res.text().catch(() => "");
@@ -219,7 +212,12 @@ async function llmTranslate(messages) {
     const msg = data?.error?.message || data?.message || raw || `HTTP ${res.status}`;
     throw new Error(msg);
   }
-  return data?.choices?.[0]?.message?.content || "";
+
+  const translated = data?.response || "";
+  if (!translated || typeof translated !== "string") {
+    throw new Error("本地模型返回为空");
+  }
+  return translated;
 }
 
 /// 支持图片的 AI 对话（使用 vision 模型）
@@ -1132,17 +1130,7 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
     return res.status(400).json({ error: parseResult.error.flatten() });
   }
 
-  const normalizeTranslateLang = (lang) => {
-    const raw = String(lang || "").trim().toLowerCase();
-    if (raw === "zh" || raw === "zh-cn" || raw === "zh_cn") return "zh-CN";
-    if (raw === "id" || raw === "id-id" || raw === "id_id") return "id-ID";
-    if (raw === "en" || raw === "en-us" || raw === "en_us") return "en-US";
-    return lang;
-  };
-
-  const { text } = parseResult.data;
-  const sourceLang = normalizeTranslateLang(parseResult.data.sourceLang);
-  const targetLang = normalizeTranslateLang(parseResult.data.targetLang);
+  const { text, sourceLang, targetLang } = parseResult.data;
 
   let translated;
   try {
@@ -1150,9 +1138,9 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
     const s = langNames[sourceLang] || sourceLang;
     const t = langNames[targetLang] || targetLang;
 
-    // 本接口仅做中/印尼/英语互译，禁止任何问答，仅输出与原文对应的翻译
+    // 本接口仅做中文与印尼文互译，禁止任何问答，仅输出与原文对应的翻译
     const systemPrompt =
-      `你是一个纯翻译引擎，仅做中文、印尼语、英语互译。禁止任何问答、解释、自我介绍或额外句子，仅输出与用户输入对应的翻译。\n` +
+      `你是一个纯翻译引擎，仅做中文与印尼文互译。禁止任何问答、解释、自我介绍或额外句子，仅输出与用户输入对应的翻译。\n` +
       `规则（必须遵守）：\n` +
       `1）只把用户给的整段从${s}译成${t}，输出仅该句/段的翻译，无任何其他内容。\n` +
       `2）疑问句只译成疑问句，绝不回答。例：输入「你是谁？」只输出「Siapa kamu?」或「Siapa Anda?」；输入「你是什么模型？」只输出「Kamu model apa?」或「Model apa kamu?」。禁止输出「Saya adalah...」「我是...」「dikembangkan oleh」等任何回答。\n` +
@@ -1172,8 +1160,6 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
       const strictUser =
         targetLang === "id-ID"
           ? `Translate the following to Indonesian only. Output ONLY the translation, one short sentence. Do not answer the question, do not introduce yourself, do not explain.\n\n${text}`
-          : targetLang === "en-US"
-          ? `Translate the following to English only. Output ONLY the translation, one short sentence. Do not answer the question, do not introduce yourself, do not explain.\n\n${text}`
           : `Translate the following to Chinese only. Output ONLY the translation, one short sentence. Do not answer the question, do not introduce yourself, do not explain.\n\n${text}`;
       translated = await llmTranslate([
         { role: "system", content: "You are a translator. Output ONLY the translation of the user's text. No answer, no self-introduction, no explanation. One short sentence only." },
@@ -1186,11 +1172,6 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
     if (targetLang === "id-ID" && hasChinese) {
       translated = await llmTranslate([
         { role: "system", content: "Output ONLY the Indonesian translation. No Chinese characters, no explanation." },
-        { role: "user", content: text }
-      ]);
-    } else if (targetLang === "en-US" && hasChinese) {
-      translated = await llmTranslate([
-        { role: "system", content: "Output ONLY the English translation. No Chinese, no Indonesian, no explanation." },
         { role: "user", content: text }
       ]);
     } else if (targetLang === "zh-CN" && !hasChinese && hasLatin) {
@@ -1215,7 +1196,7 @@ app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
     });
   }
 
-  return res.json({ translated });
+  return res.json({ translated, translation: translated });
 });
 
 // 保存翻译历史
@@ -1286,16 +1267,16 @@ app.post("/api/tts", async (req, res) => {
   const voice = (voiceOverride && String(voiceOverride).trim()) ? String(voiceOverride).trim() : getTTSVoice(langNorm);
   const safeText = escapeTTS(text);
   if (!safeText) return res.status(400).json({ error: "text required" });
-  const preset = getTTSPreset(langNorm);
 
-  // 默认策略：使用更自然的助手风格（若不支持会自动回退）
+  // 默认策略：中文使用更“聊天感”的风格（若不支持会自动回退）
   const defaultStyle = (() => {
     if (style) return style;
-    return preset.style || "";
+    if (langNorm.startsWith("zh") && voice === "zh-CN-XiaoxiaoNeural") return "chat";
+    return "";
   })();
 
-  const ratePct = clampNumber(rate, -30, 30) ?? preset.rate;
-  const pitchPct = clampNumber(pitch, -30, 30) ?? preset.pitch;
+  const ratePct = clampNumber(rate, -30, 30);
+  const pitchPct = clampNumber(pitch, -30, 30);
   const ssml = buildSSML({
     textEscaped: safeText,
     lang: langNorm,
@@ -1306,7 +1287,7 @@ app.post("/api/tts", async (req, res) => {
   });
   try {
     const tts = new MsEdgeTTS({});
-    await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
+    await tts.setMetadata(voice, OUTPUT_FORMAT.WEBM_24KHZ_16BIT_MONO_OPUS);
     let readable;
     try {
       // 优先走 SSML（更自然：停顿/语气/韵律）
@@ -1315,7 +1296,7 @@ app.post("/api/tts", async (req, res) => {
       // 若风格/SSML 不被该音色支持，则回退为纯文本
       readable = tts.toStream(safeText);
     }
-    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Type", "audio/webm");
     res.setHeader("Cache-Control", "no-store");
     readable.pipe(res);
     readable.on("error", (err) => {
