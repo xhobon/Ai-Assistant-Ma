@@ -103,45 +103,57 @@ const DEFAULT_GOOGLE_APP_REDIRECT = "aiassistant://oauth/google";
 const googleOAuthStates = new Map();
 const googleOAuthTickets = new Map();
 
-function getGroqApiKey() {
-  const raw = process.env.GROQ_API_KEY || "";
-  const key = raw.trim().replace(/^["']|["']$/g, "");
-  return key.length > 10 ? key : null;
+function getOllamaBaseUrl() {
+  const raw = process.env.OLLAMA_API || "";
+  return raw.trim().replace(/^["']|["']$/g, "").replace(/\/+$/, "");
+}
+
+function getOllamaChatModel() {
+  const raw = process.env.OLLAMA_CHAT_MODEL || "qwen2.5:7b-instruct";
+  return raw.trim().replace(/^["']|["']$/g, "") || "qwen2.5:7b-instruct";
+}
+
+function getOllamaTranslateModel() {
+  const raw = process.env.OLLAMA_TRANSLATE_MODEL || "qwen2.5:3b";
+  return raw.trim().replace(/^["']|["']$/g, "") || "qwen2.5:3b";
 }
 
 async function llmChat(messages) {
-  const groqKey = getGroqApiKey();
-  if (!groqKey || groqKey.length <= 10) {
-    throw new Error(
-      "请配置 GROQ_API_KEY（免费）：访问 https://console.groq.com 注册，创建 API Key，在 Vercel 环境变量中添加 GROQ_API_KEY，并 Redeploy"
-    );
+  const ollamaBase = getOllamaBaseUrl();
+  if (!ollamaBase) {
+    throw new Error("请配置 OLLAMA_API（例如：https://xxxxx.ngrok-free.dev）");
   }
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const res = await fetch(`${ollamaBase}/api/chat`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${groqKey}`
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
+      model: getOllamaChatModel(),
       messages,
-      temperature: 0.4
+      stream: false
     })
   });
   const raw = await res.text().catch(() => "");
-  const data = (() => { try { return JSON.parse(raw); } catch { return {}; } })();
+  const data = (() => {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  })();
   if (res.ok) {
-    const content = data?.choices?.[0]?.message?.content;
+    const content = data?.message?.content;
     if (content) return content.trim();
   }
-  const errMsg = data?.error?.message || data?.error || raw || `HTTP ${res.status}`;
-  throw new Error(`Groq API 错误: ${res.status} ${String(errMsg).slice(0, 200)}`);
+  const errMsg = data?.error || data?.message || raw || `HTTP ${res.status}`;
+  throw new Error(`Ollama API 错误: ${res.status} ${String(errMsg).slice(0, 200)}`);
 }
 
 /** 从最近一轮对话中提取可长期记忆的用户信息（偏好、习惯、重要事实），返回 { content, category }[] */
 async function extractMemoriesFromConversation(userMessage, assistantReply) {
-  const groqKey = getGroqApiKey();
-  if (!groqKey || groqKey.length <= 10) return [];
+  const ollamaBase = getOllamaBaseUrl();
+  if (!ollamaBase) return [];
   const prompt = `你是一个记忆提取助手。根据下面这一轮对话，提取值得长期记住的、关于用户的信息（例如：偏好、习惯、重要事实、称呼、工作/生活背景等）。每条用一行简短中文描述，格式为：类别|内容。类别只能是 preference、habit、fact 之一。
 若没有任何值得长期记忆的信息，只输出：无
 
@@ -168,39 +180,20 @@ async function extractMemoriesFromConversation(userMessage, assistantReply) {
   }
 }
 
-// 专用于翻译的模型调用：走本地/自建 Ollama，避免和聊天共用 Groq
+// 专用于翻译的模型调用：走本地/自建 Ollama，避免和聊天共用模型
 async function llmTranslate(messages) {
-  const ollamaRaw =
-    process.env.OLLAMA_API ||
-    process.env.OLLAMA_BASE_URL ||
-    process.env.OPENAI_API_BASE ||
-    "";
-  const ollamaBase = ollamaRaw.trim().replace(/^["']|["']$/g, "").replace(/\/+$/, "");
+  const ollamaBase = getOllamaBaseUrl();
   if (!ollamaBase) {
-    throw new Error("请配置 OLLAMA_API（或 OLLAMA_BASE_URL / OPENAI_API_BASE），例如：http://你的服务器IP:11434");
+    throw new Error("请配置 OLLAMA_API（例如：https://xxxxx.ngrok-free.dev）");
   }
-
-  const model = (process.env.OLLAMA_TRANSLATE_MODEL || process.env.MODEL_NAME || "qwen2.5:3b")
-    .trim()
-    .replace(/^["']|["']$/g, "");
-
-  const prompt = (Array.isArray(messages) ? messages : [])
-    .map((m) => {
-      const role = m?.role || "user";
-      const content = typeof m?.content === "string" ? m.content : JSON.stringify(m?.content || "");
-      return `[${role}] ${content}`;
-    })
-    .join("\n\n")
-    .trim();
-
-  const res = await fetch(`${ollamaBase}/api/generate`, {
+  const res = await fetch(`${ollamaBase}/api/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model,
-      prompt,
+      model: getOllamaTranslateModel(),
+      messages,
       stream: false
     })
   });
@@ -217,7 +210,7 @@ async function llmTranslate(messages) {
     throw new Error(msg);
   }
 
-  const translated = data?.response || "";
+  const translated = data?.message?.content || "";
   if (!translated || typeof translated !== "string") {
     throw new Error("本地模型返回为空");
   }
@@ -226,81 +219,16 @@ async function llmTranslate(messages) {
 
 /// 支持图片的 AI 对话（使用 vision 模型）
 async function llmChatWithImage(messages, imageBase64, userPrompt) {
-  const groqKey = getGroqApiKey();
-  if (!groqKey || groqKey.length <= 10) {
-    throw new Error(
-      "请配置 GROQ_API_KEY（免费）：访问 https://console.groq.com 注册，创建 API Key，在 Vercel 环境变量中添加 GROQ_API_KEY，并 Redeploy"
-    );
-  }
-  
-  // 构建包含图片的消息
-  // Groq 目前可能不支持 vision 模型，先尝试使用支持 vision 的模型
-  // 如果失败，回退到文本描述
-  const imageUrl = `data:image/jpeg;base64,${imageBase64}`;
-  
-  // 修改最后一条用户消息，添加图片
-  const lastMessage = messages[messages.length - 1];
-  const messagesWithImage = [
-    ...messages.slice(0, -1),
+  const textOnlyFallback = [
+    ...messages,
     {
-      role: lastMessage.role,
-      content: [
-        { type: "text", text: userPrompt },
-        { type: "image_url", image_url: { url: imageUrl } }
-      ]
-    }
+      role: "system",
+      content:
+        "用户上传了图片（base64 已接收），但当前模型为文本模型。请基于用户文字需求提供可执行建议，并明确说明无法直接读取图片内容。"
+    },
+    { role: "user", content: userPrompt || "请帮我分析这张图" }
   ];
-  
-  // 尝试使用 vision 模型（如果 Groq 支持）
-  // 注意：Groq 可能还没有 vision 模型，这里先尝试
-  const visionModels = [
-    "llama-3.2-11b-vision-preview",
-    "llama-3.1-8b-instant" // 回退模型
-  ];
-  
-  for (const model of visionModels) {
-    try {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${groqKey}`
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: messagesWithImage,
-          temperature: 0.4,
-          max_tokens: 2048
-        })
-      });
-      
-      const raw = await res.text().catch(() => "");
-      const data = (() => { try { return JSON.parse(raw); } catch { return {}; } })();
-      
-      if (res.ok) {
-        const content = data?.choices?.[0]?.message?.content;
-        if (content) return content.trim();
-      }
-      
-      // 如果模型不支持，尝试下一个
-      if (res.status === 400 && data?.error?.message?.includes("vision")) {
-        continue;
-      }
-      
-      const errMsg = data?.error?.message || data?.error || raw || `HTTP ${res.status}`;
-      throw new Error(`Groq API 错误: ${res.status} ${String(errMsg).slice(0, 200)}`);
-    } catch (err) {
-      // 如果是最后一个模型，抛出错误
-      if (model === visionModels[visionModels.length - 1]) {
-        throw err;
-      }
-      // 否则继续尝试下一个模型
-      continue;
-    }
-  }
-  
-  // 如果所有模型都失败，返回提示
-  throw new Error("当前 Groq API 暂不支持图片识别，请稍后再试或联系管理员。");
+  return llmChat(textOnlyFallback);
 }
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
@@ -481,12 +409,14 @@ function optionalAuthMiddleware(req, res, next) {
 }
 
 app.get("/health", async (req, res) => {
-  const groqKey = getGroqApiKey();
+  const ollamaBase = getOllamaBaseUrl();
   res.json({
     status: "ok",
     time: new Date().toISOString(),
-    groq_configured: !!groqKey,
-    hint: !groqKey ? "在 Vercel 项目 Settings → Environment Variables 添加 GROQ_API_KEY 并 Redeploy" : undefined
+    ollama_configured: !!ollamaBase,
+    chat_model: getOllamaChatModel(),
+    translate_model: getOllamaTranslateModel(),
+    hint: !ollamaBase ? "在 Vercel 项目 Settings → Environment Variables 添加 OLLAMA_API 并 Redeploy" : undefined
   });
 });
 
