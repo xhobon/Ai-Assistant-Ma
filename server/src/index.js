@@ -170,10 +170,14 @@ async function extractMemoriesFromConversation(userMessage, assistantReply) {
 
 // 专用于翻译的模型调用：走本地/自建 Ollama，避免和聊天共用 Groq
 async function llmTranslate(messages) {
-  const ollamaRaw = process.env.OLLAMA_API || "";
+  const ollamaRaw =
+    process.env.OLLAMA_API ||
+    process.env.OLLAMA_BASE_URL ||
+    process.env.OPENAI_API_BASE ||
+    "";
   const ollamaBase = ollamaRaw.trim().replace(/^["']|["']$/g, "").replace(/\/+$/, "");
   if (!ollamaBase) {
-    throw new Error("请配置 OLLAMA_API（例如：http://你的服务器IP:11434）");
+    throw new Error("请配置 OLLAMA_API（或 OLLAMA_BASE_URL / OPENAI_API_BASE），例如：http://你的服务器IP:11434");
   }
 
   const model = (process.env.OLLAMA_TRANSLATE_MODEL || process.env.MODEL_NAME || "qwen2.5:3b")
