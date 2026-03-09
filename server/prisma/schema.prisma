@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuthProviderType {
+  APPLE
+  GOOGLE
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+enum UserRole {
+  user
+  admin
+  super_admin
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String?         @unique
+  phone          String?         @unique
+  passwordHash   String?
+  displayName    String
+  avatarUrl      String?
+  role           UserRole        @default(user)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  lastLoginAt    DateTime?
+  providers      AuthProvider[]
+  conversations  Conversation[]
+  translations   TranslationHistory[]
+  favorites      Favorite[]
+  learningLogs   LearningSession[]
+  memories       UserMemory[]
+}
+
+/// 助理长期记忆：偏好、习惯、重要事实等，用于个性化回复与持续学习
+model UserMemory {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String   /// 一条记忆内容（如「用户偏好简洁回答」「用户常问印尼语翻译」）
+  category  String   @default("preference") /// preference | habit | goal
+  confidence Float   @default(0.65) /// 0~1，记忆置信度
+  expiresAt DateTime? /// 到期时间；null 表示长期记忆
+  source    String   @default("manual") /// manual | auto_extract | auto_summary
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuthProvider {
+  id             String           @id @default(cuid())
+  userId         String
+  provider       AuthProviderType
+  providerUserId String
+  email          String?
+  createdAt      DateTime         @default(now())
+  user           User             @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerUserId])
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+  messages  Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+}
+
+model TranslationHistory {
+  id         String   @id @default(cuid())
+  userId     String?
+  sourceLang String
+  targetLang String
+  sourceText String
+  targetText String
+  audioUrl   String?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+}
+
+model VocabCategory {
+  id        String           @id @default(cuid())
+  nameZh    String
+  nameId    String
+  sortOrder Int
+  items     VocabularyItem[]
+}
+
+model VocabularyItem {
+  id         String        @id @default(cuid())
+  categoryId String
+  textZh     String
+  textId     String
+  audioUrl   String?
+  category   VocabCategory @relation(fields: [categoryId], references: [id])
+  favorites  Favorite[]
+}
+
+model Favorite {
+  id        String         @id @default(cuid())
+  userId    String
+  vocabId   String
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id])
+  vocab     VocabularyItem @relation(fields: [vocabId], references: [id])
+
+  @@unique([userId, vocabId])
+}
+
+model LearningSession {
+  id            String   @id @default(cuid())
+  userId        String
+  sessionDate   DateTime @default(now())
+  minutes       Int
+  masteredCount Int
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  configKey String   @unique
+  configVal String
+  updatedAt DateTime @updatedAt
+}
+
+/// 邮箱验证码，用于登录/注册验证邮箱所有权
+model EmailVerificationCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  purpose   String   /// login | register 等
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([email, purpose, expiresAt])
+}

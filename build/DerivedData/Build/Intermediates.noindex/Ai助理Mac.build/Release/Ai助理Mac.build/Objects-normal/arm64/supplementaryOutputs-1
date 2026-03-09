@@ -1,0 +1,12 @@
+{
+  "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/AccessibilityExtensions.swift" : {
+    "abi-baseline-json" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedData/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac.abi.json",
+    "const-values" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedData/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-primary.swiftconstvalues",
+    "dependencies" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedData/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-primary.d",
+    "diagnostics" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedData/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-primary.dia",
+    "objc-header" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedData/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac-Swift.h",
+    "swiftdoc" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedData/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac.swiftdoc",
+    "swiftmodule" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedData/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac.swiftmodule",
+    "swiftsourceinfo" : "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/build/DerivedData/Build/Intermediates.noindex/Ai助理Mac.build/Release/Ai助理Mac.build/Objects-normal/arm64/Ai助理Mac.swiftsourceinfo"
+  }
+}

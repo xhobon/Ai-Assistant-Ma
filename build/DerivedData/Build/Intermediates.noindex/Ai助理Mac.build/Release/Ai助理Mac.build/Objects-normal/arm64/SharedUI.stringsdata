@@ -1,0 +1,56 @@
+{
+  "source": "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/SharedUI.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "点击停止",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 1658
+        }
+      },
+      {
+        "comment": "",
+        "key": "点击开始",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 1658
+        }
+      },
+      {
+        "comment": "",
+        "key": "双击查看详情",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 2472
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 2472
+        }
+      },
+      {
+        "comment": "",
+        "key": "错误提示：%@",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 2573
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@：%@",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 2664
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,720 @@
+{
+  "source": "/Users/akun/Desktop/Ai助理Mac/Ai助理Mac/Ai助理Mac/ProfileViews.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "清除所有记录",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "",
+        "key": "已清除",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "",
+        "key": "取消",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "清除",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "将清除本机上的收藏、翻译历史等本地数据，且无法恢复。登录后数据可同步至账号；未登录时卸载应用也会清空。",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 142
+        }
+      },
+      {
+        "comment": "",
+        "key": "确定",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 145
+        }
+      },
+      {
+        "comment": "",
+        "key": "本地记录已清除。",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "",
+        "key": "已登录账号",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "",
+        "key": "未登录账号",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "",
+        "key": "当前设备已启用账号同步",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "",
+        "key": "登录后可同步收藏、翻译和学习记录",
+        "location": {
+          "startingColumn": 84,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "",
+        "key": "个人中心",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "",
+        "key": "去登录",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "",
+        "key": "提示",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 324
+        }
+      },
+      {
+        "comment": "",
+        "key": "退出登录",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 297
+        }
+      },
+      {
+        "comment": "",
+        "key": "确定",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 328
+        }
+      },
+      {
+        "comment": "",
+        "key": "返回",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 339
+        }
+      },
+      {
+        "comment": "",
+        "key": "资料设置",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 396
+        }
+      },
+      {
+        "comment": "",
+        "key": "请输入昵称",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 382
+        }
+      },
+      {
+        "comment": "",
+        "key": "取消",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 399
+        }
+      },
+      {
+        "comment": "",
+        "key": "保存",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 403
+        }
+      },
+      {
+        "comment": "",
+        "key": "VIP会员",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 429
+        }
+      },
+      {
+        "comment": "",
+        "key": "升级解锁全部功能与更高额度",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 432
+        }
+      },
+      {
+        "comment": "",
+        "key": "会员专享 4 大权益",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 518
+        }
+      },
+      {
+        "comment": "",
+        "key": "充值会员",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 569
+        }
+      },
+      {
+        "comment": "",
+        "key": "进入会员中心选择套餐与支付方式",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 572
+        }
+      },
+      {
+        "comment": "",
+        "key": "立即解锁",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 580
+        }
+      },
+      {
+        "comment": "",
+        "key": "¥%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 624
+        }
+      },
+      {
+        "comment": "",
+        "key": "¥%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 628
+        }
+      },
+      {
+        "comment": "",
+        "key": "立即解锁",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 647
+        }
+      },
+      {
+        "comment": "",
+        "key": "会员中心",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 896
+        }
+      },
+      {
+        "comment": "",
+        "key": "VIP会员",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 920
+        }
+      },
+      {
+        "comment": "",
+        "key": "升级解锁全部功能",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 923
+        }
+      },
+      {
+        "comment": "",
+        "key": "每日奖励任务",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1013
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1033
+        }
+      },
+      {
+        "comment": "",
+        "key": "可用天数",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1036
+        }
+      },
+      {
+        "comment": "",
+        "key": "做任务 领次数",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1063
+        }
+      },
+      {
+        "comment": "",
+        "key": "清除所有本地记录？",
+        "location": {
+          "startingColumn": 13,
+          "startingLine": 1337
+        }
+      },
+      {
+        "comment": "",
+        "key": "语速",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1196
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音质量",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 1242
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音质量",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1234
+        }
+      },
+      {
+        "comment": "",
+        "key": "在线更自然；离线由系统语音决定。",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1237
+        }
+      },
+      {
+        "comment": "",
+        "key": "在线（更自然）",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1246
+        }
+      },
+      {
+        "comment": "",
+        "key": "优质",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1247
+        }
+      },
+      {
+        "comment": "",
+        "key": "增强",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1248
+        }
+      },
+      {
+        "comment": "",
+        "key": "默认",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1249
+        }
+      },
+      {
+        "comment": "",
+        "key": "深色模式",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1267
+        }
+      },
+      {
+        "comment": "",
+        "key": "跟随系统",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1271
+        }
+      },
+      {
+        "comment": "",
+        "key": "浅色",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1272
+        }
+      },
+      {
+        "comment": "",
+        "key": "深色",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1273
+        }
+      },
+      {
+        "comment": "",
+        "key": "清除",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 1341
+        }
+      },
+      {
+        "comment": "",
+        "key": "取消",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 1347
+        }
+      },
+      {
+        "comment": "",
+        "key": "该操作不可恢复。登录用户的云端数据不会被删除。",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1349
+        }
+      },
+      {
+        "comment": "",
+        "key": "助理记忆",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1427
+        }
+      },
+      {
+        "comment": "",
+        "key": "助理会根据聊天与使用情况自动记住你的偏好和重要信息，也可在此手动添加。登录后记忆会同步到你的账号。",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1370
+        }
+      },
+      {
+        "comment": "",
+        "key": "加载中…",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1378
+        }
+      },
+      {
+        "comment": "",
+        "key": "添加",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1436
+        }
+      },
+      {
+        "comment": "",
+        "key": "添加记忆",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1475
+        }
+      },
+      {
+        "comment": "",
+        "key": "例如：偏好简洁回答、常用印尼语翻译",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 1453
+        }
+      },
+      {
+        "comment": "",
+        "key": "类型",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1464
+        }
+      },
+      {
+        "comment": "",
+        "key": "事实",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1465
+        }
+      },
+      {
+        "comment": "",
+        "key": "偏好",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1466
+        }
+      },
+      {
+        "comment": "",
+        "key": "习惯",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1467
+        }
+      },
+      {
+        "comment": "",
+        "key": "取消",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1481
+        }
+      },
+      {
+        "comment": "",
+        "key": "保存",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1487
+        }
+      },
+      {
+        "comment": "",
+        "key": "提示",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 1629
+        }
+      },
+      {
+        "comment": "",
+        "key": "账户",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1626
+        }
+      },
+      {
+        "comment": "",
+        "key": "确定",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 1633
+        }
+      },
+      {
+        "comment": "",
+        "key": "返回",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1648
+        }
+      },
+      {
+        "comment": "",
+        "key": "验证码",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1706
+        }
+      },
+      {
+        "comment": "",
+        "key": "请输入邮箱验证码",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 1710
+        }
+      },
+      {
+        "comment": "",
+        "key": "发送中",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1731
+        }
+      },
+      {
+        "comment": "",
+        "key": "发送验证码",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 1731
+        }
+      },
+      {
+        "comment": "",
+        "key": "Google",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1799
+        }
+      },
+      {
+        "comment": "",
+        "key": "欢迎回来",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 1952
+        }
+      },
+      {
+        "comment": "",
+        "key": "创建新账号",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 1952
+        }
+      },
+      {
+        "comment": "",
+        "key": "登录后即可同步您的数据",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 1955
+        }
+      },
+      {
+        "comment": "",
+        "key": "注册后即可使用完整功能与数据同步",
+        "location": {
+          "startingColumn": 77,
+          "startingLine": 1955
+        }
+      },
+      {
+        "comment": "",
+        "key": "暂无收藏",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2039
+        }
+      },
+      {
+        "comment": "",
+        "key": "在学习页将词汇或句子加入收藏后，会显示在这里",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2042
+        }
+      },
+      {
+        "comment": "",
+        "key": "¥ 0.00",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2101
+        }
+      },
+      {
+        "comment": "",
+        "key": "暂无记录",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2108
+        }
+      },
+      {
+        "comment": "",
+        "key": "分享邀请链接",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 2137
+        }
+      },
+      {
+        "comment": "",
+        "key": "• 无限制 AI 对话与翻译\n• 专业学习内容与场景解锁\n• 优先响应与专属助理能力\n• 更多权益持续更新",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2194
+        }
+      },
+      {
+        "comment": "",
+        "key": "订阅周期内可随时在系统设置中关闭自动续费。到期前 24 小时内扣款；若取消续费，到期后将恢复为免费版，已解锁内容在当期内仍可使用。",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2199
+        }
+      },
+      {
+        "comment": "",
+        "key": "虚拟会员服务一经开通，如无特殊故障，原则上不支持退款。如有异议请联系客服。",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2204
+        }
+      },
+      {
+        "comment": "",
+        "key": "AI 助理",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2378
+        }
+      },
+      {
+        "comment": "",
+        "key": "版本 %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2381
+        }
+      },
+      {
+        "comment": "",
+        "key": "让 AI 更懂你，也让你更高效。",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2384
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,2 @@
+Target dependency graph (1 target)
+Target 'Ai助理Mac' in project 'Ai助理Mac' (no dependencies)
