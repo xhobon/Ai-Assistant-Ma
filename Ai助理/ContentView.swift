@@ -432,12 +432,13 @@ struct ContentView: View {
                 GeometryReader { proxy in
                     detailColumn
                         .contentShape(Rectangle())
-                        .highPriorityGesture(
+                        .simultaneousGesture(
                             DragGesture(minimumDistance: 18)
                                 .onEnded { value in
                                     guard !isCompactSidebarPresented else { return }
                                     let fromLeftEdge = value.startLocation.x <= 24
-                                    if fromLeftEdge && value.translation.width > 72 {
+                                    let horizontal = abs(value.translation.width) > abs(value.translation.height)
+                                    if fromLeftEdge && horizontal && value.translation.width > 72 {
                                         openSidebar()
                                     }
                                 }
