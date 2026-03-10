@@ -91,11 +91,12 @@ struct SidebarRow: View {
                 .layoutPriority(1)
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 12)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(isSelected ? sidebarActiveBg : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .contentShape(Rectangle())
     }
 }
 
@@ -103,7 +104,6 @@ struct ContentView: View {
     @State private var selectedItem: SidebarItem = .partner
     @State private var detailResetSeed = 0
     @State private var detailMounted = true
-    @ObservedObject private var appearance = AppearanceStore.shared
     @ObservedObject private var tokenStore = TokenStore.shared
     @State private var copyToastMessage: String?
     @State private var isCompactSidebarPresented = false
@@ -499,7 +499,7 @@ struct ContentView: View {
             // 切换侧边栏页面时停止语音播放，避免在其它页还能听到朗读
             SpeechService.shared.stopSpeaking()
         }
-        .preferredColorScheme(appearance.colorScheme)
+        .preferredColorScheme(.light)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(AppTheme.pageBackground.ignoresSafeArea())
         .toast(message: $copyToastMessage)

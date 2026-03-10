@@ -200,59 +200,29 @@ struct AppTheme {
     static let primaryVariant = Color(red: 0.03, green: 0.29, blue: 0.66)
     static let secondary = Color(red: 0.03, green: 0.56, blue: 0.62)
 
-    private static var isDark: Bool {
-        AppearanceStore.shared.mode == .dark
-    }
+    private static let isDark: Bool = false
 
-    // 浅色 / 深色背景
-    static var background: Color {
-        isDark ? ModernColorSystem.DarkTheme.backgroundPrimary : ModernColorSystem.LightTheme.backgroundPrimary
-    }
-    static var backgroundSecondary: Color {
-        isDark ? ModernColorSystem.DarkTheme.backgroundSecondary : ModernColorSystem.LightTheme.backgroundSecondary
-    }
-    static var backgroundTertiary: Color {
-        isDark ? ModernColorSystem.DarkTheme.backgroundTertiary : ModernColorSystem.LightTheme.backgroundTertiary
-    }
-    static var surface: Color {
-        isDark ? ModernColorSystem.DarkTheme.surfaceElevated : ModernColorSystem.LightTheme.surfaceElevated
-    }
-    static var surfaceMuted: Color {
-        isDark ? ModernColorSystem.DarkTheme.backgroundTertiary : ModernColorSystem.LightTheme.backgroundSecondary
-    }
-    static var surfaceElevated: Color {
-        isDark ? ModernColorSystem.DarkTheme.surfaceElevated : ModernColorSystem.LightTheme.surfaceElevated
-    }
+    // 固定浅色背景
+    static var background: Color { ModernColorSystem.LightTheme.backgroundPrimary }
+    static var backgroundSecondary: Color { ModernColorSystem.LightTheme.backgroundSecondary }
+    static var backgroundTertiary: Color { ModernColorSystem.LightTheme.backgroundTertiary }
+    static var surface: Color { ModernColorSystem.LightTheme.surfaceElevated }
+    static var surfaceMuted: Color { ModernColorSystem.LightTheme.backgroundSecondary }
+    static var surfaceElevated: Color { ModernColorSystem.LightTheme.surfaceElevated }
 
-    static var glassBackground: Color {
-        isDark ? ModernColorSystem.DarkTheme.glassBackground : ModernColorSystem.LightTheme.glassBackground
-    }
-    static var glassBorder: Color {
-        isDark ? ModernColorSystem.DarkTheme.glassBorder : ModernColorSystem.LightTheme.glassBorder
-    }
+    static var glassBackground: Color { ModernColorSystem.LightTheme.glassBackground }
+    static var glassBorder: Color { ModernColorSystem.LightTheme.glassBorder }
 
     // 文字层级
-    static var textPrimary: Color {
-        isDark ? ModernColorSystem.Neutral.gray50 : ModernColorSystem.Neutral.gray900
-    }
-    static var textSecondary: Color {
-        isDark ? ModernColorSystem.Neutral.gray200 : ModernColorSystem.Neutral.gray700
-    }
-    static var textTertiary: Color {
-        isDark ? ModernColorSystem.Neutral.gray300 : ModernColorSystem.Neutral.gray600
-    }
-    static var textMuted: Color {
-        isDark ? ModernColorSystem.Neutral.gray400 : ModernColorSystem.Neutral.gray500
-    }
+    static var textPrimary: Color { ModernColorSystem.Neutral.gray900 }
+    static var textSecondary: Color { ModernColorSystem.Neutral.gray700 }
+    static var textTertiary: Color { ModernColorSystem.Neutral.gray600 }
+    static var textMuted: Color { ModernColorSystem.Neutral.gray500 }
     static let textOnPrimary = Color.white
     /// 输入框内文字颜色（黑色/白色），确保与背景对比清晰
-    static var inputText: Color {
-        isDark ? Color.white : Color.black
-    }
+    static var inputText: Color { Color.black }
     /// 输入框占位符颜色
-    static var inputPlaceholder: Color {
-        isDark ? ModernColorSystem.Neutral.gray500 : Color(white: 0.42)
-    }
+    static var inputPlaceholder: Color { Color(white: 0.42) }
 
     static let success = ModernColorSystem.Semantic.success
     static let warning = ModernColorSystem.Semantic.warning
@@ -270,22 +240,12 @@ struct AppTheme {
     static let unifiedButtonBorder = Color(red: 0.08, green: 0.34, blue: 0.72)
 
     // 边框与阴影
-    static var border: Color {
-        isDark ? ModernColorSystem.DarkTheme.glassBorder : ModernColorSystem.LightTheme.glassBorder
-    }
-    static var borderStrong: Color {
-        isDark ? Color.white.opacity(0.26) : Color.black.opacity(0.18)
-    }
+    static var border: Color { ModernColorSystem.LightTheme.glassBorder }
+    static var borderStrong: Color { Color.black.opacity(0.18) }
     static let neonGlow = primary.opacity(0.25)
-    static var softShadow: Color {
-        isDark ? Color.black.opacity(0.7) : Color.black.opacity(0.08)
-    }
-    static var mediumShadow: Color {
-        isDark ? Color.black.opacity(0.8) : Color.black.opacity(0.10)
-    }
-    static var glowShadow: Color {
-        isDark ? Color.black.opacity(0.9) : Color.black.opacity(0.06)
-    }
+    static var softShadow: Color { Color.black.opacity(0.08) }
+    static var mediumShadow: Color { Color.black.opacity(0.10) }
+    static var glowShadow: Color { Color.black.opacity(0.06) }
     
     // 渐变（品牌蓝 → 青）
     static let primaryGradient = LinearGradient(
@@ -300,10 +260,10 @@ struct AppTheme {
     static var heroGradient: LinearGradient {
         LinearGradient(
             colors: [
-                isDark ? ModernColorSystem.DarkTheme.backgroundPrimary : ModernColorSystem.LightTheme.backgroundPrimary,
-                primary.opacity(isDark ? 0.22 : 0.08),
-                secondary.opacity(isDark ? 0.18 : 0.06),
-                isDark ? ModernColorSystem.DarkTheme.backgroundSecondary : ModernColorSystem.LightTheme.backgroundSecondary
+                ModernColorSystem.LightTheme.backgroundPrimary,
+                primary.opacity(0.08),
+                secondary.opacity(0.06),
+                ModernColorSystem.LightTheme.backgroundSecondary
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -326,9 +286,9 @@ struct AppTheme {
     static var pageBackground: LinearGradient {
         LinearGradient(
             colors: [
-                isDark ? Color(red: 0.07, green: 0.09, blue: 0.13) : Color(red: 0.93, green: 0.95, blue: 0.985),
-                isDark ? Color(red: 0.09, green: 0.12, blue: 0.18) : Color(red: 0.89, green: 0.92, blue: 0.97),
-                isDark ? Color(red: 0.07, green: 0.10, blue: 0.16) : Color(red: 0.95, green: 0.97, blue: 0.995)
+                Color(red: 0.93, green: 0.95, blue: 0.985),
+                Color(red: 0.89, green: 0.92, blue: 0.97),
+                Color(red: 0.95, green: 0.97, blue: 0.995)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing

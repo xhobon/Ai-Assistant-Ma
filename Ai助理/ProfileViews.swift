@@ -1132,7 +1132,6 @@ struct TaskRow: View {
 
 struct AppSettingsView: View {
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
-    @ObservedObject private var appearance = AppearanceStore.shared
     @ObservedObject private var tokenStore = TokenStore.shared
     @State private var showClearConfirm = false
     @State private var toastMessage: String?
@@ -1260,29 +1259,6 @@ struct AppSettingsView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .stroke(AppTheme.border, lineWidth: 1)
-                )
-            }
-
-            SettingsCard(
-                title: "外观与显示",
-                subtitle: "选择浅色/深色模式，或跟随系统。"
-            ) {
-                Picker("深色模式", selection: Binding(
-                    get: { appearance.mode },
-                    set: { appearance.mode = $0 }
-                )) {
-                    Text("跟随系统").tag(AppearanceStore.Mode.system)
-                    Text("浅色").tag(AppearanceStore.Mode.light)
-                    Text("深色").tag(AppearanceStore.Mode.dark)
-                }
-                .pickerStyle(.segmented)
-
-                SettingsRow(
-                    systemImage: "circle.lefthalf.filled",
-                    title: "当前模式",
-                    subtitle: appearance.mode == .system ? "跟随系统" : (appearance.mode == .dark ? "深色模式" : "浅色模式"),
-                    showChevron: false,
-                    action: nil
                 )
             }
 

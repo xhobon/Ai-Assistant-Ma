@@ -145,34 +145,6 @@ final class ClearDataStore: ObservableObject {
     }
 }
 
-/// 外观：跟随系统 / 浅色 / 深色
-final class AppearanceStore: ObservableObject {
-    static let shared = AppearanceStore()
-    private let key = "appearance_mode"
-
-    enum Mode: String, CaseIterable {
-        case system = "system"
-        case light = "light"
-        case dark = "dark"
-    }
-
-    var mode: Mode {
-        get { Mode(rawValue: UserDefaults.standard.string(forKey: key) ?? "system") ?? .system }
-        set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: key)
-            objectWillChange.send()
-        }
-    }
-
-    var colorScheme: ColorScheme? {
-        switch mode {
-        case .system: return nil
-        case .light: return .light
-        case .dark: return .dark
-        }
-    }
-}
-
 /// 朗读设置（语速、语音质量、播放静音）
 final class SpeechSettingsStore: ObservableObject {
     static let shared = SpeechSettingsStore()
