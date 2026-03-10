@@ -1209,49 +1209,59 @@ private struct AINoteEditor: View {
 
     var body: some View {
         if let note {
-            VStack(alignment: .leading, spacing: 8) {
-                LabeledField(title: "标题", placeholder: "AI 生成标题", text: binding(\.title))
-                LabeledField(title: "分类", placeholder: "AI 生成分类", text: binding(\.category))
-                LabeledField(title: "标签（逗号分隔）", placeholder: "AI 生成标签", text: Binding(
-                    get: { tagsText.isEmpty ? note.tags.joined(separator: ",") : tagsText },
-                    set: { tagsText = $0; self.note?.tags = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty } }
-                ))
-                TextEditorField(title: "摘要", placeholder: "AI 生成摘要", text: binding(\.summary), minHeight: 80)
-                TextEditorField(title: "正文", placeholder: "AI 生成正文", text: binding(\.content), minHeight: 120)
-                Toggle("提醒我", isOn: Binding(
-                    get: { note.reminderAt != nil },
-                    set: { enabled in
-                        if enabled {
-                            self.note?.reminderAt = note.reminderAt ?? Date().addingTimeInterval(3600)
-                            self.note?.reminderSnoozeHours = note.reminderSnoozeHours ?? 3
-                        } else {
-                            self.note?.reminderAt = nil
-                        }
-                    }
-                ))
-                if note.reminderAt != nil {
-                    DatePicker(
-                        "提醒时间",
-                        selection: Binding(
-                            get: { note.reminderAt ?? Date() },
-                            set: { self.note?.reminderAt = $0 }
-                        ),
-                        displayedComponents: [.date, .hourAndMinute]
-                    )
-                    .datePickerStyle(.compact)
-                    LabeledField(title: "提醒内容", placeholder: "默认使用摘要", text: Binding(
-                        get: { note.reminderText ?? "" },
-                        set: { self.note?.reminderText = $0 }
-                    ))
-                    LabeledField(title: "未完成后延后（小时）", placeholder: "例如：3", text: Binding(
-                        get: { String(note.reminderSnoozeHours ?? 3) },
-                        set: { self.note?.reminderSnoozeHours = Int($0) ?? 3 }
+            VStack(alignment: .leading, spacing: 16) {
+                SectionTitle("基础信息")
+                NoteSectionCard {
+                    LabeledField(title: "标题", placeholder: "AI 生成标题", text: binding(\.title))
+                    LabeledField(title: "分类", placeholder: "AI 生成分类", text: binding(\.category))
+                    LabeledField(title: "标签（逗号分隔）", placeholder: "AI 生成标签", text: Binding(
+                        get: { tagsText.isEmpty ? note.tags.joined(separator: ",") : tagsText },
+                        set: { tagsText = $0; self.note?.tags = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty } }
                     ))
                 }
+
+                SectionTitle("内容")
+                NoteSectionCard {
+                    TextEditorField(title: "摘要", placeholder: "AI 生成摘要", text: binding(\.summary), minHeight: 80)
+                    TextEditorField(title: "正文", placeholder: "AI 生成正文", text: binding(\.content), minHeight: 140)
+                }
+
+                SectionTitle("提醒")
+                NoteSectionCard {
+                    ToggleRow(
+                        title: "提醒我",
+                        subtitle: "到时间自动提醒",
+                        isOn: Binding(
+                            get: { note.reminderAt != nil },
+                            set: { enabled in
+                                if enabled {
+                                    self.note?.reminderAt = note.reminderAt ?? Date().addingTimeInterval(3600)
+                                    self.note?.reminderSnoozeHours = note.reminderSnoozeHours ?? 3
+                                } else {
+                                    self.note?.reminderAt = nil
+                                }
+                            }
+                        )
+                    )
+                    if note.reminderAt != nil {
+                        InlineDateTimeRow(
+                            title: "提醒时间",
+                            selection: Binding(
+                                get: { note.reminderAt ?? Date() },
+                                set: { self.note?.reminderAt = $0 }
+                            )
+                        )
+                        LabeledField(title: "提醒内容", placeholder: "默认使用摘要", text: Binding(
+                            get: { note.reminderText ?? "" },
+                            set: { self.note?.reminderText = $0 }
+                        ))
+                        LabeledField(title: "未完成后延后（小时）", placeholder: "例如：3", text: Binding(
+                            get: { String(note.reminderSnoozeHours ?? 3) },
+                            set: { self.note?.reminderSnoozeHours = Int($0) ?? 3 }
+                        ))
+                    }
+                }
             }
-            .padding(12)
-            .background(AppTheme.surfaceMuted)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 
@@ -1262,6 +1272,70 @@ private struct AINoteEditor: View {
                 if note != nil { note?[keyPath: keyPath] = newValue }
             }
         )
+    }
+}
+
+private struct NoteSectionCard<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            content()
+        }
+        .padding(14)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 6, x: 0, y: 3)
+    }
+}
+
+private struct ToggleRow: View {
+    let title: String
+    let subtitle: String?
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+            Spacer(minLength: 0)
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+private struct InlineDateTimeRow: View {
+    let title: String
+    @Binding var selection: Date
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+            Spacer(minLength: 0)
+            DatePicker("", selection: $selection, displayedComponents: [.date, .hourAndMinute])
+                .labelsHidden()
+                .datePickerStyle(.compact)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
