@@ -1,19 +1,13 @@
 import SwiftUI
-#if os(iOS)
 import UIKit
-#elseif os(macOS)
-import AppKit
-#endif
+import PhotosUI
 
 struct AITranslateHomeView: View {
     @StateObject private var viewModel = TranslateViewModel()
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
-                TranslatePageCompactHeader()
-                    .padding(.horizontal, 14)
-
+            LazyVStack(spacing: 8) {
                 // 快速入口：语音翻译 + 翻译记录
                 ModernTranslationQuickLinksRow(
                     history: viewModel.history,
@@ -41,8 +35,8 @@ struct AITranslateHomeView: View {
                 .padding(.horizontal, 14)
                 .padding(.bottom, 28)
             }
-            // 预留侧边栏悬浮按钮位置，避免与内容重叠
-            .padding(.top, 56)
+            // 顶部与 AI 助理页保持一致
+            .padding(.top, 0)
             .frame(maxWidth: 980, alignment: .top)
             .frame(maxWidth: .infinity)
         }
@@ -803,12 +797,8 @@ struct RealTimeTranslationView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        #if os(iOS)
         .navigationTitle("实时语音翻译")
-        #endif
-        #if os(iOS)
         .toolbar(.hidden, for: .tabBar)
-        #endif
         .alert("提示", isPresented: Binding(
             get: { viewModel.alertMessage != nil },
             set: { if !$0 { viewModel.alertMessage = nil } }
@@ -958,6 +948,12 @@ struct RealTimeStatusStrip: View {
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
         .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
     }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd HH:mm"
+        return formatter.string(from: date)
+    }
 }
 
 struct RealTimeWaveformPanel: View {
@@ -977,12 +973,18 @@ struct RealTimeWaveformPanel: View {
             }
             WaveformRow(title: "印尼语", isActive: isLeftActive, tint: AppTheme.brandBlue)
             WaveformRow(title: "中文", isActive: isRightActive, tint: AppTheme.accentWarm)
-        }
+    }
         .padding(12)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
         .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd HH:mm"
+        return formatter.string(from: date)
     }
 }
 
@@ -1469,9 +1471,9 @@ struct TranslationInputBox: View {
     /// 回车键或 Cmd+Enter 时调用（翻译）
     var onEnterToTranslate: (() -> Void)? = nil
     @State private var isInputFocused = false
-    #if os(iOS)
+    @State private var showImagePicker = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
     @FocusState private var isInputEditorFocused: Bool
-    #endif
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1487,7 +1489,7 @@ struct TranslationInputBox: View {
                         .foregroundStyle(AppTheme.textSecondary)
                 }
             }
-            .padding(.bottom, 10)
+            .padding(.bottom, 6)
             
             // 输入框区域（可编辑）- 靠上靠左对齐；回车触发翻译
             ZStack(alignment: .topLeading) {
@@ -1496,18 +1498,9 @@ struct TranslationInputBox: View {
                         .font(.subheadline)
                         .foregroundStyle(AppTheme.textSecondary)
                         .padding(.leading, 6)
-                        .padding(.top, 8)
+                    .padding(.top, 6)
                         .allowsHitTesting(false)
                 }
-                #if os(macOS)
-                TranslationPageTextView(
-                    text: $text,
-                    isFocused: $isInputFocused,
-                    onEnterToTranslate: onEnterToTranslate ?? {}
-                )
-                    .font(.subheadline)
-                    .frame(minHeight: 200, maxHeight: isExpanded ? 400 : 200)
-                #else
                 TextEditor(text: $text)
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.inputText)
@@ -1517,10 +1510,9 @@ struct TranslationInputBox: View {
                     .onChange(of: isInputEditorFocused) { _, newValue in
                         isInputFocused = newValue
                     }
-                    .frame(minHeight: 200, maxHeight: isExpanded ? 400 : 200)
-                #endif
+                    .frame(minHeight: 140, maxHeight: isExpanded ? 280 : 140)
             }
-            .frame(maxWidth: .infinity, minHeight: 200, maxHeight: isExpanded ? 400 : 200, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: 140, maxHeight: isExpanded ? 280 : 140, alignment: .topLeading)
             
             // 底部操作栏：语音播放/文档 + 录音（清空移动到底部操作条的统一按钮）
             HStack(spacing: 8) {
@@ -1531,131 +1523,59 @@ struct TranslationInputBox: View {
                 .opacity(text.isEmpty ? 0.6 : 1)
                 .accessibilityLabel("语音播放")
                 
-                UnifiedAppIconButton(systemImage: "doc.on.doc.fill") {
-                    onCopy()
+                UnifiedAppIconButton(systemImage: "photo.on.rectangle") {
+                    showImagePicker = true
                 }
-                .disabled(text.isEmpty)
-                .opacity(text.isEmpty ? 0.6 : 1)
-                .accessibilityLabel("复制")
+                .accessibilityLabel("上传图片")
                 
                 Spacer(minLength: 0)
 
-                UnifiedAppIconButton(systemImage: isListening ? "stop.fill" : "mic.fill", isPrimary: isListening) {
-                    onVoice()
+                let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                UnifiedAppIconButton(
+                    systemImage: hasText ? "arrow.right.circle.fill" : (isListening ? "stop.fill" : "mic.fill"),
+                    isPrimary: hasText || isListening
+                ) {
+                    if hasText {
+                        onEnterToTranslate?()
+                    } else {
+                        onVoice()
+                    }
                 }
-                .accessibilityLabel(isListening ? "停止录音" : "语音输入")
+                .accessibilityLabel(hasText ? "翻译" : (isListening ? "停止录音" : "语音输入"))
             }
-            .padding(.top, 10)
+            .padding(.top, 6)
         }
-        .padding(14)
+        .padding(10)
         .background(AppTheme.surfaceMuted)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .frame(maxWidth: .infinity)
-    }
-}
-
-#if os(macOS)
-/// 翻译页多行输入框（macOS）：回车触发翻译，Shift+回车换行
-struct TranslationPageTextView: NSViewRepresentable {
-    @Binding var text: String
-    @Binding var isFocused: Bool
-    var onEnterToTranslate: () -> Void
-    
-    func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = true
-        scrollView.borderType = .noBorder
-        scrollView.drawsBackground = false
-        
-        let textView = TranslationPageNSTextView()
-        textView.string = text
-        textView.onEnterToTranslate = onEnterToTranslate
-        textView.onFocusChanged = { focused in
-            DispatchQueue.main.async {
-                context.coordinator.parent.isFocused = focused
-            }
-        }
-        textView.isEditable = true
-        textView.isSelectable = true
-        textView.drawsBackground = false
-        textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize(for: .regular))
-        textView.textColor = NSColor.labelColor
-        textView.textContainerInset = NSSize(width: 6, height: 8)
-        textView.minSize = NSSize(width: 0, height: 200)
-        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.autoresizingMask = [.width]
-        textView.textContainer?.containerSize = NSSize(width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
-        textView.textContainer?.widthTracksTextView = true
-        textView.delegate = context.coordinator
-        
-        scrollView.documentView = textView
-        return scrollView
-    }
-    
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let textView = scrollView.documentView as? TranslationPageNSTextView else { return }
-        if textView.string != text {
-            textView.string = text
-        }
-        textView.onEnterToTranslate = onEnterToTranslate
-        textView.onFocusChanged = { focused in
-            DispatchQueue.main.async {
-                context.coordinator.parent.isFocused = focused
+        .photosPicker(isPresented: $showImagePicker, selection: $selectedPhotoItem, matching: .images)
+        .onChange(of: selectedPhotoItem) { _, newValue in
+            guard let newValue else { return }
+            Task {
+                if let data = try? await newValue.loadTransferable(type: Data.self) {
+                    await applyRecognizedText(from: data)
+                }
+                await MainActor.run { selectedPhotoItem = nil }
             }
         }
     }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, NSTextViewDelegate {
-        var parent: TranslationPageTextView
-        init(_ parent: TranslationPageTextView) {
-            self.parent = parent
-        }
-        func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
-            parent.text = textView.string
-        }
-    }
-}
 
-/// 自定义 NSTextView：回车触发翻译，Shift+回车换行
-class TranslationPageNSTextView: NSTextView {
-    var onEnterToTranslate: (() -> Void)?
-    var onFocusChanged: ((Bool) -> Void)?
-
-    override func becomeFirstResponder() -> Bool {
-        let result = super.becomeFirstResponder()
-        if result { onFocusChanged?(true) }
-        return result
-    }
-
-    override func resignFirstResponder() -> Bool {
-        let result = super.resignFirstResponder()
-        if result { onFocusChanged?(false) }
-        return result
-    }
-    
-    override func keyDown(with event: NSEvent) {
-        let isReturn = event.keyCode == 36 || event.charactersIgnoringModifiers == "\r" || event.charactersIgnoringModifiers == "\n"
-        if isReturn {
-            if event.modifierFlags.contains(.shift) {
-                super.keyDown(with: event)
-            } else {
-                onEnterToTranslate?()
-            }
+    @MainActor
+    private func applyRecognizedText(from data: Data) async {
+        guard let recognized = try? await VisionService.shared.recognizeText(from: data) else { return }
+        let trimmed = recognized.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let currentTrimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if currentTrimmed.isEmpty {
+            text = trimmed
         } else {
-            super.keyDown(with: event)
+            let separator = text.hasSuffix("\n") ? "" : "\n"
+            text += separator + trimmed
         }
     }
 }
-#endif
+
 
 // 保留原组件以兼容
 struct ModernTranslationInputCard: View {
@@ -1706,18 +1626,18 @@ struct ModernTranslationActionBar: View {
                 }
                 .buttonStyle(.plain)
                 
+                Spacer(minLength: 0)
+
                 // 清空内容按钮：清空左右两个输入框
                 Button(action: {
                     viewModel.sourceText = ""
                     viewModel.translatedText = ""
                 }) {
                     HStack(spacing: 4) {
-                        Image(systemName: "xmark.circle")
-                            .font(.subheadline)
                         Text("清空内容")
-                            .font(.subheadline)
+                            .font(.subheadline.weight(.semibold))
                     }
-                    .foregroundStyle(AppTheme.textSecondary)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .frame(height: barHeight)
                     .padding(.horizontal, 14)
                     .background(
@@ -1726,39 +1646,14 @@ struct ModernTranslationActionBar: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(AppTheme.border, lineWidth: 1)
+                            .stroke(AppTheme.unifiedButtonBorder, lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
                 .disabled(!canTranslate)
-                
-                if !isCompact { Spacer(minLength: 0) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // 翻译按钮（支持 Cmd+Enter 快捷键）
-            Button(action: { viewModel.translate() }) {
-                HStack(spacing: 6) {
-                    if viewModel.isTranslating {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                            .tint(.white)
-                    } else {
-                        Image(systemName: "arrow.right.circle.fill")
-                            .font(.subheadline)
-                        Text("翻译")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: barHeight)
-                .background(canTranslate ? AppTheme.unifiedButtonPrimary : AppTheme.unifiedButtonPrimary.opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .disabled(!canTranslate)
-            .keyboardShortcut(.return, modifiers: .command)
         }
     }
 }
@@ -1840,13 +1735,9 @@ struct AllTranslationRecordsView: View {
             }
         }
         .background(AppTheme.pageBackground.ignoresSafeArea())
-        #if os(iOS)
         .navigationTitle("翻译记录")
-        #endif
-        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
-        #endif
     }
 }
 
@@ -1858,68 +1749,84 @@ struct TranslationRecordRowWithActions: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                HStack(spacing: 6) {
-                    Text(item.sourceLang.name)
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(AppTheme.textOnPrimary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(AppTheme.primary)
-                        .clipShape(Capsule())
+            HStack(alignment: .center, spacing: 12) {
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(item.sourceLang.name)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(AppTheme.textOnPrimary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(AppTheme.primary)
+                            .clipShape(Capsule())
+                        HStack(spacing: 8) {
+                            Button {
+                                SpeechService.shared.speak(item.sourceText, language: item.sourceLang.speechCode)
+                            } label: {
+                                Image(systemName: "speaker.wave.2.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.primary)
+                            }
+                            Button {
+                                ClipboardService.copy(item.sourceText)
+                            } label: {
+                                Image(systemName: "doc.on.doc")
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.primary)
+                            }
+                            .help("复制原文")
+                        }
+                    }
+                    
                     Image(systemName: "arrow.right")
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textTertiary)
-                    Text(item.targetLang.name)
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(AppTheme.textOnPrimary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(AppTheme.secondary)
-                        .clipShape(Capsule())
+                        .padding(.top, 2)
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(item.targetLang.name)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(AppTheme.textOnPrimary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(AppTheme.secondary)
+                            .clipShape(Capsule())
+                        HStack(spacing: 8) {
+                            Button {
+                                SpeechService.shared.speak(item.targetText, language: item.targetLang.speechCode)
+                            } label: {
+                                Image(systemName: "speaker.wave.2.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.accentWarm)
+                            }
+                            Button {
+                                ClipboardService.copy(item.targetText)
+                            } label: {
+                                Image(systemName: "doc.on.doc.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.accentWarm)
+                            }
+                            .help("复制译文")
+                        }
+                    }
                 }
-                Spacer()
-                HStack(spacing: 12) {
-                    Button {
-                        SpeechService.shared.speak(item.sourceText, language: item.sourceLang.speechCode)
-                    } label: {
-                        Image(systemName: "speaker.wave.2.fill")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.primary)
-                    }
-                    Button {
-                        SpeechService.shared.speak(item.targetText, language: item.targetLang.speechCode)
-                    } label: {
-                        Image(systemName: "speaker.wave.2.fill")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.accentWarm)
-                    }
-                    Button {
-                        ClipboardService.copy(item.sourceText)
-                    } label: {
-                        Image(systemName: "doc.on.doc")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.primary)
-                    }
-                    .help("复制原文")
-                    Button {
-                        ClipboardService.copy(item.targetText)
-                    } label: {
-                        Image(systemName: "doc.on.doc.fill")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.accentWarm)
-                    }
-                    .help("复制译文")
-                    Button {
-                        onReuse?()
-                        dismiss()
-                    } label: {
-                        Image(systemName: "square.and.pencil")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                    }
-                    .help("继续编辑")
+                
+                Spacer(minLength: 0)
+                
+                Text(formatDate(item.createdAt))
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textTertiary)
+                
+                Button {
+                    onReuse?()
+                    dismiss()
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .frame(width: 22, height: 22)
                 }
+                .help("继续编辑")
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.sourceText)
@@ -1950,6 +1857,12 @@ struct TranslationRecordRowWithActions: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
         .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd HH:mm"
+        return formatter.string(from: date)
     }
 }
 
@@ -1999,75 +1912,83 @@ struct ModernTranslationHistoryItem: View {
     var body: some View {
         ModernCard(style: .outlined) {
             VStack(alignment: .leading, spacing: ModernDesignSystem.Spacing.sm) {
-                HStack {
+                HStack(alignment: .center, spacing: 12) {
                     HStack(spacing: ModernDesignSystem.Spacing.xs) {
-                        Text(item.sourceLang.name)
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(AppTheme.textOnPrimary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(AppTheme.primary)
-                            .clipShape(Capsule())
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(item.sourceLang.name)
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(AppTheme.textOnPrimary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(AppTheme.primary)
+                                .clipShape(Capsule())
+                            HStack(spacing: 8) {
+                                Button {
+                                    SpeechService.shared.speak(item.sourceText, language: item.sourceLang.speechCode)
+                                } label: {
+                                    Image(systemName: "speaker.wave.2.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(AppTheme.primary)
+                                }
+                                Button {
+                                    ClipboardService.copy(item.sourceText)
+                                } label: {
+                                    Image(systemName: "doc.on.doc")
+                                        .font(.caption2)
+                                        .foregroundStyle(AppTheme.primary)
+                                }
+                                .help("复制原文")
+                            }
+                        }
                         
                         Image(systemName: "arrow.right")
                             .font(.caption2)
                             .foregroundStyle(AppTheme.textTertiary)
+                            .padding(.top, 2)
                         
-                        Text(item.targetLang.name)
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(AppTheme.textOnPrimary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(AppTheme.secondary)
-                            .clipShape(Capsule())
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(item.targetLang.name)
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(AppTheme.textOnPrimary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(AppTheme.secondary)
+                                .clipShape(Capsule())
+                            HStack(spacing: 8) {
+                                Button {
+                                    SpeechService.shared.speak(item.targetText, language: item.targetLang.speechCode)
+                                } label: {
+                                    Image(systemName: "speaker.wave.2.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(AppTheme.accentWarm)
+                                }
+                                Button {
+                                    ClipboardService.copy(item.targetText)
+                                } label: {
+                                    Image(systemName: "doc.on.doc.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(AppTheme.accentWarm)
+                                }
+                                .help("复制译文")
+                            }
+                        }
                     }
                     
-                    Spacer()
-                    
-                    HStack(spacing: 8) {
-                        Button {
-                            SpeechService.shared.speak(item.sourceText, language: item.sourceLang.speechCode)
-                        } label: {
-                            Image(systemName: "speaker.wave.2.fill")
-                                .font(.caption2)
-                                .foregroundStyle(AppTheme.primary)
-                        }
-                        Button {
-                            SpeechService.shared.speak(item.targetText, language: item.targetLang.speechCode)
-                        } label: {
-                            Image(systemName: "speaker.wave.2.fill")
-                                .font(.caption2)
-                                .foregroundStyle(AppTheme.accentWarm)
-                        }
-                        Button {
-                            ClipboardService.copy(item.sourceText)
-                        } label: {
-                            Image(systemName: "doc.on.doc")
-                                .font(.caption2)
-                                .foregroundStyle(AppTheme.primary)
-                        }
-                        .help("复制原文")
-                        Button {
-                            ClipboardService.copy(item.targetText)
-                        } label: {
-                            Image(systemName: "doc.on.doc.fill")
-                                .font(.caption2)
-                                .foregroundStyle(AppTheme.accentWarm)
-                        }
-                        .help("复制译文")
-                        Button {
-                            onReuse?()
-                        } label: {
-                            Image(systemName: "square.and.pencil")
-                                .font(.caption2)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        .help("继续编辑")
-                    }
+                    Spacer(minLength: 0)
                     
                     Text(formatDate(item.createdAt))
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textTertiary)
+                    
+                    Button {
+                        onReuse?()
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .frame(width: 22, height: 22)
+                    }
+                    .help("继续编辑")
                 }
                 
                 VStack(alignment: .leading, spacing: ModernDesignSystem.Spacing.xs) {

@@ -1,7 +1,4 @@
 import SwiftUI
-#if os(macOS)
-import AppKit
-#endif
 
 struct ProfileCenterView: View {
     @StateObject private var tokenStore = TokenStore.shared
@@ -2557,11 +2554,7 @@ struct SupportView: View {
                     showChevron: true
                 ) {
                     if let url = URL(string: "mailto:support@ai-assistant.example.com") {
-                        #if os(iOS)
                         UIApplication.shared.open(url)
-                        #elseif os(macOS)
-                        NSWorkspace.shared.open(url)
-                        #endif
                     }
                 }
                 SettingsRow(

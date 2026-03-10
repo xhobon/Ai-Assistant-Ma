@@ -1,7 +1,4 @@
 import SwiftUI
-#if os(macOS)
-import AppKit
-#endif
 
 struct IndonesianLearningView: View {
     @StateObject private var viewModel = LearningViewModel()

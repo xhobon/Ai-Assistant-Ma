@@ -1,9 +1,5 @@
 import SwiftUI
-#if os(iOS)
 import UIKit
-#elseif os(macOS)
-import AppKit
-#endif
 
 // MARK: - 设计系统
 struct ModernDesignSystem {
@@ -184,7 +180,6 @@ struct ModernColorSystem {
     }
     
     // MARK: - 系统色彩适配
-    #if os(iOS)
     @available(iOS 15.0, *)
     struct System {
         static let background = Color(UIColor.systemBackground)
@@ -197,19 +192,6 @@ struct ModernColorSystem {
         static let separator = Color(UIColor.separator)
         static let opaqueSeparator = Color(UIColor.opaqueSeparator)
     }
-    #elseif os(macOS)
-    struct System {
-        static let background = Color(NSColor.windowBackgroundColor)
-        static let secondaryBackground = Color(NSColor.controlBackgroundColor)
-        static let tertiaryBackground = Color(NSColor.controlBackgroundColor)
-        static let groupedBackground = Color(NSColor.windowBackgroundColor)
-        static let label = Color(NSColor.labelColor)
-        static let secondaryLabel = Color(NSColor.secondaryLabelColor)
-        static let tertiaryLabel = Color(NSColor.tertiaryLabelColor)
-        static let separator = Color(NSColor.separatorColor)
-        static let opaqueSeparator = Color(NSColor.separatorColor)
-    }
-    #endif
 }
 
 // MARK: - 主题配色（AI 助理：专业·现代·可信）
@@ -760,13 +742,9 @@ struct ModernHeroHeader: View {
     }
 
     private var safeTop: CGFloat {
-        #if os(iOS)
         return (UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first?.windows.first(where: { $0.isKeyWindow })?.safeAreaInsets.top ?? 20)
-        #elseif os(macOS)
-        return 20
-        #endif
     }
 
     var body: some View {
@@ -1806,7 +1784,6 @@ extension View {
 // MARK: - 响应式设计系统
 struct ResponsiveLayout {
     static var screenSize: CGSize {
-        #if os(iOS)
         if let windowScene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
             .first(where: { $0.activationState == .foregroundActive }),
@@ -1818,12 +1795,6 @@ struct ResponsiveLayout {
             return windowScene.screen.bounds.size
         }
         return CGSize(width: 393, height: 852)
-        #elseif os(macOS)
-        if let window = NSApp.windows.first(where: { $0.isKeyWindow }) ?? NSApp.mainWindow {
-            return window.frame.size
-        }
-        return NSScreen.main?.visibleFrame.size ?? CGSize(width: 800, height: 600)
-        #endif
     }
     
     static var isSmallPhone: Bool {
@@ -2178,30 +2149,18 @@ struct InteractiveCard<Content: View>: View {
 // MARK: - 触觉反馈系统
 struct HapticFeedback {
     static func light() {
-        #if os(iOS)
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
-        #elseif os(macOS)
-        NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
-        #endif
     }
     
     static func medium() {
-        #if os(iOS)
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
-        #elseif os(macOS)
-        NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
-        #endif
     }
     
     static func heavy() {
-        #if os(iOS)
         let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
         impactFeedback.impactOccurred()
-        #elseif os(macOS)
-        NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
-        #endif
     }
     
     static func impact() {
@@ -2209,39 +2168,23 @@ struct HapticFeedback {
     }
     
     static func success() {
-        #if os(iOS)
         let notificationFeedback = UINotificationFeedbackGenerator()
         notificationFeedback.notificationOccurred(.success)
-        #elseif os(macOS)
-        NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
-        #endif
     }
     
     static func error() {
-        #if os(iOS)
         let notificationFeedback = UINotificationFeedbackGenerator()
         notificationFeedback.notificationOccurred(.error)
-        #elseif os(macOS)
-        NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
-        #endif
     }
     
     static func warning() {
-        #if os(iOS)
         let notificationFeedback = UINotificationFeedbackGenerator()
         notificationFeedback.notificationOccurred(.warning)
-        #elseif os(macOS)
-        NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
-        #endif
     }
     
     static func selectionChanged() {
-        #if os(iOS)
         let selectionFeedback = UISelectionFeedbackGenerator()
         selectionFeedback.selectionChanged()
-        #elseif os(macOS)
-        NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
-        #endif
     }
 }
 
@@ -2681,13 +2624,9 @@ struct SmartToast: View {
     }
     
     private var safeAreaBottom: CGFloat {
-        #if os(iOS)
         return UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first?.windows.first(where: { $0.isKeyWindow })?.safeAreaInsets.bottom ?? 0
-        #elseif os(macOS)
-        return 0
-        #endif
     }
 }
 
@@ -2765,39 +2704,25 @@ struct AppPageScaffold<Content: View>: View {
     }
 }
 
-// MARK: - 全屏/Sheet 兼容（iOS 全屏，macOS 用 Sheet）
+// MARK: - 全屏展示（iOS）
 extension View {
     @ViewBuilder
     func fullScreenCoverOrSheet<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
-        #if os(iOS)
         self.fullScreenCover(isPresented: isPresented, content: content)
-        #elseif os(macOS)
-        self.sheet(isPresented: isPresented, content: content)
-        #endif
     }
 }
 
-// MARK: - macOS 兼容的导航栏修饰符
+// MARK: - 导航栏修饰符
 extension View {
     @ViewBuilder
     func hideNavigationBarOnMac() -> some View {
-        #if os(iOS)
         self
-        #elseif os(macOS)
-        self.navigationTitle("")
-        #else
-        self
-        #endif
     }
     
     @ViewBuilder
     func glassNavigationBar() -> some View {
-        #if os(iOS)
         self.toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-        #else
-        self
-        #endif
     }
 }
 
@@ -2818,11 +2743,7 @@ extension View {
     }
 
     func hideKeyboard() {
-        #if os(iOS)
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        #elseif os(macOS)
-        NSApp.sendAction(#selector(NSResponder.resignFirstResponder), to: nil, from: nil)
-        #endif
     }
     
     // 响应式容器
@@ -2872,22 +2793,14 @@ extension View {
     }
     
     private var safeAreaTop: CGFloat {
-        #if os(iOS)
         return UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first?.windows.first(where: { $0.isKeyWindow })?.safeAreaInsets.top ?? 0
-        #elseif os(macOS)
-        return 0
-        #endif
     }
     
     private var safeAreaBottom: CGFloat {
-        #if os(iOS)
         return UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first?.windows.first(where: { $0.isKeyWindow })?.safeAreaInsets.bottom ?? 0
-        #elseif os(macOS)
-        return 0
-        #endif
     }
 }

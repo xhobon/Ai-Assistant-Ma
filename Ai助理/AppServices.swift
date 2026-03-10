@@ -1,10 +1,6 @@
 import Foundation
 import AVFoundation
-#if os(iOS)
 import UIKit
-#elseif os(macOS)
-import AppKit
-#endif
 import Speech
 import Combine
 import Vision
@@ -671,14 +667,10 @@ final class APIClient {
 
 final class WebAuthPresentationContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        #if os(macOS)
-        return NSApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? NSApplication.shared.windows.first ?? ASPresentationAnchor()
-        #else
         let windows = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows)
         return windows.first(where: { $0.isKeyWindow }) ?? windows.first ?? UIWindow(frame: .zero)
-        #endif
     }
 }
 
@@ -929,7 +921,6 @@ final class OpenClawService: ObservableObject {
         if first.hasPrefix("ls") || first.hasPrefix("df") || first.hasPrefix("uname") { return true }
         if first == "echo", !c.contains("`"), !c.contains("$(") { return true }
         if first == "cat", !lower.contains("/etc"), !lower.contains(".ssh"), !lower.contains(".aws"), !lower.contains("id_rsa"), !c.contains(";"), !c.contains("|") { return true }
-        // 允许 macOS 打开应用：open -a "AppName" 或 open -a "A" || open -a "B"（仅允许 || 依次尝试，禁止单管道）
         if first == "open", lower.contains("-a"),
            !lower.contains("http"), !c.contains(";"), !c.contains("&&") {
             let noDoublePipe = lower.replacingOccurrences(of: " || ", with: " ")
@@ -953,14 +944,9 @@ final class OpenClawService: ObservableObject {
         let expanded = (path as NSString).expandingTildeInPath
         let url = URL(fileURLWithPath: expanded).standardized
         let pathStr = url.path
-        #if os(macOS)
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return pathStr.hasPrefix(home) || pathStr.hasPrefix("/Applications")
-        #else
         // iOS 仅允许沙盒内路径
         let sandbox = NSHomeDirectory()
         return pathStr.hasPrefix(sandbox)
-        #endif
     }
 
     /// 在本机执行一条 Shell 命令（仅允许通过 isCommandAllowed 的命令），返回 stdout+stderr；OPEN_APP/OPEN_FOLDER/OPEN_FILE 则走本地能力
@@ -980,114 +966,34 @@ final class OpenClawService: ObservableObject {
         guard Self.isCommandAllowed(command) else {
             return "出于安全与隐私保护，该命令未被允许执行。仅支持：ls、pwd、date、whoami、df、uname、echo 等只读类命令。"
         }
-        #if os(macOS)
-        return await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/bin/sh")
-                process.arguments = ["-c", command]
-                process.standardInput = nil
-                let outPipe = Pipe()
-                let errPipe = Pipe()
-                process.standardOutput = outPipe
-                process.standardError = errPipe
-                do {
-                    try process.run()
-                    let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-                    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-                    process.waitUntilExit()
-                    let out = String(data: outData, encoding: .utf8) ?? ""
-                    let err = String(data: errData, encoding: .utf8) ?? ""
-                    let combined = out + (err.isEmpty ? "" : "\n" + err)
-                    continuation.resume(returning: combined.trimmingCharacters(in: .whitespacesAndNewlines))
-                } catch {
-                    continuation.resume(returning: "执行失败：\(error.localizedDescription)")
-                }
-            }
-        }
-        #else
         return "iOS 端不支持执行本机 Shell 命令。"
-        #endif
     }
 
     /// 按关键词在 /Applications 与 ~/Applications 中查找 .app 并打开第一个匹配项（不依赖精确应用名）
     private func openAppByKeyword(_ keyword: String) async -> String {
         guard !keyword.isEmpty else { return "未提供应用关键词。" }
-        return await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let fileManager = FileManager.default
-                let searchDirs: [URL] = [
-                    URL(fileURLWithPath: "/Applications"),
-                    fileManager.urls(for: .applicationDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory() + "/Applications")
-                ].filter { fileManager.fileExists(atPath: $0.path) }
-                let lowerKeyword = keyword.lowercased()
-                var found: URL?
-                for dir in searchDirs {
-                    guard let contents = try? fileManager.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) else { continue }
-                    for url in contents where url.pathExtension == "app" {
-                        let name = url.deletingPathExtension().lastPathComponent
-                        if name.range(of: keyword, options: .caseInsensitive) != nil
-                            || name.lowercased().contains(lowerKeyword)
-                            || name.contains(keyword) {
-                            found = url
-                            break
-                        }
-                    }
-                    if found != nil { break }
-                }
-                guard let appURL = found else {
-                    continuation.resume(returning: "未在「应用程序」中找到包含「\(keyword)」的应用，请确认已安装或改用更精确的名称。")
-                    return
-                }
-                #if os(macOS)
-                let opened = NSWorkspace.shared.open(appURL)
-                continuation.resume(returning: opened ? "已打开 \(appURL.deletingPathExtension().lastPathComponent)。" : "无法打开该应用。")
-                #else
-                continuation.resume(returning: "当前仅支持在 macOS 上打开应用。")
-                #endif
-            }
-        }
+        return "iOS 不支持按关键词打开应用。"
     }
 
     /// 打开指定路径的文件夹（Finder）或文件（默认应用），路径仅允许用户目录与 /Applications 下
     private func openPath(_ pathPart: String, asFolder: Bool) async -> String {
-        let expanded = (pathPart as NSString).expandingTildeInPath
         guard Self.isPathAllowed(pathPart) else {
             return "出于安全考虑，仅允许打开用户目录（如 ~/Desktop、~/Downloads）或 /Applications 下的路径。"
         }
-        return await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let fileManager = FileManager.default
-                let url = URL(fileURLWithPath: expanded).standardized
-                guard fileManager.fileExists(atPath: url.path) else {
-                    continuation.resume(returning: "路径不存在：\(pathPart)")
-                    return
-                }
-                #if os(macOS)
-                let opened = NSWorkspace.shared.open(url)
-                let name = url.lastPathComponent
-                continuation.resume(returning: opened ? "已打开「\(name)」。" : "无法打开该路径。")
-                #else
-                continuation.resume(returning: "当前仅支持在 macOS 上打开路径。")
-                #endif
-            }
-        }
+        return "iOS 不支持打开本地路径。"
     }
 
 }
 
 extension Notification.Name {
     static let globalCopySucceeded = Notification.Name("GlobalCopySucceeded")
+    static let sidebarNewConversation = Notification.Name("SidebarNewConversation")
+    static let sidebarOpenConversation = Notification.Name("SidebarOpenConversation")
 }
 
 struct ClipboardService {
     static func copy(_ text: String) {
-        #if os(iOS)
         UIPasteboard.general.string = text
-        #elseif os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-        #endif
         NotificationCenter.default.post(name: .globalCopySucceeded, object: nil)
     }
 }
@@ -1158,7 +1064,6 @@ final class SpeechTranscriber: NSObject {
         audioEngine.reset()
         audioEngine = AVAudioEngine()
 
-        #if os(iOS)
         let audioSession = AVAudioSession.sharedInstance()
         do {
             try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
@@ -1166,8 +1071,6 @@ final class SpeechTranscriber: NSObject {
         } catch {
             throw NSError(domain: "Speech", code: -1, userInfo: [NSLocalizedDescriptionKey: "音频会话初始化失败"])
         }
-        #endif
-        // macOS: AVAudioEngine 无需 AVAudioSession
 
         recognizer = SFSpeechRecognizer(locale: locale)
         guard let recognizer, recognizer.isAvailable else {
@@ -1223,15 +1126,8 @@ final class VisionService {
 
     func recognizeText(from data: Data) async throws -> String {
         let cgImage: CGImage?
-        #if os(iOS)
         guard let image = UIImage(data: data), let img = image.cgImage else { return "" }
         cgImage = img
-        #elseif os(macOS)
-        guard let image = NSImage(data: data) else { return "" }
-        var rect = CGRect(origin: .zero, size: image.size)
-        guard let img = image.cgImage(forProposedRect: &rect, context: nil, hints: nil) else { return "" }
-        cgImage = img
-        #endif
         return try await recognizeText(fromCGImage: cgImage!)
     }
 

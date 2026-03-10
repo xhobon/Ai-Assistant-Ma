@@ -1,13 +1,7 @@
 import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
-#if os(iOS)
 import UIKit
-#elseif os(macOS)
-import AppKit
-import AVFoundation
-import Combine
-#endif
 
 struct AIAssistantHomeView: View {
     private let services: [AssistantService] = [
@@ -140,13 +134,9 @@ struct AIAssistantHomeHeader: View {
     private let baseHeight: CGFloat = 190
 
     private var safeTop: CGFloat {
-        #if os(iOS)
         return (UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first?.windows.first(where: { $0.isKeyWindow })?.safeAreaInsets.top ?? 20)
-        #elseif os(macOS)
-        return 20
-        #endif
     }
 
     var body: some View {
@@ -780,7 +770,6 @@ struct AIAssistantChatView: View {
             }
             .padding(.bottom, 8)
         }
-        #if os(iOS)
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
         .fileImporter(
             isPresented: $showFilePicker,
@@ -796,31 +785,6 @@ struct AIAssistantChatView: View {
                 }
             }
         }
-        #elseif os(macOS)
-        .fileImporter(isPresented: $showPhotoPicker, allowedContentTypes: [.image]) { result in
-            if case .success(let url) = result, url.startAccessingSecurityScopedResource() {
-                defer { url.stopAccessingSecurityScopedResource() }
-                if let data = try? Data(contentsOf: url) {
-                    viewModel.handleImageData(data)
-                }
-            }
-        }
-        .fileImporter(
-            isPresented: $showFilePicker,
-            allowedContentTypes: [.image, .pdf, .text, .plainText, .rtf, .data],
-            allowsMultipleSelection: false
-        ) { result in
-            if case .success(let url) = result, let fileURL = url.first {
-                if fileURL.startAccessingSecurityScopedResource() {
-                    defer { fileURL.stopAccessingSecurityScopedResource() }
-                    if let data = try? Data(contentsOf: fileURL) {
-                        viewModel.handleFileUpload(url: fileURL, data: data)
-                    }
-                }
-            }
-        }
-        #endif
-        #if os(iOS)
         .onChange(of: selectedPhotoItem) { _, newItem in
             guard let newItem else { return }
             Task {
@@ -833,7 +797,6 @@ struct AIAssistantChatView: View {
                 }
             }
         }
-        #endif
         .confirmationDialog("更多操作", isPresented: $showChatMenu) {
             Button("新对话") {
                 viewModel.resetConversation()
@@ -900,7 +863,6 @@ struct AIAssistantChatView: View {
             )
         }
         .background(AppTheme.pageBackground.ignoresSafeArea())
-        #if os(iOS)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
@@ -925,12 +887,17 @@ struct AIAssistantChatView: View {
                 .accessibilityLabel("历史对话")
             }
         }
-        #elseif os(macOS)
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
-            // 窗口失焦时停止播放
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             SpeechService.shared.stopSpeaking()
         }
-        #endif
+        .onReceive(NotificationCenter.default.publisher(for: .sidebarNewConversation)) { _ in
+            viewModel.resetConversation()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .sidebarOpenConversation)) { notification in
+            if let id = notification.userInfo?["id"] as? String {
+                Task { await viewModel.switchToConversation(id: id) }
+            }
+        }
     }
 }
 
@@ -1131,20 +1098,11 @@ struct VoiceCallView: View {
             }
         }
         .fullScreenCoverOrSheet(isPresented: $showCamera) {
-            #if os(iOS)
             CameraPicker { image in
                 showCamera = false
                 guard let data = image.jpegData(compressionQuality: 0.9) else { return }
                 Task { await viewModel.handleImageDataAndSend(data) }
             }
-            #elseif os(macOS)
-            MacCameraView(onCapture: { data in
-                showCamera = false
-                Task { await viewModel.handleImageDataAndSend(data) }
-            }, onCancel: {
-                showCamera = false
-            })
-            #endif
         }
     }
 
@@ -1204,228 +1162,6 @@ private struct VoiceCallControlButton: View {
     }
 }
 
-#if os(macOS)
-/// macOS 图片选择器：先显示操作按钮，避免 onAppear 直接弹 NSOpenPanel 导致卡死
-struct MacImagePicker: View {
-    var onImage: (URL) -> Void
-    var onCancel: () -> Void
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("选择图片")
-                .font(.headline)
-                .foregroundStyle(AppTheme.textPrimary)
-            Text("从相册或文件夹选择一张图片发送给助理识别")
-                .font(.caption)
-                .foregroundStyle(AppTheme.textSecondary)
-                .multilineTextAlignment(.center)
-            HStack(spacing: 16) {
-                Button("取消") {
-                    onCancel()
-                }
-                .keyboardShortcut(.cancelAction)
-                Button("选择图片") {
-                    let panel = NSOpenPanel()
-                    panel.allowsMultipleSelection = false
-                    panel.canChooseDirectories = false
-                    panel.canChooseFiles = true
-                    panel.allowedContentTypes = [.image]
-                    panel.begin { response in
-                        if response == .OK, let url = panel.url {
-                            onImage(url)
-                        } else {
-                            onCancel()
-                        }
-                    }
-                }
-                .keyboardShortcut(.defaultAction)
-            }
-        }
-        .frame(minWidth: 280, minHeight: 140)
-        .padding(24)
-    }
-}
-
-/// macOS 摄像头实时预览 + 拍照发送给助理
-struct MacCameraView: View {
-    var onCapture: (Data) -> Void
-    var onCancel: () -> Void
-
-    @StateObject private var session = MacCameraSession()
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                MacCameraPreviewView(session: session.session)
-                    .background(Color.black)
-                if session.errorMessage != nil {
-                    VStack(spacing: 12) {
-                        Image(systemName: "video.slash")
-                            .font(.largeTitle)
-                            .foregroundStyle(.white.opacity(0.8))
-                        Text(session.errorMessage ?? "无法打开摄像头")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.9))
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding()
-                }
-            }
-            .frame(minWidth: 400, minHeight: 300)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            HStack(spacing: 16) {
-                Button("取消") {
-                    onCancel()
-                }
-                .keyboardShortcut(.cancelAction)
-                Spacer()
-                Button("拍照并发送给助理") {
-                    session.capturePhoto { data in
-                        if let data = data {
-                            onCapture(data)
-                        }
-                    }
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(session.session == nil || session.errorMessage != nil)
-            }
-            .padding(16)
-        }
-        .frame(minWidth: 420, minHeight: 360)
-        .onAppear { session.start() }
-        .onDisappear { session.stop() }
-    }
-}
-
-/// 封装 AVCaptureSession，支持预览与拍照
-private final class MacCameraSession: NSObject, ObservableObject {
-    @Published private(set) var session: AVCaptureSession?
-    @Published private(set) var errorMessage: String?
-
-    private let sessionQueue = DispatchQueue(label: "mac.camera.session")
-    private var photoOutput: AVCapturePhotoOutput?
-    private var captureCompletion: ((Data?) -> Void)?
-
-    override init() {
-        super.init()
-    }
-
-    func start() {
-        sessionQueue.async { [weak self] in
-            self?.configureSession()
-        }
-    }
-
-    func stop() {
-        sessionQueue.async { [weak self] in
-            self?.session?.stopRunning()
-        }
-    }
-
-    func capturePhoto(completion: @escaping (Data?) -> Void) {
-        sessionQueue.async { [weak self] in
-            guard let self = self, let session = self.session, let photoOutput = self.photoOutput else {
-                DispatchQueue.main.async { completion(nil) }
-                return
-            }
-            self.captureCompletion = completion
-            let settings = AVCapturePhotoSettings()
-            photoOutput.capturePhoto(with: settings, delegate: self)
-        }
-    }
-
-    private func configureSession() {
-        let s = AVCaptureSession()
-        s.sessionPreset = .high
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
-               ?? AVCaptureDevice.default(for: .video) else {
-            DispatchQueue.main.async { [weak self] in
-                self?.errorMessage = "未找到摄像头"
-            }
-            return
-        }
-        guard let input = try? AVCaptureDeviceInput(device: device) else {
-            DispatchQueue.main.async { [weak self] in
-                self?.errorMessage = "无法打开摄像头"
-            }
-            return
-        }
-        if s.canAddInput(input) { s.addInput(input) }
-        let output = AVCapturePhotoOutput()
-        if s.canAddOutput(output) {
-            s.addOutput(output)
-            photoOutput = output
-        }
-        session = s
-        DispatchQueue.main.async { [weak self] in
-            self?.session = s
-            self?.errorMessage = nil
-        }
-        s.startRunning()
-    }
-}
-
-extension MacCameraSession: AVCapturePhotoCaptureDelegate {
-    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        let completion = captureCompletion
-        captureCompletion = nil
-        if let error = error {
-            DispatchQueue.main.async { completion?(nil) }
-            return
-        }
-        guard let data = photo.fileDataRepresentation() else {
-            DispatchQueue.main.async { completion?(nil) }
-            return
-        }
-        DispatchQueue.main.async { completion?(data) }
-    }
-}
-
-/// 将 AVCaptureSession 预览层嵌入 SwiftUI（macOS）
-private struct MacCameraPreviewView: NSViewRepresentable {
-    let session: AVCaptureSession?
-
-    func makeNSView(context: Context) -> NSView {
-        let view = CameraPreviewNSView()
-        view.session = session
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? CameraPreviewNSView)?.session = session
-    }
-}
-
-private final class CameraPreviewNSView: NSView {
-    var session: AVCaptureSession? {
-        didSet {
-            previewLayer?.removeFromSuperlayer()
-            guard let session = session else { return }
-            let layer = AVCaptureVideoPreviewLayer(session: session)
-            layer.videoGravity = .resizeAspect
-            layer.frame = bounds
-            layer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-            self.layer = layer
-            self.previewLayer = layer
-        }
-    }
-    private var previewLayer: AVCaptureVideoPreviewLayer?
-
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        wantsLayer = true
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override func layout() {
-        super.layout()
-        previewLayer?.frame = bounds
-    }
-}
-#endif
-
-#if os(iOS)
 /// 打开系统相机，用于视觉对话
 struct CameraPicker: UIViewControllerRepresentable {
     var onImage: (UIImage) -> Void
@@ -1463,7 +1199,6 @@ struct CameraPicker: UIViewControllerRepresentable {
         }
     }
 }
-#endif
 
 // MARK: - 视频通话（AI 形象 + 语音）
 struct VideoCallView: View {
@@ -1721,11 +1456,7 @@ struct ConversationHistorySheet: View {
                 }
             }
         }
-        #if os(iOS)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        #else
-        .frame(minWidth: 520, minHeight: 430)
-        #endif
         .background(AppTheme.pageBackground)
         .onAppear { onRefresh() }
     }
@@ -1812,22 +1543,6 @@ struct ChatComposerBar: View {
             }
             .accessibilityLabel("上传文件")
 
-            #if os(macOS)
-            PasteableTextField(
-                text: $text,
-                placeholder: "发消息或按住说话...",
-                onPasteImage: onPasteImage,
-                onSubmit: { onSend() }
-            )
-            .font(.subheadline)
-            .textFieldStyle(.plain)
-            .foregroundStyle(AppTheme.inputText)
-            .tint(AppTheme.primary)
-            .lineLimit(1...4)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
-            .onSubmit { onSend() }
-            #else
             TextField("发消息或按住说话...", text: $text, axis: .vertical)
                 .font(.subheadline)
                 .textFieldStyle(.plain)
@@ -1837,7 +1552,6 @@ struct ChatComposerBar: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
                 .onSubmit { onSend() }
-            #endif
 
             UnifiedAppIconButton(
                 systemImage: hasInputText ? "paperplane.fill" : (isListening ? "waveform.circle.fill" : "mic.fill"),
@@ -1873,137 +1587,6 @@ struct ChatComposerBar: View {
     }
 }
 
-#if os(macOS)
-/// 支持粘贴图片的 TextField（macOS）
-struct PasteableTextField: NSViewRepresentable {
-    @Binding var text: String
-    let placeholder: String
-    var onPasteImage: ((Data) -> Void)?
-    var onSubmit: (() -> Void)?
-    
-    func makeNSView(context: Context) -> CustomTextField {
-        let textField = CustomTextField()
-        textField.placeholderString = placeholder
-        textField.isBordered = false
-        textField.backgroundColor = .clear
-        textField.focusRingType = .none
-        textField.delegate = context.coordinator
-        textField.onPasteImage = onPasteImage
-        textField.onSubmit = onSubmit
-        textField.textColor = NSColor.labelColor
-        
-        // 设置 cell 以支持多行
-        if let cell = textField.cell as? NSTextFieldCell {
-            cell.wraps = true
-            cell.isScrollable = false
-            cell.placeholderAttributedString = NSAttributedString(
-                string: placeholder,
-                attributes: [.foregroundColor: NSColor.secondaryLabelColor]
-            )
-        }
-        
-        return textField
-    }
-    
-    func updateNSView(_ nsView: CustomTextField, context: Context) {
-        if nsView.stringValue != text {
-            nsView.stringValue = text
-        }
-        nsView.onPasteImage = onPasteImage
-        nsView.onSubmit = onSubmit
-        nsView.textColor = NSColor.labelColor
-        if let cell = nsView.cell as? NSTextFieldCell {
-            cell.placeholderAttributedString = NSAttributedString(
-                string: placeholder,
-                attributes: [.foregroundColor: NSColor.secondaryLabelColor]
-            )
-        }
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
-    }
-    
-    class Coordinator: NSObject, NSTextFieldDelegate {
-        @Binding var text: String
-        
-        init(text: Binding<String>) {
-            _text = text
-        }
-        
-        func controlTextDidChange(_ obj: Notification) {
-            if let textField = obj.object as? NSTextField {
-                text = textField.stringValue
-            }
-        }
-    }
-}
-
-/// 自定义 TextField，支持拦截粘贴事件
-class CustomTextField: NSTextField {
-    var onPasteImage: ((Data) -> Void)?
-    var onSubmit: (() -> Void)?
-    
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        // 拦截 Cmd+V
-        if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "v" {
-            return handlePaste()
-        }
-        // 回车：发送消息；Option/Shift+回车：换行
-        let isReturn = (event.keyCode == 36) || (event.charactersIgnoringModifiers == "\r") || (event.charactersIgnoringModifiers == "\n")
-        if isReturn {
-            if event.modifierFlags.contains(.option) || event.modifierFlags.contains(.shift) {
-                // 允许换行，走系统默认行为
-                return false
-            } else {
-                // 发送消息，不插入换行
-                onSubmit?()
-                return true
-            }
-        }
-        return super.performKeyEquivalent(with: event)
-    }
-    
-    private func handlePaste() -> Bool {
-        let pasteboard = NSPasteboard.general
-        
-        // 检查是否有图片（使用正确的 PasteboardType）
-        let imageTypes: [NSPasteboard.PasteboardType] = [
-            .png,
-            .tiff,
-            NSPasteboard.PasteboardType("public.jpeg"),
-            NSPasteboard.PasteboardType("public.jpg")
-        ]
-        
-        for type in imageTypes {
-            if let imageData = pasteboard.data(forType: type) {
-                DispatchQueue.main.async {
-                    self.onPasteImage?(imageData)
-                }
-                return true
-            }
-        }
-        
-        // 检查是否有文件 URL
-        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
-           let url = urls.first {
-            if url.startAccessingSecurityScopedResource() {
-                defer { url.stopAccessingSecurityScopedResource() }
-                if let imageData = try? Data(contentsOf: url),
-                   NSImage(data: imageData) != nil {
-                    DispatchQueue.main.async {
-                        self.onPasteImage?(imageData)
-                    }
-                    return true
-                }
-            }
-        }
-        
-        // 允许普通文本粘贴
-        return false
-    }
-}
-#endif
 
 struct ChatPromptChip: View {
     let text: String
@@ -2681,9 +2264,7 @@ struct MemoryDetailView: View {
                 }
                 .padding(20)
             }
-            #if os(iOS)
             .navigationTitle("长期记忆")
-            #endif
             .task(id: tokenStore.token) {
                 await statsViewModel.load()
             }

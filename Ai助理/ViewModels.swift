@@ -1,11 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
-#if os(iOS)
 import UIKit
-#elseif os(macOS)
-import AppKit
-#endif
 import NaturalLanguage
 
 @MainActor
@@ -208,6 +204,28 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    /// 通过会话 ID 切换到历史会话（侧边栏快捷入口使用）
+    func switchToConversation(id: String) async {
+        statusText = "加载会话中..."
+        do {
+            if TokenStore.shared.isLoggedIn {
+                let cloudMessages = try await APIClient.shared.getConversationMessages(conversationId: id)
+                serverConversationId = id
+                messages = cloudMessages
+            } else {
+                messages = LocalDataStore.shared.loadConversation(id: id)
+                serverConversationId = nil
+            }
+            localConversationId = id
+            LocalDataStore.shared.saveCurrentConversationId(id)
+            saveMessagesToLocal()
+            statusText = "AI 已就绪"
+        } catch {
+            alertMessage = userFacingMessage(for: error)
+            statusText = "AI 未就绪"
+        }
+    }
+
     /// 用户确认执行本机命令后调用（先执行，再弹出「发送结果」确认以保护隐私）
     func confirmCommandExecution() {
         guard let pending = pendingCommand else { return }
@@ -274,17 +292,10 @@ final class ChatViewModel: ObservableObject {
     
     /// 处理粘贴的图片
     func handlePastedImage(_ imageData: Data) {
-        #if os(macOS)
-        guard NSImage(data: imageData) != nil else {
-            alertMessage = "图片格式不支持"
-            return
-        }
-        #elseif os(iOS)
         guard UIImage(data: imageData) != nil else {
             alertMessage = "图片格式不支持"
             return
         }
-        #endif
         pendingImageData = imageData
         // 如果输入框为空，自动发送；否则等待用户输入文字后一起发送
         if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -525,11 +536,7 @@ final class ChatViewModel: ObservableObject {
 
     func toggleVideoCall() {
         if let url = URL(string: "facetime://") {
-            #if os(iOS)
             UIApplication.shared.open(url)
-            #elseif os(macOS)
-            NSWorkspace.shared.open(url)
-            #endif
             isVideoCalling = true
             statusText = "已打开系统通话"
         } else {
@@ -543,17 +550,10 @@ final class ChatViewModel: ObservableObject {
     }
 
     func handleImageData(_ data: Data) {
-        #if os(iOS)
         guard UIImage(data: data) != nil else {
             alertMessage = "图片格式不支持"
             return
         }
-        #elseif os(macOS)
-        guard NSImage(data: data) != nil else {
-            alertMessage = "图片格式不支持"
-            return
-        }
-        #endif
         statusText = "图片识别中..."
         Task {
             do {
@@ -573,17 +573,10 @@ final class ChatViewModel: ObservableObject {
 
     /// 视觉对话：识别图片文字后自动发送
     func handleImageDataAndSend(_ data: Data) async {
-        #if os(iOS)
         guard UIImage(data: data) != nil else {
             alertMessage = "图片格式不支持"
             return
         }
-        #elseif os(macOS)
-        guard NSImage(data: data) != nil else {
-            alertMessage = "图片格式不支持"
-            return
-        }
-        #endif
         statusText = "图片识别中..."
         do {
             let text = try await VisionService.shared.recognizeText(from: data)

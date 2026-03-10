@@ -270,16 +270,17 @@ struct SummaryWorkspaceView: View {
                         .frame(maxWidth: .infinity)
 
                         HStack(spacing: 10) {
+                            Spacer(minLength: 0)
                             ProductivityActionButton("复制", systemImage: "doc.on.doc", style: .outline) {
                                 ClipboardService.copy(result)
                             }
-                            .frame(maxWidth: .infinity)
+                            .frame(minWidth: 120)
 
-                            ProductivityActionButton("清空", systemImage: "trash", style: .ghost) {
+                            ProductivityActionButton("清空", systemImage: "trash", style: .outline) {
                                 sourceText = ""
                                 result = ""
                             }
-                            .frame(maxWidth: .infinity)
+                            .frame(minWidth: 120)
                         }
                         .frame(maxWidth: .infinity)
                     }

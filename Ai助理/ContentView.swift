@@ -102,25 +102,18 @@ struct SidebarRow: View {
     }
 }
 
-private struct SidebarToggleButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1.0)
-            .opacity(configuration.isPressed ? 0.9 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
-
 struct ContentView: View {
     @State private var selectedItem: SidebarItem = .partner
     @State private var detailResetSeed = 0
     @State private var detailMounted = true
     @ObservedObject private var appearance = AppearanceStore.shared
+    @ObservedObject private var tokenStore = TokenStore.shared
     @State private var copyToastMessage: String?
-    #if os(iOS)
     @State private var isCompactSidebarPresented = false
     @GestureState private var sidebarDragTranslation: CGFloat = 0
-    #endif
+    @State private var sidebarSearchText: String = ""
+    @State private var sidebarHistory: [CloudConversationSummary] = []
+    @State private var isSidebarHistoryLoading = false
     private var primarySidebarItems: [SidebarItem] {
         // 侧边栏只保留：助理、笔记、总结、翻译、学习（写作/PPT 入口已移动到助理页面的加号里）
         SidebarItem.allCases.filter { ![.profile, .writing, .ppt].contains($0) }
@@ -155,14 +148,11 @@ struct ContentView: View {
         } else {
             selectedItem = item
         }
-        #if os(iOS)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
             isCompactSidebarPresented = false
         }
-        #endif
     }
 
-#if os(iOS)
     private var sidebarWidth: CGFloat {
         min(UIScreen.main.bounds.width * 0.74, 300)
     }
@@ -179,32 +169,6 @@ struct ContentView: View {
         }
     }
     
-    private var sidebarFloatingToggleButton: some View {
-        Button {
-            isCompactSidebarPresented ? closeSidebar() : openSidebar()
-        } label: {
-            Image(systemName: isCompactSidebarPresented ? "xmark" : "sidebar.left")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(isCompactSidebarPresented ? AppTheme.textOnPrimary : AppTheme.textPrimary)
-                .frame(width: 42, height: 42)
-                .background(isCompactSidebarPresented ? AppTheme.primary : Color(.systemBackground).opacity(0.92), in: Circle())
-                .overlay(
-                    Circle().stroke(AppTheme.border.opacity(isCompactSidebarPresented ? 0 : 1), lineWidth: 1)
-                )
-                .shadow(
-                    color: isCompactSidebarPresented ? AppTheme.primary.opacity(0.18) : Color.black.opacity(0.08),
-                    radius: isCompactSidebarPresented ? 8 : 4,
-                    x: 0,
-                    y: isCompactSidebarPresented ? 4 : 2
-                )
-                .contentTransition(.symbolEffect(.replace))
-        }
-        .buttonStyle(SidebarToggleButtonStyle())
-        .contentShape(Rectangle())
-        .padding(4)
-        .accessibilityLabel(isCompactSidebarPresented ? "关闭侧边栏" : "打开侧边栏")
-    }
-
     private var sidebarToolbarButton: some View {
         Button {
             openSidebar()
@@ -217,20 +181,17 @@ struct ContentView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("打开侧边栏")
     }
-#endif
 
     private var sidebarContent: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SidebarLogoView()
-                .padding(.top, 16)
-                .padding(.horizontal, 12)
-            Text("导航")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(AppTheme.textSecondary)
-                .padding(.horizontal, 14)
-                .padding(.top, 12)
-                .padding(.bottom, 6)
             VStack(spacing: 8) {
+                sidebarSearchBar
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                
+                sidebarNewChatButton
+                    .padding(.horizontal, 12)
+
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(primarySidebarItems, id: \.rawValue) { item in
@@ -242,8 +203,11 @@ struct ContentView: View {
                             .buttonStyle(.plain)
                             .padding(.horizontal, 8)
                         }
+                        
+                        sidebarHistorySection
+                            .padding(.top, 6)
                     }
-                    .padding(.top, 4)
+                    .padding(.top, 0)
                 }
                 Divider()
                     .padding(.horizontal, 12)
@@ -263,9 +227,178 @@ struct ContentView: View {
         .background(AppTheme.pageBackground.ignoresSafeArea())
     }
 
-    private var sidebarColumn: some View {
-        sidebarContent
-        .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 250)
+    private var sidebarSearchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.textTertiary)
+            TextField("搜索历史对话", text: $sidebarSearchText)
+                .font(.subheadline)
+                .textFieldStyle(.plain)
+                .foregroundStyle(AppTheme.inputText)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+            if !sidebarSearchText.isEmpty {
+                Button {
+                    sidebarSearchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppTheme.unifiedButtonBorder.opacity(0.6), lineWidth: 1)
+        )
+    }
+
+    private var sidebarNewChatButton: some View {
+        Button {
+            selectedItem = .partner
+            NotificationCenter.default.post(name: .sidebarNewConversation, object: nil)
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                isCompactSidebarPresented = false
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .frame(width: 22, height: 22)
+                    .background(AppTheme.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                Text("发起新对话")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(AppTheme.unifiedButtonBorder.opacity(0.6), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("发起新对话")
+    }
+
+    private var sidebarHistorySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("历史对话")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.textSecondary)
+                .padding(.horizontal, 12)
+            
+            if isSidebarHistoryLoading {
+                Text("加载中...")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textTertiary)
+                    .padding(.horizontal, 12)
+            } else if filteredSidebarHistory.isEmpty {
+                Text(sidebarSearchText.isEmpty ? "暂无历史对话" : "未找到匹配结果")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textTertiary)
+                    .padding(.horizontal, 12)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(filteredSidebarHistory.prefix(12)) { item in
+                        Button {
+                            selectedItem = .partner
+                            NotificationCenter.default.post(
+                                name: .sidebarOpenConversation,
+                                object: nil,
+                                userInfo: ["id": item.id]
+                            )
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                                isCompactSidebarPresented = false
+                            }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                    .lineLimit(1)
+                                if !item.lastMessage.isEmpty {
+                                    Text(item.lastMessage)
+                                        .font(.caption)
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(AppTheme.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(AppTheme.border.opacity(0.6), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 8)
+                    }
+                }
+            }
+        }
+    }
+
+    private var filteredSidebarHistory: [CloudConversationSummary] {
+        let keyword = sidebarSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !keyword.isEmpty else { return sidebarHistory }
+        return sidebarHistory.filter { item in
+            item.title.localizedCaseInsensitiveContains(keyword)
+            || item.lastMessage.localizedCaseInsensitiveContains(keyword)
+        }
+    }
+
+    private func loadSidebarHistory() {
+        Task { await loadSidebarHistoryAsync() }
+    }
+
+    private func loadSidebarHistoryAsync() async {
+        isSidebarHistoryLoading = true
+        defer { isSidebarHistoryLoading = false }
+        
+        if tokenStore.isLoggedIn {
+            do {
+                sidebarHistory = try await APIClient.shared.getConversations(take: 50)
+                return
+            } catch {
+                #if DEBUG
+                print("[SidebarHistory] cloud conversations unavailable, fallback to local: \(error.localizedDescription)")
+                #endif
+            }
+        }
+        
+        let all = LocalDataStore.shared.loadAllConversations()
+        let formatter = ISO8601DateFormatter()
+        let localList: [CloudConversationSummary] = all.map { (id, rows) in
+            let last = rows.last
+            let first = rows.first
+            let lastText = (last?["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let firstText = (first?["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let titleRaw = (firstText?.isEmpty == false ? firstText! : "本地会话")
+            let title = String(titleRaw.prefix(20))
+            let lastTime = (last?["time"] as? TimeInterval) ?? Date().timeIntervalSince1970
+            let firstTime = (first?["time"] as? TimeInterval) ?? lastTime
+            return CloudConversationSummary(
+                id: id,
+                title: title,
+                createdAt: formatter.string(from: Date(timeIntervalSince1970: firstTime)),
+                updatedAt: formatter.string(from: Date(timeIntervalSince1970: lastTime)),
+                lastMessage: String((lastText ?? "").prefix(80))
+            )
+        }
+        sidebarHistory = localList.sorted { $0.updatedAt > $1.updatedAt }
     }
 
     private var detailColumn: some View {
@@ -296,66 +429,25 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .hideNavigationBarOnMac()
         .id("detail-\(selectedItem.rawValue)-\(detailResetSeed)")
-#if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-#endif
     }
 
     var body: some View {
         Group {
-#if os(iOS)
             NavigationStack {
                 GeometryReader { proxy in
-                    ZStack(alignment: .topLeading) {
-                        detailColumn
-                            .contentShape(Rectangle())
-                            .highPriorityGesture(
-                                DragGesture(minimumDistance: 18)
-                                    .onEnded { value in
-                                        guard !isCompactSidebarPresented else { return }
-                                        let fromLeftEdge = value.startLocation.x <= 24
-                                        if fromLeftEdge && value.translation.width > 72 {
-                                            openSidebar()
-                                        }
+                    detailColumn
+                        .contentShape(Rectangle())
+                        .highPriorityGesture(
+                            DragGesture(minimumDistance: 18)
+                                .onEnded { value in
+                                    guard !isCompactSidebarPresented else { return }
+                                    let fromLeftEdge = value.startLocation.x <= 24
+                                    if fromLeftEdge && value.translation.width > 72 {
+                                        openSidebar()
                                     }
-                            )
-
-                        if isCompactSidebarPresented {
-                            Color.black.opacity(0.18)
-                                .ignoresSafeArea()
-                                .onTapGesture {
-                                    closeSidebar()
                                 }
-                                .transition(.opacity)
-                                .zIndex(1)
-
-                            sidebarContent
-                                .frame(width: sidebarWidth)
-                                .frame(maxHeight: .infinity, alignment: .topLeading)
-                                .offset(x: min(0, sidebarDragTranslation))
-                                .gesture(
-                                    DragGesture(minimumDistance: 12)
-                                        .updating($sidebarDragTranslation) { value, state, _ in
-                                            if value.translation.width < 0 {
-                                                state = value.translation.width
-                                            }
-                                        }
-                                        .onEnded { value in
-                                            if value.translation.width < -70 {
-                                                closeSidebar()
-                                            }
-                                        }
-                                )
-                                .shadow(color: Color.black.opacity(0.12), radius: 18, y: 8)
-                                .transition(.move(edge: .leading))
-                                .zIndex(2)
-
-                            sidebarFloatingToggleButton
-                                .padding(.top, max(proxy.safeAreaInsets.top + 6, 14))
-                                .padding(.leading, max(sidebarWidth - 50, 12))
-                                .zIndex(3)
-                        }
-                    }
+                        )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .background(AppTheme.pageBackground.ignoresSafeArea())
@@ -369,17 +461,44 @@ struct ContentView: View {
                     }
                 }
             }
+            .overlay(alignment: .topLeading) {
+                if isCompactSidebarPresented {
+                    ZStack(alignment: .topLeading) {
+                        Color.black.opacity(0.18)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                closeSidebar()
+                            }
+                            .transition(.opacity)
+
+                        sidebarContent
+                            .frame(width: sidebarWidth)
+                            .frame(maxHeight: .infinity, alignment: .topLeading)
+                            .offset(x: min(0, sidebarDragTranslation))
+                            .gesture(
+                                DragGesture(minimumDistance: 12)
+                                    .updating($sidebarDragTranslation) { value, state, _ in
+                                        if value.translation.width < 0 {
+                                            state = value.translation.width
+                                        }
+                                    }
+                                    .onEnded { value in
+                                        if value.translation.width < -70 {
+                                            closeSidebar()
+                                        }
+                                    }
+                            )
+                            .shadow(color: Color.black.opacity(0.12), radius: 18, y: 8)
+                            .transition(.move(edge: .leading))
+                    }
+                    .zIndex(100)
+                }
+            }
             .onAppear {
                 isCompactSidebarPresented = false
+                loadSidebarHistory()
             }
             .animation(.spring(response: 0.28, dampingFraction: 0.88), value: isCompactSidebarPresented)
-#else
-            NavigationSplitView {
-                sidebarColumn
-            } detail: {
-                detailColumn
-            }
-#endif
         }
         .onChange(of: selectedItem) { _, _ in
             // 切换侧边栏页面时停止语音播放，避免在其它页还能听到朗读
@@ -392,6 +511,14 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .globalCopySucceeded)) { _ in
             withAnimation(.easeInOut(duration: 0.2)) {
                 copyToastMessage = "已复制到剪贴板"
+            }
+        }
+        .onChange(of: tokenStore.token) { _, _ in
+            loadSidebarHistory()
+        }
+        .onChange(of: isCompactSidebarPresented) { _, isOpen in
+            if isOpen {
+                loadSidebarHistory()
             }
         }
     }
