@@ -131,3 +131,20 @@ struct NoteEntry: Identifiable, Hashable, Codable {
 
     var notificationId: String { "note-reminder-\(id)" }
 }
+
+struct SummaryEntry: Identifiable, Hashable, Codable {
+    let id: String
+    let title: String
+    let summary: String
+    let category: String
+    let tags: [String]
+    let content: String
+    let rawText: String
+    let createdAt: Date
+
+    var dateText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd HH:mm"
+        return formatter.string(from: createdAt)
+    }
+}

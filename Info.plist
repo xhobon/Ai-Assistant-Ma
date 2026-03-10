@@ -22,8 +22,13 @@
 	<true/>
 	<key>UIRequiresFullScreen</key>
 	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
 	<key>UILaunchScreen</key>
-	<dict/>
+	<dict>
+		<key>UILaunchScreenImageName</key>
+		<string>LaunchImage</string>
+	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

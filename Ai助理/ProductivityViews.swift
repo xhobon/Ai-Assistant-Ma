@@ -200,14 +200,13 @@ struct NotesWorkspaceView: View {
                 VStack(spacing: 12) {
                     TextEditorField(title: "内容", placeholder: "只需输入内容，AI 会自动生成标题、标签与分类", text: $content, minHeight: 180)
                     HStack(spacing: 10) {
-                        ProductivityActionButton(isRecording ? "转写中" : "语音转写", systemImage: isRecording ? "waveform.circle.fill" : "mic.fill", style: .outline) {
+                        ProductivityActionButton(isRecording ? "转写中" : "语音转写", systemImage: isRecording ? "waveform.circle.fill" : "mic.fill", style: .outline, size: .compact) {
                             toggleNoteRecording()
                         }
-                        .frame(maxWidth: .infinity)
-                        ProductivityActionButton(isGenerating ? "生成中..." : "AI 整理笔记", systemImage: "sparkles", style: .filled) {
+                        Spacer(minLength: 0)
+                        ProductivityActionButton(isGenerating ? "生成中..." : "AI 整理笔记", systemImage: "sparkles", style: .filled, size: .compact) {
                             Task { await generateAINote() }
                         }
-                        .frame(maxWidth: .infinity)
                         .disabled(isGenerating)
                     }
                     .padding(.top, 2)
@@ -329,7 +328,13 @@ struct NotesWorkspaceView: View {
             await MainActor.run {
                 aiRawResponse = reply
                 if let parsed = decodeAINote(from: reply) {
-                    aiNote = parsed
+                    var refined = parsed
+                    refined.title = refineTitle(
+                        raw: parsed.title,
+                        fallback: parsed.summary,
+                        input: input
+                    )
+                    aiNote = refined
                 } else {
                     aiNote = AINotePayload.fallback(from: input, raw: reply)
                 }
@@ -345,6 +350,40 @@ struct NotesWorkspaceView: View {
         let cleaned = extractJSON(from: text)
         guard let data = cleaned.data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode(AINotePayload.self, from: data)
+    }
+
+    private func refineTitle(raw: String, fallback: String, input: String) -> String {
+        var title = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if title.isEmpty {
+            title = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if title.isEmpty {
+            title = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        title = title.replacingOccurrences(of: "\n", with: " ")
+        if let range = title.range(of: "提醒") {
+            title = String(title[..<range.lowerBound])
+        }
+        let patterns = [
+            "^(请|麻烦|帮忙|帮我|我要|我想|需要)+",
+            "^(请帮我|帮我记录|帮我整理|帮我总结|记录|整理|总结)+"
+        ]
+        for pattern in patterns {
+            title = title.replacingOccurrences(
+                of: pattern,
+                with: "",
+                options: .regularExpression
+            )
+        }
+        let timePrefixes = ["明天", "后天", "今天", "今晚", "今早", "上午", "下午", "晚上", "早上", "中午"]
+        for prefix in timePrefixes where title.hasPrefix(prefix) {
+            title = title.replacingOccurrences(of: prefix, with: "")
+        }
+        title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if title.count > 16 {
+            title = String(title.prefix(16))
+        }
+        return title.isEmpty ? "未命名笔记" : title
     }
 
     private func saveNoteToLocalAndCloud() {
@@ -423,9 +462,11 @@ struct NotesWorkspaceView: View {
 struct SummaryWorkspaceView: View {
     var contentOnly: Bool = false
     @State private var sourceText = ""
+    @State private var searchText = ""
     @State private var isRecording = false
     @State private var isGenerating = false
     @State private var alertMessage: String?
+    @State private var summaries: [SummaryEntry] = []
     @State private var aiSummary: AISummaryPayload?
     private let speechTranscriber = SpeechTranscriber()
     private let tokenStore = TokenStore.shared
@@ -452,14 +493,13 @@ struct SummaryWorkspaceView: View {
                 VStack(spacing: 12) {
                     TextEditorField(title: "内容输入", placeholder: "只需输入内容或语音转写，AI 会优化总结并生成标题/标签/分类", text: $sourceText, minHeight: 180)
                     HStack(spacing: 10) {
-                        ProductivityActionButton(isRecording ? "转写中" : "语音转写", systemImage: isRecording ? "waveform.circle.fill" : "mic.fill", style: .outline) {
+                        ProductivityActionButton(isRecording ? "转写中" : "语音转写", systemImage: isRecording ? "waveform.circle.fill" : "mic.fill", style: .outline, size: .compact) {
                             toggleSummaryRecording()
                         }
-                        .frame(maxWidth: .infinity)
-                        ProductivityActionButton(isGenerating ? "生成中..." : "AI 生成总结", systemImage: "sparkles", style: .filled) {
+                        Spacer(minLength: 0)
+                        ProductivityActionButton(isGenerating ? "生成中..." : "AI 生成总结", systemImage: "sparkles", style: .filled, size: .compact) {
                             Task { await generateAISummary() }
                         }
-                        .frame(maxWidth: .infinity)
                         .disabled(isGenerating)
                     }
                     .padding(.top, 2)
@@ -467,37 +507,23 @@ struct SummaryWorkspaceView: View {
                     if aiSummary != nil {
                         Divider().padding(.vertical, 2)
                         AISummaryEditor(summary: $aiSummary)
-                        HStack(spacing: 10) {
-                            ProductivityActionButton("清空", systemImage: "trash", style: .ghost) {
-                                sourceText = ""
-                                aiSummary = nil
-                            }
-                            .frame(maxWidth: .infinity)
-                            ProductivityActionButton("复制结果", systemImage: "doc.on.doc", style: .outline) {
-                                if let summary = aiSummary {
-                                    ClipboardService.copy(summary.content)
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                            ProductivityActionButton("保存总结", systemImage: "tray.and.arrow.down", style: .outline) {
-                                saveSummaryToCloud()
-                            }
-                            .frame(maxWidth: .infinity)
+                        ProductivityActionButton("保存", systemImage: "tray.and.arrow.down", style: .outline) {
+                            saveSummaryToLocalAndCloud()
                         }
+                        .frame(maxWidth: .infinity)
                     }
                 }
             }
 
             SectionCard {
                 VStack(spacing: 12) {
-                    SectionTitle("总结结果")
-                    if aiSummary == nil {
-                        EmptyStateRow(text: "生成后显示总结内容")
+                    LabeledField(title: "快速搜索", placeholder: "输入关键字/标签/分类", text: $searchText)
+                    if filteredSummaries.isEmpty {
+                        EmptyStateRow(text: "暂无总结记录")
                     } else {
-                        Text(aiSummary?.content ?? "")
-                            .font(.body)
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        ForEach(filteredSummaries) { summary in
+                            SummaryRow(summary: summary)
+                        }
                     }
                 }
             }
@@ -515,6 +541,21 @@ struct SummaryWorkspaceView: View {
                 speechTranscriber.stopTranscribing()
                 isRecording = false
             }
+        }
+        .onAppear {
+            summaries = LocalDataStore.shared.loadSummaries()
+        }
+    }
+
+    private var filteredSummaries: [SummaryEntry] {
+        let keyword = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !keyword.isEmpty else { return summaries }
+        return summaries.filter { summary in
+            summary.title.localizedCaseInsensitiveContains(keyword)
+            || summary.summary.localizedCaseInsensitiveContains(keyword)
+            || summary.category.localizedCaseInsensitiveContains(keyword)
+            || summary.content.localizedCaseInsensitiveContains(keyword)
+            || summary.tags.contains(where: { $0.localizedCaseInsensitiveContains(keyword) })
         }
     }
 
@@ -571,7 +612,13 @@ struct SummaryWorkspaceView: View {
             let reply = try await APIClient.shared.generateSummaryWithAI(prompt: prompt)
             await MainActor.run {
                 if let parsed = decodeAISummary(from: reply) {
-                    aiSummary = parsed
+                    var refined = parsed
+                    refined.title = refineTitle(
+                        raw: parsed.title,
+                        fallback: parsed.summary,
+                        input: input
+                    )
+                    aiSummary = refined
                 } else {
                     aiSummary = AISummaryPayload.fallback(from: input, raw: reply)
                 }
@@ -587,27 +634,48 @@ struct SummaryWorkspaceView: View {
         return try? JSONDecoder().decode(AISummaryPayload.self, from: data)
     }
 
-    private func saveSummaryToCloud() {
-        guard let aiSummary else { return }
-        let raw = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard tokenStore.isLoggedIn else { return }
-        Task {
-            do {
-                try await APIClient.shared.saveSummaryToCloud(
-                    title: aiSummary.title,
-                    summary: aiSummary.summary,
-                    category: aiSummary.category,
-                    tags: aiSummary.tags,
-                    content: aiSummary.content,
-                    rawText: raw
-                )
-            } catch {
-                await MainActor.run {
-                    alertMessage = "云端同步失败。\(userFacingMessage(for: error))"
-                }
+private func saveSummaryToLocalAndCloud() {
+    guard let aiSummary else { return }
+    let raw = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+    let entry = SummaryEntry(
+        id: UUID().uuidString,
+        title: aiSummary.title.isEmpty ? "未命名总结" : aiSummary.title,
+        summary: aiSummary.summary,
+        category: aiSummary.category,
+        tags: aiSummary.tags,
+        content: aiSummary.content,
+        rawText: raw,
+        createdAt: Date()
+    )
+    summaries.insert(entry, at: 0)
+    LocalDataStore.shared.addSummary(entry)
+    sourceText = ""
+    self.aiSummary = nil
+
+    if !tokenStore.isLoggedIn {
+        alertMessage = "已保存到本地。"
+        return
+    }
+    Task {
+        do {
+            try await APIClient.shared.saveSummaryToCloud(
+                title: entry.title,
+                summary: entry.summary,
+                category: entry.category,
+                tags: entry.tags,
+                content: entry.content,
+                rawText: entry.rawText
+            )
+            await MainActor.run {
+                alertMessage = "已保存到云端。"
+            }
+        } catch {
+            await MainActor.run {
+                alertMessage = "云端同步失败。\(userFacingMessage(for: error))"
             }
         }
     }
+}
 }
 
 enum NotesSummaryMode: String, CaseIterable, Identifiable {
@@ -619,6 +687,9 @@ enum NotesSummaryMode: String, CaseIterable, Identifiable {
 
 struct NotesSummaryWorkspaceView: View {
     @State private var mode: NotesSummaryMode
+    private let tokenStore = TokenStore.shared
+    private let syncedNotesKey = "notes_synced_ids_v1"
+    private let syncedSummariesKey = "summaries_synced_ids_v1"
 
     init(initialMode: NotesSummaryMode = .note) {
         _mode = State(initialValue: initialMode)
@@ -654,6 +725,64 @@ struct NotesSummaryWorkspaceView: View {
                 }
             }
         }
+        .onReceive(tokenStore.$token) { _ in
+            Task { await syncLocalDataIfNeeded() }
+        }
+    }
+
+    private func syncLocalDataIfNeeded() async {
+        guard tokenStore.isLoggedIn else { return }
+        await syncLocalNotesToCloud()
+        await syncLocalSummariesToCloud()
+    }
+
+    private func syncLocalNotesToCloud() async {
+        var synced = loadSyncedIds(forKey: syncedNotesKey)
+        for note in LocalDataStore.shared.loadNotes() where !synced.contains(note.id) {
+            do {
+                try await APIClient.shared.saveNoteToCloud(
+                    title: note.title,
+                    summary: note.summary,
+                    category: note.category,
+                    tags: note.tags,
+                    content: note.content,
+                    rawText: note.content
+                )
+                synced.insert(note.id)
+            } catch {
+                // ignore single failure; will retry on next login
+            }
+        }
+        saveSyncedIds(synced, forKey: syncedNotesKey)
+    }
+
+    private func syncLocalSummariesToCloud() async {
+        var synced = loadSyncedIds(forKey: syncedSummariesKey)
+        for summary in LocalDataStore.shared.loadSummaries() where !synced.contains(summary.id) {
+            do {
+                try await APIClient.shared.saveSummaryToCloud(
+                    title: summary.title,
+                    summary: summary.summary,
+                    category: summary.category,
+                    tags: summary.tags,
+                    content: summary.content,
+                    rawText: summary.rawText
+                )
+                synced.insert(summary.id)
+            } catch {
+                // ignore single failure; will retry on next login
+            }
+        }
+        saveSyncedIds(synced, forKey: syncedSummariesKey)
+    }
+
+    private func loadSyncedIds(forKey key: String) -> Set<String> {
+        let list = UserDefaults.standard.array(forKey: key) as? [String] ?? []
+        return Set(list)
+    }
+
+    private func saveSyncedIds(_ ids: Set<String>, forKey key: String) {
+        UserDefaults.standard.set(Array(ids), forKey: key)
     }
 }
 
@@ -859,15 +988,22 @@ private struct ProductivityActionButton: View {
         case ghost
     }
 
+    enum Size {
+        case regular
+        case compact
+    }
+
     let title: String
     let systemImage: String?
     let style: Style
+    let size: Size
     let action: () -> Void
 
-    init(_ title: String, systemImage: String? = nil, style: Style = .filled, action: @escaping () -> Void) {
+    init(_ title: String, systemImage: String? = nil, style: Style = .filled, size: Size = .regular, action: @escaping () -> Void) {
         self.title = title
         self.systemImage = systemImage
         self.style = style
+        self.size = size
         self.action = action
     }
 
@@ -876,13 +1012,13 @@ private struct ProductivityActionButton: View {
             HStack(spacing: 8) {
                 if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.callout.weight(.semibold))
+                        .font(iconFont)
                 }
                 Text(title)
-                    .font(.callout.weight(.semibold))
+                    .font(textFont)
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 18)
+            .padding(.vertical, verticalPadding)
+            .padding(.horizontal, horizontalPadding)
             .background(background)
             .foregroundStyle(foreground)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -918,6 +1054,34 @@ private struct ProductivityActionButton: View {
             )
         case .filled:
             return AnyView(EmptyView())
+        }
+    }
+
+    private var textFont: Font {
+        switch size {
+        case .regular: return .callout.weight(.semibold)
+        case .compact: return .subheadline.weight(.semibold)
+        }
+    }
+
+    private var iconFont: Font {
+        switch size {
+        case .regular: return .callout.weight(.semibold)
+        case .compact: return .subheadline.weight(.semibold)
+        }
+    }
+
+    private var verticalPadding: CGFloat {
+        switch size {
+        case .regular: return 12
+        case .compact: return 8
+        }
+    }
+
+    private var horizontalPadding: CGFloat {
+        switch size {
+        case .regular: return 18
+        case .compact: return 12
         }
     }
 }
@@ -1050,6 +1214,56 @@ private struct NoteRow: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MM/dd HH:mm"
         return formatter.string(from: date)
+    }
+}
+
+private struct SummaryRow: View {
+    let summary: SummaryEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(summary.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer(minLength: 0)
+                Text(summary.dateText)
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            if !summary.category.isEmpty {
+                Text(summary.category)
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            if !summary.summary.isEmpty {
+                Text(summary.summary)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .lineLimit(2)
+            }
+            Text(summary.content)
+                .font(.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(3)
+            if !summary.tags.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(summary.tags, id: \.self) { tag in
+                        Text(tag)
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.accentStrong)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(AppTheme.accentStrong.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -1345,19 +1559,23 @@ private struct AISummaryEditor: View {
 
     var body: some View {
         if let summary {
-            VStack(alignment: .leading, spacing: 8) {
-                LabeledField(title: "标题", placeholder: "AI 生成标题", text: binding(\.title))
-                LabeledField(title: "分类", placeholder: "AI 生成分类", text: binding(\.category))
-                LabeledField(title: "标签（逗号分隔）", placeholder: "AI 生成标签", text: Binding(
-                    get: { tagsText.isEmpty ? summary.tags.joined(separator: ",") : tagsText },
-                    set: { tagsText = $0; self.summary?.tags = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty } }
-                ))
-                TextEditorField(title: "摘要", placeholder: "AI 生成摘要", text: binding(\.summary), minHeight: 80)
-                TextEditorField(title: "优化后的总结", placeholder: "AI 生成总结内容", text: binding(\.content), minHeight: 120)
+            VStack(alignment: .leading, spacing: 16) {
+                SectionTitle("基础信息")
+                NoteSectionCard {
+                    LabeledField(title: "标题", placeholder: "AI 生成标题", text: binding(\.title))
+                    LabeledField(title: "分类", placeholder: "AI 生成分类", text: binding(\.category))
+                    LabeledField(title: "标签（逗号分隔）", placeholder: "AI 生成标签", text: Binding(
+                        get: { tagsText.isEmpty ? summary.tags.joined(separator: ",") : tagsText },
+                        set: { tagsText = $0; self.summary?.tags = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty } }
+                    ))
+                }
+
+                SectionTitle("内容")
+                NoteSectionCard {
+                    TextEditorField(title: "摘要", placeholder: "AI 生成摘要", text: binding(\.summary), minHeight: 80)
+                    TextEditorField(title: "优化后的总结", placeholder: "AI 生成总结内容", text: binding(\.content), minHeight: 140)
+                }
             }
-            .padding(12)
-            .background(AppTheme.surfaceMuted)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 
@@ -1418,6 +1636,40 @@ private func extractJSON(from text: String) -> String {
         return String(text[start...end])
     }
     return text
+}
+
+private func refineTitle(raw: String, fallback: String, input: String) -> String {
+    var title = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    if title.isEmpty {
+        title = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    if title.isEmpty {
+        title = input.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    title = title.replacingOccurrences(of: "\n", with: " ")
+    if let range = title.range(of: "提醒") { title = String(title[..<range.lowerBound]) }
+    let patterns = [
+        "^(请|麻烦|帮忙|帮我|我要|我想|需要|请帮我|帮我记录|帮我整理|帮我总结|帮我做个总结|帮我做个|帮我|记录|整理|总结)+",
+        "^([我你他她]们?)(想|要|需要|准备|计划|去|做)+"
+    ]
+    for pattern in patterns {
+        title = title.replacingOccurrences(
+            of: pattern,
+            with: "",
+            options: .regularExpression
+        )
+    }
+    let timePrefixes = ["明天", "后天", "今天", "今晚", "今早", "上午", "下午", "晚上", "早上", "中午"]
+    for prefix in timePrefixes where title.hasPrefix(prefix) {
+        title = title.replacingOccurrences(of: prefix, with: "")
+    }
+    if let split = title.split(whereSeparator: { "，。；、,.!！?？".contains($0) }).first {
+        title = String(split)
+    }
+    title = title.replacingOccurrences(of: "帮我", with: "")
+    title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+    if title.count > 14 { title = String(title.prefix(14)) }
+    return title.isEmpty ? "未命名笔记" : title
 }
 
 private func parseReminderDate(_ raw: String) -> Date? {

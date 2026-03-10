@@ -10,6 +10,7 @@ final class LocalDataStore: ObservableObject {
     private let currentConversationKey = "current_conversation_id"
     private let memoriesKey = "local_assistant_memories"
     private let notesKey = "local_notes_v2"
+    private let summariesKey = "local_summaries_v1"
 
     private init() {}
     
@@ -150,6 +151,7 @@ final class LocalDataStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: currentConversationKey)
         UserDefaults.standard.removeObject(forKey: memoriesKey)
         UserDefaults.standard.removeObject(forKey: notesKey)
+        UserDefaults.standard.removeObject(forKey: summariesKey)
     }
 
     // MARK: - 助理长期记忆（未登录时本地存储，登录后与云端同步）
@@ -244,6 +246,27 @@ final class LocalDataStore: ObservableObject {
             list.insert(note, at: 0)
         }
         saveNotes(list)
+    }
+
+    // MARK: - Summaries
+
+    func saveSummaries(_ summaries: [SummaryEntry]) {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(summaries) {
+            UserDefaults.standard.set(data, forKey: summariesKey)
+        }
+    }
+
+    func loadSummaries() -> [SummaryEntry] {
+        guard let data = UserDefaults.standard.data(forKey: summariesKey) else { return [] }
+        let decoder = JSONDecoder()
+        return (try? decoder.decode([SummaryEntry].self, from: data)) ?? []
+    }
+
+    func addSummary(_ summary: SummaryEntry) {
+        var list = loadSummaries()
+        list.insert(summary, at: 0)
+        saveSummaries(list)
     }
     
     // MARK: - 私有方法
