@@ -536,15 +536,27 @@ final class APIClient {
     func generateNoteWithAI(prompt: String) async throws -> String {
         struct Res: Codable { let reply: String }
         let body: [String: Any] = ["prompt": prompt]
-        let res: Res = try await request("api/notes/ai", method: "POST", body: body, authorized: true)
-        return res.reply
+        do {
+            let res: Res = try await request("api/notes/ai", method: "POST", body: body, authorized: true)
+            return res.reply
+        } catch {
+            // fallback to assistant chat if server endpoint is not enabled
+            let (_, reply) = try await assistantChat(message: prompt)
+            return reply
+        }
     }
 
     func generateSummaryWithAI(prompt: String) async throws -> String {
         struct Res: Codable { let reply: String }
         let body: [String: Any] = ["prompt": prompt]
-        let res: Res = try await request("api/summaries/ai", method: "POST", body: body, authorized: true)
-        return res.reply
+        do {
+            let res: Res = try await request("api/summaries/ai", method: "POST", body: body, authorized: true)
+            return res.reply
+        } catch {
+            // fallback to assistant chat if server endpoint is not enabled
+            let (_, reply) = try await assistantChat(message: prompt)
+            return reply
+        }
     }
 
     // MARK: - 助理长期记忆（仅登录用户，与云端同步）
