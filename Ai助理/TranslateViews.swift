@@ -1400,6 +1400,9 @@ struct DualTranslationInputCard: View {
                 placeholder: "输入或点麦克风说\(viewModel.sourceLang.name)/\(viewModel.targetLang.name)，自动识别并翻译",
                 isExpanded: $leftExpanded,
                 isListening: viewModel.isListening && viewModel.listeningSide == .left,
+                isLoadingPlaceholder: viewModel.isTranslating
+                    && viewModel.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && !viewModel.translatedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                 onVoice: { viewModel.toggleListening(side: .left) },
                 onPlay: {
                     SpeechService.shared.speak(viewModel.sourceText, language: viewModel.sourceLang.speechCode)
@@ -1421,6 +1424,9 @@ struct DualTranslationInputCard: View {
                 placeholder: "输入或点麦克风说\(viewModel.targetLang.name)/\(viewModel.sourceLang.name)，自动识别并翻译",
                 isExpanded: $rightExpanded,
                 isListening: viewModel.isListening && viewModel.listeningSide == .right,
+                isLoadingPlaceholder: viewModel.isTranslating
+                    && viewModel.translatedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && !viewModel.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                 onVoice: { viewModel.toggleListening(side: .right) },
                 onPlay: {
                     SpeechService.shared.speak(viewModel.translatedText, language: viewModel.targetLang.speechCode)
@@ -1463,6 +1469,7 @@ struct TranslationInputBox: View {
     let placeholder: String
     @Binding var isExpanded: Bool
     let isListening: Bool
+    let isLoadingPlaceholder: Bool
     let onVoice: () -> Void
     let onPlay: () -> Void
     let onCopy: () -> Void
@@ -1493,13 +1500,25 @@ struct TranslationInputBox: View {
             
             // 输入框区域（可编辑）- 靠上靠左对齐；回车触发翻译
             ZStack(alignment: .topLeading) {
-                if text.isEmpty && !isInputFocused {
-                    Text(placeholder)
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.textSecondary)
+                if text.isEmpty {
+                    if isLoadingPlaceholder {
+                        HStack(spacing: 6) {
+                            Text("翻译中")
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.textSecondary)
+                            AnimatedDots()
+                        }
                         .padding(.leading, 6)
-                    .padding(.top, 6)
+                        .padding(.top, 6)
                         .allowsHitTesting(false)
+                    } else if !isInputFocused {
+                        Text(placeholder)
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .padding(.leading, 6)
+                            .padding(.top, 6)
+                            .allowsHitTesting(false)
+                    }
                 }
                 TextEditor(text: $text)
                     .font(.subheadline)
@@ -1573,6 +1592,22 @@ struct TranslationInputBox: View {
             let separator = text.hasSuffix("\n") ? "" : "\n"
             text += separator + trimmed
         }
+    }
+}
+
+private struct AnimatedDots: View {
+    @State private var step: Int = 0
+
+    var body: some View {
+        TimelineView(.animation) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            let count = Int(t * 2) % 4
+            Text(String(repeating: "·", count: count))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.textSecondary)
+                .accessibilityHidden(true)
+        }
+        .frame(width: 20, alignment: .leading)
     }
 }
 
@@ -1750,8 +1785,8 @@ struct TranslationRecordRowWithActions: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 12) {
-                HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
                         Text(item.sourceLang.name)
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(AppTheme.textOnPrimary)
@@ -1759,6 +1794,28 @@ struct TranslationRecordRowWithActions: View {
                             .padding(.vertical, 2)
                             .background(AppTheme.primary)
                             .clipShape(Capsule())
+                        Image(systemName: "arrow.right")
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textTertiary)
+                        Text(item.targetLang.name)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(AppTheme.textOnPrimary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(AppTheme.secondary)
+                            .clipShape(Capsule())
+                        Spacer(minLength: 0)
+                        Text(formatDate(item.createdAt))
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textTertiary)
+                    }
+                    
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(item.sourceText)
+                            .font(.callout)
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .lineLimit(isExpanded ? nil : 2)
+                        Spacer(minLength: 8)
                         HStack(spacing: 8) {
                             Button {
                                 SpeechService.shared.speak(item.sourceText, language: item.sourceLang.speechCode)
@@ -1778,19 +1835,12 @@ struct TranslationRecordRowWithActions: View {
                         }
                     }
                     
-                    Image(systemName: "arrow.right")
-                        .font(.caption2)
-                        .foregroundStyle(AppTheme.textTertiary)
-                        .padding(.top, 2)
-                    
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(item.targetLang.name)
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(AppTheme.textOnPrimary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(AppTheme.secondary)
-                            .clipShape(Capsule())
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(item.targetText)
+                            .font(.callout)
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .lineLimit(isExpanded ? nil : 2)
+                        Spacer(minLength: 8)
                         HStack(spacing: 8) {
                             Button {
                                 SpeechService.shared.speak(item.targetText, language: item.targetLang.speechCode)
@@ -1813,38 +1863,26 @@ struct TranslationRecordRowWithActions: View {
                 
                 Spacer(minLength: 0)
                 
-                Text(formatDate(item.createdAt))
-                    .font(.caption2)
-                    .foregroundStyle(AppTheme.textTertiary)
-                
                 Button {
                     onReuse?()
                     dismiss()
                 } label: {
                     Image(systemName: "square.and.pencil")
-                        .font(.caption)
+                        .font(.title3.weight(.semibold))
                         .foregroundStyle(AppTheme.textSecondary)
-                        .frame(width: 22, height: 22)
+                        .frame(width: 30, height: 30)
                 }
                 .help("继续编辑")
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text(item.sourceText)
-                    .font(.callout)
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .lineLimit(isExpanded ? nil : 2)
-                Text(item.targetText)
-                    .font(.callout)
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .lineLimit(isExpanded ? nil : 2)
-            }
-            if item.sourceText.count > 80 || item.targetText.count > 80 {
-                Button {
-                    isExpanded.toggle()
-                } label: {
-                    Text(isExpanded ? "收起" : "展开")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(AppTheme.primary)
+                if item.sourceText.count > 80 || item.targetText.count > 80 {
+                    Button {
+                        isExpanded.toggle()
+                    } label: {
+                        Text(isExpanded ? "收起" : "展开")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(AppTheme.primary)
+                    }
                 }
             }
         }
@@ -1913,8 +1951,8 @@ struct ModernTranslationHistoryItem: View {
         ModernCard(style: .outlined) {
             VStack(alignment: .leading, spacing: ModernDesignSystem.Spacing.sm) {
                 HStack(alignment: .center, spacing: 12) {
-                    HStack(spacing: ModernDesignSystem.Spacing.xs) {
-                        VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: ModernDesignSystem.Spacing.xs) {
                             Text(item.sourceLang.name)
                                 .font(.caption2.weight(.medium))
                                 .foregroundStyle(AppTheme.textOnPrimary)
@@ -1922,6 +1960,28 @@ struct ModernTranslationHistoryItem: View {
                                 .padding(.vertical, 2)
                                 .background(AppTheme.primary)
                                 .clipShape(Capsule())
+                            Image(systemName: "arrow.right")
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.textTertiary)
+                            Text(item.targetLang.name)
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(AppTheme.textOnPrimary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(AppTheme.secondary)
+                                .clipShape(Capsule())
+                            Spacer(minLength: 0)
+                            Text(formatDate(item.createdAt))
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.textTertiary)
+                        }
+                        
+                        HStack(alignment: .center, spacing: 8) {
+                            Text(item.sourceText)
+                                .font(.callout)
+                                .foregroundStyle(AppTheme.textPrimary)
+                                .lineLimit(isExpanded ? nil : 2)
+                            Spacer(minLength: 8)
                             HStack(spacing: 8) {
                                 Button {
                                     SpeechService.shared.speak(item.sourceText, language: item.sourceLang.speechCode)
@@ -1941,19 +2001,12 @@ struct ModernTranslationHistoryItem: View {
                             }
                         }
                         
-                        Image(systemName: "arrow.right")
-                            .font(.caption2)
-                            .foregroundStyle(AppTheme.textTertiary)
-                            .padding(.top, 2)
-                        
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(item.targetLang.name)
-                                .font(.caption2.weight(.medium))
-                                .foregroundStyle(AppTheme.textOnPrimary)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(AppTheme.secondary)
-                                .clipShape(Capsule())
+                        HStack(alignment: .center, spacing: 8) {
+                            Text(item.targetText)
+                                .font(.callout)
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .lineLimit(isExpanded ? nil : 2)
+                            Spacer(minLength: 8)
                             HStack(spacing: 8) {
                                 Button {
                                     SpeechService.shared.speak(item.targetText, language: item.targetLang.speechCode)
@@ -1976,31 +2029,15 @@ struct ModernTranslationHistoryItem: View {
                     
                     Spacer(minLength: 0)
                     
-                    Text(formatDate(item.createdAt))
-                        .font(.caption2)
-                        .foregroundStyle(AppTheme.textTertiary)
-                    
                     Button {
                         onReuse?()
                     } label: {
                         Image(systemName: "square.and.pencil")
-                            .font(.caption2)
+                            .font(.title3.weight(.semibold))
                             .foregroundStyle(AppTheme.textSecondary)
-                            .frame(width: 22, height: 22)
+                            .frame(width: 30, height: 30)
                     }
                     .help("继续编辑")
-                }
-                
-                VStack(alignment: .leading, spacing: ModernDesignSystem.Spacing.xs) {
-                    Text(item.sourceText)
-                        .font(.callout)
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .lineLimit(isExpanded ? nil : 2)
-                    
-                    Text(item.targetText)
-                        .font(.callout)
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .lineLimit(isExpanded ? nil : 2)
                 }
                 
                 if item.sourceText.count > 100 || item.targetText.count > 100 {

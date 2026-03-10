@@ -6,13 +6,32 @@
 //
 
 import SwiftUI
+import UserNotifications
 
 // iOS 主入口（保留原有页面布局与功能）
 @main
 struct Ai__App: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+        }
+    }
+}
+
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        ReminderService.shared.registerCategories()
+        return true
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        let userInfo = response.notification.request.content.userInfo
+        if let noteId = userInfo["noteId"] as? String {
+            ReminderService.shared.handleAction(noteId: noteId, actionId: response.actionIdentifier)
         }
     }
 }

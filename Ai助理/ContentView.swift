@@ -1,23 +1,21 @@
 import SwiftUI
 
-/// 侧边栏项：助理为默认页 + 写作、PPT、笔记、总结、翻译、学习、设置
+/// 侧边栏项：助理为默认页 + 写作、PPT、记录、翻译、学习、设置
 enum SidebarItem: Int, CaseIterable {
     case partner = 0        // 助理（默认）
     case writing = 1        // 写作
     case ppt = 2            // PPT
-    case notes = 3         // 笔记
-    case summary = 4       // 总结
-    case translate = 5     // 翻译
-    case learning = 6      // 学习
-    case profile = 7       // 设置
+    case notesSummary = 3   // 记录（笔记/总结合并）
+    case translate = 4      // 翻译
+    case learning = 5       // 学习
+    case profile = 6        // 设置
 
     var title: String {
         switch self {
         case .partner: return "助理"
         case .writing: return "写作"
         case .ppt: return "PPT"
-        case .notes: return "笔记"
-        case .summary: return "总结"
+        case .notesSummary: return "记录"
         case .translate: return "翻译"
         case .learning: return "学习"
         case .profile: return "设置"
@@ -29,8 +27,7 @@ enum SidebarItem: Int, CaseIterable {
         case .partner: return "brain.head.profile"
         case .writing: return "pencil"
         case .ppt: return "rectangle.stack"
-        case .notes: return "mic"
-        case .summary: return "doc.text"
+        case .notesSummary: return "note.text"
         case .translate: return "character.bubble"
         case .learning: return "book.fill"
         case .profile: return "gearshape"
@@ -115,7 +112,7 @@ struct ContentView: View {
     @State private var sidebarHistory: [CloudConversationSummary] = []
     @State private var isSidebarHistoryLoading = false
     private var primarySidebarItems: [SidebarItem] {
-        // 侧边栏只保留：助理、笔记、总结、翻译、学习（写作/PPT 入口已移动到助理页面的加号里）
+        // 侧边栏只保留：助理、记录、翻译、学习（写作/PPT 入口已移动到助理页面的加号里）
         SidebarItem.allCases.filter { ![.profile, .writing, .ppt].contains($0) }
     }
     /// 根据当前选中的页面返回窗口标题
@@ -124,8 +121,7 @@ struct ContentView: View {
         case .partner: return "AI助理"
         case .writing: return "写作"
         case .ppt: return "PPT"
-        case .notes: return "笔记"
-        case .summary: return "总结"
+        case .notesSummary: return "记录"
         case .translate: return "AI翻译"
         case .learning: return "印尼语学习"
         case .profile: return "设置"
@@ -411,10 +407,8 @@ struct ContentView: View {
                     WritingStudioView()
                 case .ppt:
                     PPTStudioView()
-                case .notes:
-                    NotesWorkspaceView()
-                case .summary:
-                    SummaryWorkspaceView()
+                case .notesSummary:
+                    NotesSummaryWorkspaceView(initialMode: .note)
                 case .translate:
                     AITranslateHomeView()
                 case .learning:

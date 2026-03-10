@@ -41,6 +41,8 @@ model User {
   favorites      Favorite[]
   learningLogs   LearningSession[]
   memories       UserMemory[]
+  notes          Note[]
+  summaries      Summary[]
 }
 
 /// 助理长期记忆：偏好、习惯、重要事实等，用于个性化回复与持续学习
@@ -99,6 +101,41 @@ model TranslationHistory {
   audioUrl   String?
   createdAt  DateTime @default(now())
   user       User?    @relation(fields: [userId], references: [id])
+}
+
+model Note {
+  id                 String   @id @default(cuid())
+  userId             String
+  title              String
+  summary            String
+  category           String
+  tags               Json
+  content            String
+  rawText            String
+  reminderAt         DateTime?
+  reminderText       String?
+  reminderSnoozeHours Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Summary {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  summary   String
+  category  String
+  tags      Json
+  content   String
+  rawText   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model VocabCategory {

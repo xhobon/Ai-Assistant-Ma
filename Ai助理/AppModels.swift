@@ -95,3 +95,31 @@ struct UserMemoryItem: Identifiable, Hashable, Codable {
         )
     }
 }
+
+enum ReminderStatus: String, Codable {
+    case none
+    case pending
+    case done
+}
+
+struct NoteEntry: Identifiable, Hashable, Codable {
+    let id: String
+    let title: String
+    let summary: String
+    let content: String
+    let tags: [String]
+    let category: String
+    var reminderAt: Date?
+    var reminderText: String?
+    var reminderSnoozeHours: Int?
+    var reminderStatus: ReminderStatus
+    let createdAt: Date
+
+    var dateText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd HH:mm"
+        return formatter.string(from: createdAt)
+    }
+
+    var notificationId: String { "note-reminder-\(id)" }
+}

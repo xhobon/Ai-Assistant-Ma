@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
 import UIKit
+import Photos
 
 struct AIAssistantHomeView: View {
     private let services: [AssistantService] = [
@@ -689,6 +690,11 @@ struct AIAssistantChatView: View {
     @State private var showVideoCall = false
     @State private var showShortcutRow = false
     @State private var showHistoryDialog = false
+    @State private var showPhotoQuickRow = false
+    @State private var isLoadingRecentPhotos = false
+    @State private var recentPhotoThumbnails: [UIImage] = []
+    @State private var showCameraPicker = false
+    @State private var showMorePhotosPicker = false
 
     private let threads: [ChatThread] = [
         ChatThread(id: "c1", title: "电商数据分析", preview: "上周转化率降低的原因是什么？", time: "10:24", systemImage: "chart.line.uptrend.xyaxis", tint: .blue, tags: ["置顶", "1 未读"]),
@@ -745,6 +751,25 @@ struct AIAssistantChatView: View {
                     .background(AppTheme.surface)
                     .padding(.bottom, 6)
                 }
+                
+                if showPhotoQuickRow {
+                    ChatPhotoQuickRow(
+                        thumbnails: recentPhotoThumbnails,
+                        isLoading: isLoadingRecentPhotos,
+                        onCamera: { showCameraPicker = true },
+                        onPickThumbnail: { image in
+                            if let data = image.jpegData(compressionQuality: 0.9) {
+                                viewModel.handleImageData(data)
+                            }
+                        },
+                        onMore: { showMorePhotosPicker = true },
+                        onDismiss: { showPhotoQuickRow = false }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.surface)
+                    .padding(.bottom, 6)
+                }
 
                 HStack(alignment: .bottom, spacing: 0) {
                     ChatComposerBar(
@@ -758,8 +783,11 @@ struct AIAssistantChatView: View {
                         onPasteImage: { imageData in
                             viewModel.handlePastedImage(imageData)
                         },
-                        onFileUpload: {
-                            showFilePicker = true
+                        onCameraTap: {
+                            showPhotoQuickRow.toggle()
+                            if showPhotoQuickRow {
+                                loadRecentPhotosIfNeeded()
+                            }
                         }
                     )
                     .frame(maxWidth: .infinity)
@@ -771,6 +799,15 @@ struct AIAssistantChatView: View {
             .padding(.bottom, 8)
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
+        .photosPicker(isPresented: $showMorePhotosPicker, selection: $selectedPhotoItem, matching: .images)
+        .fullScreenCoverOrSheet(isPresented: $showCameraPicker) {
+            CameraPicker { image in
+                showCameraPicker = false
+                if let data = image.jpegData(compressionQuality: 0.9) {
+                    viewModel.handleImageData(data)
+                }
+            }
+        }
         .fileImporter(
             isPresented: $showFilePicker,
             allowedContentTypes: [.image, .pdf, .text, .plainText, .rtf, .data, .item],
@@ -896,6 +933,53 @@ struct AIAssistantChatView: View {
         .onReceive(NotificationCenter.default.publisher(for: .sidebarOpenConversation)) { notification in
             if let id = notification.userInfo?["id"] as? String {
                 Task { await viewModel.switchToConversation(id: id) }
+            }
+        }
+    }
+
+    private func loadRecentPhotosIfNeeded() {
+        guard !isLoadingRecentPhotos, recentPhotoThumbnails.isEmpty else { return }
+        isLoadingRecentPhotos = true
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        if status == .authorized || status == .limited {
+            fetchRecentThumbnails()
+        } else {
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+                if newStatus == .authorized || newStatus == .limited {
+                    fetchRecentThumbnails()
+                } else {
+                    DispatchQueue.main.async { isLoadingRecentPhotos = false }
+                }
+            }
+        }
+    }
+
+    private func fetchRecentThumbnails() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let options = PHFetchOptions()
+            options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+            options.fetchLimit = 8
+            let assets = PHAsset.fetchAssets(with: .image, options: options)
+            let manager = PHImageManager.default()
+            let targetSize = CGSize(width: 72, height: 72)
+            let requestOptions = PHImageRequestOptions()
+            requestOptions.deliveryMode = .fastFormat
+            requestOptions.isSynchronous = true
+
+            var images: [UIImage] = []
+            assets.enumerateObjects { asset, _, _ in
+                manager.requestImage(
+                    for: asset,
+                    targetSize: targetSize,
+                    contentMode: .aspectFill,
+                    options: requestOptions
+                ) { image, _ in
+                    if let image { images.append(image) }
+                }
+            }
+            DispatchQueue.main.async {
+                recentPhotoThumbnails = images
+                isLoadingRecentPhotos = false
             }
         }
     }
@@ -1526,7 +1610,7 @@ struct ChatComposerBar: View {
     var onVoiceCall: () -> Void = {}
     var onPlus: () -> Void = {}
     var onPasteImage: ((Data) -> Void)? = nil
-    var onFileUpload: (() -> Void)? = nil
+    var onCameraTap: (() -> Void)? = nil
 
     private var hasInputText: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -1538,10 +1622,10 @@ struct ChatComposerBar: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            UnifiedAppIconButton(systemImage: "doc.fill") {
-                onFileUpload?()
+            UnifiedAppIconButton(systemImage: "camera") {
+                onCameraTap?()
             }
-            .accessibilityLabel("上传文件")
+            .accessibilityLabel("拍照与相册")
 
             TextField("发消息或按住说话...", text: $text, axis: .vertical)
                 .font(.subheadline)
@@ -1584,6 +1668,85 @@ struct ChatComposerBar: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(AppTheme.unifiedButtonBorder.opacity(0.3), lineWidth: 1)
         )
+    }
+}
+
+/// 相册快捷条：相机 + 最近照片 + 更多
+struct ChatPhotoQuickRow: View {
+    let thumbnails: [UIImage]
+    let isLoading: Bool
+    var onCamera: () -> Void
+    var onPickThumbnail: (UIImage) -> Void
+    var onMore: () -> Void
+    var onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: onCamera) {
+                Image(systemName: "camera")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .frame(width: 40, height: 40)
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("相机")
+
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(0.85)
+                    .padding(.horizontal, 6)
+            } else {
+                ForEach(thumbnails.indices, id: \.self) { index in
+                    let image = thumbnails[index]
+                    Button {
+                        onPickThumbnail(image)
+                    } label: {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 40, height: 40)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("选择照片")
+                }
+            }
+
+            Button(action: onMore) {
+                HStack(spacing: 6) {
+                    Image(systemName: "photo.on.rectangle")
+                        .font(.subheadline.weight(.semibold))
+                    Text("更多")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundStyle(AppTheme.primary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(AppTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(AppTheme.unifiedButtonBorder.opacity(0.6), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("更多照片")
+
+            Spacer(minLength: 0)
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .frame(width: 24, height: 24)
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("收起")
+        }
     }
 }
 

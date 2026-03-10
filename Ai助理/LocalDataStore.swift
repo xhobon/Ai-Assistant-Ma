@@ -9,6 +9,7 @@ final class LocalDataStore: ObservableObject {
     private let translationsKey = "local_translations"
     private let currentConversationKey = "current_conversation_id"
     private let memoriesKey = "local_assistant_memories"
+    private let notesKey = "local_notes_v2"
 
     private init() {}
     
@@ -148,6 +149,7 @@ final class LocalDataStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: translationsKey)
         UserDefaults.standard.removeObject(forKey: currentConversationKey)
         UserDefaults.standard.removeObject(forKey: memoriesKey)
+        UserDefaults.standard.removeObject(forKey: notesKey)
     }
 
     // MARK: - 助理长期记忆（未登录时本地存储，登录后与云端同步）
@@ -217,6 +219,31 @@ final class LocalDataStore: ObservableObject {
         let list = loadMemories()
         guard !list.isEmpty else { return "" }
         return list.prefix(30).map { "[\($0.category)] \($0.content)" }.joined(separator: "\n")
+    }
+
+    // MARK: - Notes
+
+    func saveNotes(_ notes: [NoteEntry]) {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(notes) {
+            UserDefaults.standard.set(data, forKey: notesKey)
+        }
+    }
+
+    func loadNotes() -> [NoteEntry] {
+        guard let data = UserDefaults.standard.data(forKey: notesKey) else { return [] }
+        let decoder = JSONDecoder()
+        return (try? decoder.decode([NoteEntry].self, from: data)) ?? []
+    }
+
+    func updateNote(_ note: NoteEntry) {
+        var list = loadNotes()
+        if let idx = list.firstIndex(where: { $0.id == note.id }) {
+            list[idx] = note
+        } else {
+            list.insert(note, at: 0)
+        }
+        saveNotes(list)
     }
     
     // MARK: - 私有方法

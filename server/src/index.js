@@ -118,6 +118,16 @@ function getOllamaTranslateModel() {
   return raw.trim().replace(/^["']|["']$/g, "") || "qwen2.5:3b";
 }
 
+function getOllamaNoteModel() {
+  const raw = process.env.OLLAMA_NOTE_MODEL || "";
+  return raw.trim().replace(/^["']|["']$/g, "") || getOllamaChatModel();
+}
+
+function getOllamaSummaryModel() {
+  const raw = process.env.OLLAMA_SUMMARY_MODEL || "";
+  return raw.trim().replace(/^["']|["']$/g, "") || getOllamaChatModel();
+}
+
 const MEMORY_CATEGORY_SET = new Set(["preference", "habit", "goal"]);
 
 function normalizeMemoryCategory(category) {
@@ -154,7 +164,7 @@ function computeExpiresAt(category, ttlDays) {
   return d;
 }
 
-async function llmChat(messages) {
+async function llmChatWithModel(model, messages) {
   const ollamaBase = getOllamaBaseUrl();
   if (!ollamaBase) {
     throw new Error("请配置 OLLAMA_API（例如：https://xxxxx.ngrok-free.dev）");
@@ -165,7 +175,7 @@ async function llmChat(messages) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: getOllamaChatModel(),
+      model,
       messages,
       stream: false
     })
@@ -184,6 +194,10 @@ async function llmChat(messages) {
   }
   const errMsg = data?.error || data?.message || raw || `HTTP ${res.status}`;
   throw new Error(`Ollama API 错误: ${res.status} ${String(errMsg).slice(0, 200)}`);
+}
+
+async function llmChat(messages) {
+  return llmChatWithModel(getOllamaChatModel(), messages);
 }
 
 /** 从最近一轮对话中提取可长期记忆的用户信息，返回 { content, category, confidence, ttlDays, source }[] */
@@ -1270,6 +1284,34 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
   });
 });
 
+app.post("/api/notes/ai", optionalAuthMiddleware, async (req, res) => {
+  try {
+    const prompt = String(req.body?.prompt || "").trim();
+    if (!prompt) return res.status(400).json({ error: "缺少 prompt" });
+    const reply = await llmChatWithModel(getOllamaNoteModel(), [
+      { role: "system", content: "你是笔记整理助手，只输出用户要求的 JSON 结果。" },
+      { role: "user", content: prompt }
+    ]);
+    return res.json({ reply });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "AI 处理失败" });
+  }
+});
+
+app.post("/api/summaries/ai", optionalAuthMiddleware, async (req, res) => {
+  try {
+    const prompt = String(req.body?.prompt || "").trim();
+    if (!prompt) return res.status(400).json({ error: "缺少 prompt" });
+    const reply = await llmChatWithModel(getOllamaSummaryModel(), [
+      { role: "system", content: "你是内容总结助手，只输出用户要求的 JSON 结果。" },
+      { role: "user", content: prompt }
+    ]);
+    return res.json({ reply });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "AI 处理失败" });
+  }
+});
+
 app.post("/api/translate", optionalAuthMiddleware, async (req, res) => {
   const schema = z.object({
     text: z.string().min(1),
@@ -1396,6 +1438,75 @@ app.get("/api/translations", authMiddleware, async (req, res) => {
       createdAt: t.createdAt.toISOString()
     }))
   });
+});
+
+// 保存笔记
+app.post("/api/notes", authMiddleware, async (req, res) => {
+  const schema = z.object({
+    title: z.string().min(1),
+    summary: z.string().min(1),
+    category: z.string().min(1),
+    tags: z.array(z.string()).optional().default([]),
+    content: z.string().min(1),
+    rawText: z.string().min(1),
+    reminderAt: z.string().optional().nullable(),
+    reminderText: z.string().optional().nullable(),
+    reminderSnoozeHours: z.number().int().optional().nullable()
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+  const data = parsed.data;
+  const reminderAt = data.reminderAt ? new Date(data.reminderAt) : null;
+
+  const note = await prisma.note.create({
+    data: {
+      userId: req.user.sub,
+      title: data.title,
+      summary: data.summary,
+      category: data.category,
+      tags: data.tags,
+      content: data.content,
+      rawText: data.rawText,
+      reminderAt,
+      reminderText: data.reminderText || null,
+      reminderSnoozeHours: data.reminderSnoozeHours ?? null
+    }
+  });
+
+  return res.json({ id: note.id });
+});
+
+// 保存总结
+app.post("/api/summaries", authMiddleware, async (req, res) => {
+  const schema = z.object({
+    title: z.string().min(1),
+    summary: z.string().min(1),
+    category: z.string().min(1),
+    tags: z.array(z.string()).optional().default([]),
+    content: z.string().min(1),
+    rawText: z.string().min(1)
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+  const data = parsed.data;
+
+  const summary = await prisma.summary.create({
+    data: {
+      userId: req.user.sub,
+      title: data.title,
+      summary: data.summary,
+      category: data.category,
+      tags: data.tags,
+      content: data.content,
+      rawText: data.rawText
+    }
+  });
+
+  return res.json({ id: summary.id });
 });
 
 app.post("/api/tts", async (req, res) => {

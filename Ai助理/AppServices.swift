@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import UIKit
+import UserNotifications
 import Speech
 import Combine
 import Vision
@@ -532,6 +533,20 @@ final class APIClient {
         return (res.conversationId, res.reply)
     }
 
+    func generateNoteWithAI(prompt: String) async throws -> String {
+        struct Res: Codable { let reply: String }
+        let body: [String: Any] = ["prompt": prompt]
+        let res: Res = try await request("api/notes/ai", method: "POST", body: body, authorized: true)
+        return res.reply
+    }
+
+    func generateSummaryWithAI(prompt: String) async throws -> String {
+        struct Res: Codable { let reply: String }
+        let body: [String: Any] = ["prompt": prompt]
+        let res: Res = try await request("api/summaries/ai", method: "POST", body: body, authorized: true)
+        return res.reply
+    }
+
     // MARK: - 助理长期记忆（仅登录用户，与云端同步）
 
     /// 获取云端记忆列表
@@ -662,6 +677,33 @@ final class APIClient {
             totalLearningMinutes: res.totalLearningMinutes,
             learningSessions: res.learningSessions
         )
+    }
+
+    // MARK: - Notes & Summaries
+    func saveNoteToCloud(title: String, summary: String, category: String, tags: [String], content: String, rawText: String) async throws {
+        struct Res: Codable {}
+        let body: [String: Any] = [
+            "title": title,
+            "summary": summary,
+            "category": category,
+            "tags": tags,
+            "content": content,
+            "rawText": rawText
+        ]
+        _ = try await request("api/notes", method: "POST", body: body, authorized: true) as Res
+    }
+
+    func saveSummaryToCloud(title: String, summary: String, category: String, tags: [String], content: String, rawText: String) async throws {
+        struct Res: Codable {}
+        let body: [String: Any] = [
+            "title": title,
+            "summary": summary,
+            "category": category,
+            "tags": tags,
+            "content": content,
+            "rawText": rawText
+        ]
+        _ = try await request("api/summaries", method: "POST", body: body, authorized: true) as Res
     }
 }
 
@@ -989,6 +1031,68 @@ extension Notification.Name {
     static let globalCopySucceeded = Notification.Name("GlobalCopySucceeded")
     static let sidebarNewConversation = Notification.Name("SidebarNewConversation")
     static let sidebarOpenConversation = Notification.Name("SidebarOpenConversation")
+    static let reminderUpdated = Notification.Name("ReminderUpdated")
+}
+
+final class ReminderService {
+    static let shared = ReminderService()
+    private init() {}
+
+    private let categoryId = "note_reminder"
+    private let actionDone = "REMINDER_DONE"
+    private let actionSnooze = "REMINDER_SNOOZE"
+
+    func registerCategories() {
+        let done = UNNotificationAction(identifier: actionDone, title: "已完成", options: [.authenticationRequired])
+        let snooze = UNNotificationAction(identifier: actionSnooze, title: "未完成", options: [])
+        let category = UNNotificationCategory(identifier: categoryId, actions: [done, snooze], intentIdentifiers: [], options: [])
+        UNUserNotificationCenter.current().setNotificationCategories([category])
+    }
+
+    func schedule(note: NoteEntry, at date: Date) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        let content = UNMutableNotificationContent()
+        content.title = note.title
+        content.body = (note.reminderText?.isEmpty == false ? note.reminderText! : note.summary)
+        content.sound = .default
+        content.categoryIdentifier = categoryId
+        content.userInfo = ["noteId": note.id]
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, date.timeIntervalSinceNow), repeats: false)
+        let request = UNNotificationRequest(identifier: note.notificationId, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+    }
+
+    func cancel(note: NoteEntry) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [note.notificationId])
+    }
+
+    func handleAction(noteId: String, actionId: String) {
+        var notes = LocalDataStore.shared.loadNotes()
+        guard let idx = notes.firstIndex(where: { $0.id == noteId }) else { return }
+        var note = notes[idx]
+
+        if actionId == actionDone {
+            note.reminderStatus = .done
+            note.reminderAt = nil
+            notes[idx] = note
+            LocalDataStore.shared.saveNotes(notes)
+            cancel(note: note)
+            NotificationCenter.default.post(name: .reminderUpdated, object: nil)
+            return
+        }
+
+        if actionId == actionSnooze {
+            let hours = max(1, note.reminderSnoozeHours ?? 3)
+            let newDate = Date().addingTimeInterval(Double(hours) * 3600)
+            note.reminderAt = newDate
+            note.reminderStatus = .pending
+            notes[idx] = note
+            LocalDataStore.shared.saveNotes(notes)
+            schedule(note: note, at: newDate)
+            NotificationCenter.default.post(name: .reminderUpdated, object: nil)
+        }
+    }
 }
 
 struct ClipboardService {

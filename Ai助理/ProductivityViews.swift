@@ -166,64 +166,98 @@ struct PPTStudioView: View {
 
 // MARK: - 笔记
 struct NotesWorkspaceView: View {
-    @State private var title = ""
+    var contentOnly: Bool = false
     @State private var content = ""
-    @State private var tags = ""
     @State private var searchText = ""
     @State private var isRecording = false
+    @State private var isGenerating = false
+    @State private var alertMessage: String?
     @State private var notes: [NoteEntry] = []
+    @State private var aiNote: AINotePayload?
+    @State private var aiRawResponse: String?
+    private let speechTranscriber = SpeechTranscriber()
+    private let tokenStore = TokenStore.shared
 
     var body: some View {
-        AppPageScaffold(maxWidth: 960) {
-            ProductivityHeader(
-                title: "笔记中心",
-                subtitle: "随手记录，支持标签与快速检索",
-                systemImage: "note.text",
-                tint: AppTheme.accentWarm
-            )
+        if contentOnly {
+            notesContent
+        } else {
+            AppPageScaffold(maxWidth: 960) {
+                ProductivityHeader(
+                    title: "笔记中心",
+                    subtitle: "随手记录，支持标签与快速检索",
+                    systemImage: "note.text",
+                    tint: AppTheme.accentWarm
+                )
+                notesContent
+            }
+        }
+    }
 
+    private var notesContent: some View {
+        VStack(spacing: 12) {
             SectionCard {
                 VStack(spacing: 12) {
-                    LabeledField(title: "标题", placeholder: "例如：会议纪要 / 读书笔记", text: $title)
-                    TextEditorField(title: "内容", placeholder: "支持粘贴、语音转写或手动输入", text: $content, minHeight: 160)
-                    LabeledField(title: "标签（用逗号分隔）", placeholder: "例如：工作,学习,重要", text: $tags)
+                    TextEditorField(title: "内容", placeholder: "只需输入内容，AI 会自动生成标题、标签与分类", text: $content, minHeight: 180)
                     HStack(spacing: 10) {
-                        ProductivityActionButton(isRecording ? "转写中" : "语音转写", systemImage: "mic.fill", style: .outline) {
-                            isRecording.toggle()
+                        ProductivityActionButton(isRecording ? "转写中" : "语音转写", systemImage: isRecording ? "waveform.circle.fill" : "mic.fill", style: .outline) {
+                            toggleNoteRecording()
                         }
                         .frame(maxWidth: .infinity)
-                        ProductivityActionButton("保存笔记", systemImage: "tray.and.arrow.down", style: .filled) {
-                            guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                            notes.insert(
-                                NoteEntry(
-                                    title: title.isEmpty ? "未命名笔记" : title,
-                                    content: content,
-                                    tags: tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty },
-                                    createdAt: Date()
-                                ),
-                                at: 0
-                            )
-                            title = ""
-                            content = ""
-                            tags = ""
+                        ProductivityActionButton(isGenerating ? "生成中..." : "AI 整理笔记", systemImage: "sparkles", style: .filled) {
+                            Task { await generateAINote() }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .disabled(isGenerating)
+                    }
+                    .padding(.top, 2)
+
+                    if aiNote != nil {
+                        Divider().padding(.vertical, 2)
+                        AINoteEditor(note: $aiNote)
+                        ProductivityActionButton("保存笔记", systemImage: "tray.and.arrow.down", style: .outline) {
+                            saveNoteToLocalAndCloud()
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .padding(.top, 2)
                 }
             }
 
             SectionCard {
                 VStack(spacing: 12) {
-                    LabeledField(title: "快速搜索", placeholder: "输入关键字/标签", text: $searchText)
+                    LabeledField(title: "快速搜索", placeholder: "输入关键字/标签/分类", text: $searchText)
                     if filteredNotes.isEmpty {
                         EmptyStateRow(text: "暂无笔记记录")
                     } else {
                         ForEach(filteredNotes) { note in
-                            NoteRow(note: note)
+                            NoteRow(
+                                note: note,
+                                onMarkDone: { markReminderDone(note: note) },
+                                onSnooze: { snoozeReminder(note: note) }
+                            )
                         }
                     }
                 }
+            }
+        }
+        .alert("提示", isPresented: Binding(
+            get: { alertMessage != nil },
+            set: { if !$0 { alertMessage = nil } }
+        )) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(alertMessage ?? "")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .reminderUpdated)) { _ in
+            notes = LocalDataStore.shared.loadNotes()
+        }
+        .onAppear {
+            notes = LocalDataStore.shared.loadNotes()
+        }
+        .onDisappear {
+            if isRecording {
+                speechTranscriber.stopTranscribing()
+                isRecording = false
             }
         }
     }
@@ -234,71 +268,389 @@ struct NotesWorkspaceView: View {
         return notes.filter { note in
             note.title.localizedCaseInsensitiveContains(keyword)
             || note.content.localizedCaseInsensitiveContains(keyword)
+            || note.summary.localizedCaseInsensitiveContains(keyword)
+            || note.category.localizedCaseInsensitiveContains(keyword)
             || note.tags.contains(where: { $0.localizedCaseInsensitiveContains(keyword) })
         }
+    }
+
+    private func toggleNoteRecording() {
+        if isRecording {
+            speechTranscriber.stopTranscribing()
+            isRecording = false
+            return
+        }
+        Task {
+            let granted = await speechTranscriber.requestAuthorization()
+            if !granted {
+                await MainActor.run { alertMessage = "未获得语音识别权限" }
+                return
+            }
+            await MainActor.run { isRecording = true }
+            do {
+                try speechTranscriber.startTranscribing(locale: Locale(identifier: "zh-CN")) { text, isFinal in
+                    Task { @MainActor in
+                        if !text.isEmpty {
+                            content = text
+                        }
+                        if isFinal {
+                            isRecording = false
+                        }
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isRecording = false
+                    alertMessage = "语音转写失败：\(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func generateAINote() async {
+        let input = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !input.isEmpty else {
+            await MainActor.run { alertMessage = "请先输入内容" }
+            return
+        }
+        await MainActor.run { isGenerating = true }
+        defer { Task { @MainActor in isGenerating = false } }
+
+        let prompt = """
+        你是专业的中文笔记助手。请基于用户输入生成结构化笔记，并严格返回 JSON，不要包含其它文本。
+        如果用户表达了提醒需求（例如“明天3点提醒我…”），请补全提醒字段；没有提醒则为 null。
+        JSON 格式：
+        {"title":"标题","summary":"总结","category":"分类","tags":["标签1","标签2"],"content":"整理后的正文","reminderAt":"ISO8601 时间或 null","reminderText":"提醒内容或 null","reminderSnoozeHours":3}
+        用户输入：
+        \(input)
+        """
+        do {
+            let reply = try await APIClient.shared.generateNoteWithAI(prompt: prompt)
+            await MainActor.run {
+                aiRawResponse = reply
+                if let parsed = decodeAINote(from: reply) {
+                    aiNote = parsed
+                } else {
+                    aiNote = AINotePayload.fallback(from: input, raw: reply)
+                }
+            }
+        } catch {
+            await MainActor.run {
+                alertMessage = userFacingMessage(for: error)
+            }
+        }
+    }
+
+    private func decodeAINote(from text: String) -> AINotePayload? {
+        let cleaned = extractJSON(from: text)
+        guard let data = cleaned.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(AINotePayload.self, from: data)
+    }
+
+    private func saveNoteToLocalAndCloud() {
+        guard let aiNote else { return }
+        let entry = NoteEntry(
+            id: UUID().uuidString,
+            title: aiNote.title.isEmpty ? "未命名笔记" : aiNote.title,
+            summary: aiNote.summary,
+            content: aiNote.content,
+            tags: aiNote.tags,
+            category: aiNote.category,
+            reminderAt: aiNote.reminderAt,
+            reminderText: aiNote.reminderText,
+            reminderSnoozeHours: aiNote.reminderSnoozeHours,
+            reminderStatus: aiNote.reminderAt == nil ? .none : .pending,
+            createdAt: Date()
+        )
+        notes.insert(entry, at: 0)
+        LocalDataStore.shared.saveNotes(notes)
+        let raw = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        content = ""
+        self.aiNote = nil
+        aiRawResponse = nil
+
+        if let reminderAt = entry.reminderAt, entry.reminderStatus == .pending {
+            ReminderService.shared.schedule(note: entry, at: reminderAt)
+        }
+
+        guard tokenStore.isLoggedIn else { return }
+        Task {
+            do {
+                try await APIClient.shared.saveNoteToCloud(
+                    title: entry.title,
+                    summary: entry.summary,
+                    category: entry.category,
+                    tags: entry.tags,
+                    content: entry.content,
+                    rawText: raw
+                )
+            } catch {
+                await MainActor.run {
+                    alertMessage = "云端同步失败，已保存在本地。\(userFacingMessage(for: error))"
+                }
+            }
+        }
+    }
+
+    private func markReminderDone(note: NoteEntry) {
+        var list = LocalDataStore.shared.loadNotes()
+        guard let idx = list.firstIndex(where: { $0.id == note.id }) else { return }
+        var updated = list[idx]
+        updated.reminderStatus = .done
+        updated.reminderAt = nil
+        list[idx] = updated
+        LocalDataStore.shared.saveNotes(list)
+        notes = list
+        ReminderService.shared.cancel(note: updated)
+    }
+
+    private func snoozeReminder(note: NoteEntry) {
+        var list = LocalDataStore.shared.loadNotes()
+        guard let idx = list.firstIndex(where: { $0.id == note.id }) else { return }
+        var updated = list[idx]
+        let hours = max(1, updated.reminderSnoozeHours ?? 3)
+        let newDate = Date().addingTimeInterval(Double(hours) * 3600)
+        updated.reminderAt = newDate
+        updated.reminderStatus = .pending
+        list[idx] = updated
+        LocalDataStore.shared.saveNotes(list)
+        notes = list
+        ReminderService.shared.schedule(note: updated, at: newDate)
     }
 }
 
 // MARK: - 总结
 struct SummaryWorkspaceView: View {
+    var contentOnly: Bool = false
     @State private var sourceText = ""
-    @State private var mode = "要点"
-    @State private var length = "中等"
-    @State private var result = ""
-
-    private let modes = ["要点", "行动项", "一句话", "结构化"]
-    private let lengths = ["短", "中等", "长"]
+    @State private var isRecording = false
+    @State private var isGenerating = false
+    @State private var alertMessage: String?
+    @State private var aiSummary: AISummaryPayload?
+    private let speechTranscriber = SpeechTranscriber()
+    private let tokenStore = TokenStore.shared
 
     var body: some View {
-        AppPageScaffold(maxWidth: 960) {
-            ProductivityHeader(
-                title: "内容总结",
-                subtitle: "输入长文本或会议记录，快速提炼重点",
-                systemImage: "doc.text.magnifyingglass",
-                tint: AppTheme.accentPurple
-            )
+        if contentOnly {
+            summaryContent
+        } else {
+            AppPageScaffold(maxWidth: 960) {
+                ProductivityHeader(
+                    title: "内容总结",
+                    subtitle: "输入长文本或会议记录，快速提炼重点",
+                    systemImage: "doc.text.magnifyingglass",
+                    tint: AppTheme.accentPurple
+                )
+                summaryContent
+            }
+        }
+    }
 
+    private var summaryContent: some View {
+        VStack(spacing: 12) {
             SectionCard {
                 VStack(spacing: 12) {
-                    TextEditorField(title: "原始内容", placeholder: "粘贴需要总结的内容", text: $sourceText, minHeight: 180)
-                    ChipPicker(title: "总结方式", options: modes, selection: $mode)
-                    ChipPicker(title: "长度", options: lengths, selection: $length)
-                    VStack(spacing: 10) {
-                        ProductivityActionButton("生成总结", systemImage: "bolt.fill", style: .filled) {
-                            result = SummaryGenerator.generate(text: sourceText, mode: mode, length: length)
+                    TextEditorField(title: "内容输入", placeholder: "只需输入内容或语音转写，AI 会优化总结并生成标题/标签/分类", text: $sourceText, minHeight: 180)
+                    HStack(spacing: 10) {
+                        ProductivityActionButton(isRecording ? "转写中" : "语音转写", systemImage: isRecording ? "waveform.circle.fill" : "mic.fill", style: .outline) {
+                            toggleSummaryRecording()
                         }
                         .frame(maxWidth: .infinity)
-
-                        HStack(spacing: 10) {
-                            Spacer(minLength: 0)
-                            ProductivityActionButton("复制", systemImage: "doc.on.doc", style: .outline) {
-                                ClipboardService.copy(result)
-                            }
-                            .frame(minWidth: 120)
-
-                            ProductivityActionButton("清空", systemImage: "trash", style: .outline) {
-                                sourceText = ""
-                                result = ""
-                            }
-                            .frame(minWidth: 120)
+                        ProductivityActionButton(isGenerating ? "生成中..." : "AI 生成总结", systemImage: "sparkles", style: .filled) {
+                            Task { await generateAISummary() }
                         }
                         .frame(maxWidth: .infinity)
+                        .disabled(isGenerating)
                     }
                     .padding(.top, 2)
+
+                    if aiSummary != nil {
+                        Divider().padding(.vertical, 2)
+                        AISummaryEditor(summary: $aiSummary)
+                        HStack(spacing: 10) {
+                            ProductivityActionButton("清空", systemImage: "trash", style: .ghost) {
+                                sourceText = ""
+                                aiSummary = nil
+                            }
+                            .frame(maxWidth: .infinity)
+                            ProductivityActionButton("复制结果", systemImage: "doc.on.doc", style: .outline) {
+                                if let summary = aiSummary {
+                                    ClipboardService.copy(summary.content)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            ProductivityActionButton("保存总结", systemImage: "tray.and.arrow.down", style: .outline) {
+                                saveSummaryToCloud()
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
                 }
             }
 
             SectionCard {
                 VStack(spacing: 12) {
                     SectionTitle("总结结果")
-                    if result.isEmpty {
+                    if aiSummary == nil {
                         EmptyStateRow(text: "生成后显示总结内容")
                     } else {
-                        Text(result)
+                        Text(aiSummary?.content ?? "")
                             .font(.body)
                             .foregroundStyle(AppTheme.textPrimary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                }
+            }
+        }
+        .alert("提示", isPresented: Binding(
+            get: { alertMessage != nil },
+            set: { if !$0 { alertMessage = nil } }
+        )) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(alertMessage ?? "")
+        }
+        .onDisappear {
+            if isRecording {
+                speechTranscriber.stopTranscribing()
+                isRecording = false
+            }
+        }
+    }
+
+    private func toggleSummaryRecording() {
+        if isRecording {
+            speechTranscriber.stopTranscribing()
+            isRecording = false
+            return
+        }
+        Task {
+            let granted = await speechTranscriber.requestAuthorization()
+            if !granted {
+                await MainActor.run { alertMessage = "未获得语音识别权限" }
+                return
+            }
+            await MainActor.run { isRecording = true }
+            do {
+                try speechTranscriber.startTranscribing(locale: Locale(identifier: "zh-CN")) { text, isFinal in
+                    Task { @MainActor in
+                        if !text.isEmpty {
+                            sourceText = text
+                        }
+                        if isFinal {
+                            isRecording = false
+                        }
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isRecording = false
+                    alertMessage = "语音转写失败：\(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func generateAISummary() async {
+        let input = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !input.isEmpty else {
+            await MainActor.run { alertMessage = "请先输入内容" }
+            return
+        }
+        await MainActor.run { isGenerating = true }
+        defer { Task { @MainActor in isGenerating = false } }
+
+        let prompt = """
+        你是专业的中文内容总结助手。请基于用户输入优化总结内容，并生成标题、标签与分类，严格返回 JSON。
+        JSON 格式：
+        {"title":"标题","summary":"摘要","category":"分类","tags":["标签1","标签2"],"content":"优化后的总结正文"}
+        用户输入：
+        \(input)
+        """
+        do {
+            let reply = try await APIClient.shared.generateSummaryWithAI(prompt: prompt)
+            await MainActor.run {
+                if let parsed = decodeAISummary(from: reply) {
+                    aiSummary = parsed
+                } else {
+                    aiSummary = AISummaryPayload.fallback(from: input, raw: reply)
+                }
+            }
+        } catch {
+            await MainActor.run { alertMessage = userFacingMessage(for: error) }
+        }
+    }
+
+    private func decodeAISummary(from text: String) -> AISummaryPayload? {
+        let cleaned = extractJSON(from: text)
+        guard let data = cleaned.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(AISummaryPayload.self, from: data)
+    }
+
+    private func saveSummaryToCloud() {
+        guard let aiSummary else { return }
+        let raw = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard tokenStore.isLoggedIn else { return }
+        Task {
+            do {
+                try await APIClient.shared.saveSummaryToCloud(
+                    title: aiSummary.title,
+                    summary: aiSummary.summary,
+                    category: aiSummary.category,
+                    tags: aiSummary.tags,
+                    content: aiSummary.content,
+                    rawText: raw
+                )
+            } catch {
+                await MainActor.run {
+                    alertMessage = "云端同步失败。\(userFacingMessage(for: error))"
+                }
+            }
+        }
+    }
+}
+
+enum NotesSummaryMode: String, CaseIterable, Identifiable {
+    case note = "笔记"
+    case summary = "总结"
+
+    var id: String { rawValue }
+}
+
+struct NotesSummaryWorkspaceView: View {
+    @State private var mode: NotesSummaryMode
+
+    init(initialMode: NotesSummaryMode = .note) {
+        _mode = State(initialValue: initialMode)
+    }
+
+    var body: some View {
+        AppPageScaffold(maxWidth: 960) {
+            VStack(spacing: 12) {
+                Picker("模式", selection: $mode) {
+                    ForEach(NotesSummaryMode.allCases) { item in
+                        Text(item.rawValue).tag(item)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 2)
+
+                if mode == .note {
+                    ProductivityHeader(
+                        title: "笔记中心",
+                        subtitle: "随手记录，AI 自动生成标题、标签与分类",
+                        systemImage: "note.text",
+                        tint: AppTheme.accentWarm
+                    )
+                    NotesWorkspaceView(contentOnly: true)
+                } else {
+                    ProductivityHeader(
+                        title: "内容总结",
+                        subtitle: "输入内容或语音转写，AI 优化总结并生成标题/标签/分类",
+                        systemImage: "doc.text.magnifyingglass",
+                        tint: AppTheme.accentPurple
+                    )
+                    SummaryWorkspaceView(contentOnly: true)
                 }
             }
         }
@@ -624,6 +976,8 @@ private struct SlideOutlineRow: View {
 
 private struct NoteRow: View {
     let note: NoteEntry
+    var onMarkDone: () -> Void = {}
+    var onSnooze: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -635,6 +989,17 @@ private struct NoteRow: View {
                 Text(note.dateText)
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textTertiary)
+            }
+            if !note.category.isEmpty {
+                Text(note.category)
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            if !note.summary.isEmpty {
+                Text(note.summary)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .lineLimit(2)
             }
             Text(note.content)
                 .font(.caption)
@@ -653,11 +1018,38 @@ private struct NoteRow: View {
                     }
                 }
             }
+            if note.reminderStatus == .pending, let at = note.reminderAt {
+                HStack(spacing: 8) {
+                    Image(systemName: "clock")
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textTertiary)
+                    Text("提醒：\(formatReminderDate(at))")
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textSecondary)
+                    Spacer(minLength: 0)
+                    Button("未完成") {
+                        onSnooze()
+                    }
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(AppTheme.accentStrong)
+                    Button("已完成") {
+                        onMarkDone()
+                    }
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(AppTheme.primary)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(AppTheme.surfaceMuted)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func formatReminderDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd HH:mm"
+        return formatter.string(from: date)
     }
 }
 
@@ -682,18 +1074,297 @@ private struct SlideOutline: Identifiable {
     }
 }
 
-private struct NoteEntry: Identifiable {
-    let id = UUID()
-    let title: String
-    let content: String
-    let tags: [String]
-    let createdAt: Date
+private struct AINotePayload: Codable {
+    var title: String
+    var summary: String
+    var category: String
+    var tags: [String]
+    var content: String
+    var reminderAt: Date?
+    var reminderText: String?
+    var reminderSnoozeHours: Int?
 
-    var dateText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MM/dd HH:mm"
-        return formatter.string(from: createdAt)
+    init(title: String, summary: String, category: String, tags: [String], content: String, reminderAt: Date?, reminderText: String?, reminderSnoozeHours: Int?) {
+        self.title = title
+        self.summary = summary
+        self.category = category
+        self.tags = tags
+        self.content = content
+        self.reminderAt = reminderAt
+        self.reminderText = reminderText
+        self.reminderSnoozeHours = reminderSnoozeHours
     }
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case summary
+        case category
+        case tags
+        case content
+        case reminderAt
+        case reminderText
+        case reminderSnoozeHours
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        title = (try? container.decode(String.self, forKey: .title)) ?? ""
+        summary = (try? container.decode(String.self, forKey: .summary)) ?? ""
+        category = (try? container.decode(String.self, forKey: .category)) ?? ""
+        tags = (try? container.decode([String].self, forKey: .tags)) ?? []
+        content = (try? container.decode(String.self, forKey: .content)) ?? ""
+        reminderText = try? container.decode(String.self, forKey: .reminderText)
+        reminderSnoozeHours = try? container.decode(Int.self, forKey: .reminderSnoozeHours)
+
+        if let raw = try? container.decode(String.self, forKey: .reminderAt) {
+            reminderAt = parseReminderDate(raw)
+        } else {
+            reminderAt = nil
+        }
+    }
+
+    static func fallback(from input: String, raw: String) -> AINotePayload {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = String(trimmed.prefix(12))
+        let summary = String(trimmed.prefix(60))
+        return AINotePayload(
+            title: title.isEmpty ? "未命名笔记" : title,
+            summary: summary,
+            category: "未分类",
+            tags: [],
+            content: trimmed.isEmpty ? raw : trimmed,
+            reminderAt: nil,
+            reminderText: nil,
+            reminderSnoozeHours: nil
+        )
+    }
+}
+
+private struct AISummaryPayload: Codable {
+    var title: String
+    var summary: String
+    var category: String
+    var tags: [String]
+    var content: String
+
+    static func fallback(from input: String, raw: String) -> AISummaryPayload {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = String(trimmed.prefix(12))
+        let summary = String(trimmed.prefix(60))
+        return AISummaryPayload(
+            title: title.isEmpty ? "未命名总结" : title,
+            summary: summary,
+            category: "未分类",
+            tags: [],
+            content: trimmed.isEmpty ? raw : trimmed
+        )
+    }
+}
+
+private struct AINotePreview: View {
+    let note: AINotePayload
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(note.title)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Text(note.summary)
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.textSecondary)
+            HStack(spacing: 8) {
+                if !note.category.isEmpty {
+                    Text(note.category)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(AppTheme.textOnPrimary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.primary.opacity(0.75))
+                        .clipShape(Capsule())
+                }
+                ForEach(note.tags, id: \.self) { tag in
+                    Text(tag)
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.accentStrong)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.accentStrong.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+            }
+            Text(note.content)
+                .font(.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(4)
+        }
+        .padding(12)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+private struct AINoteEditor: View {
+    @Binding var note: AINotePayload?
+    @State private var tagsText: String = ""
+
+    var body: some View {
+        if let note {
+            VStack(alignment: .leading, spacing: 8) {
+                LabeledField(title: "标题", placeholder: "AI 生成标题", text: binding(\.title))
+                LabeledField(title: "分类", placeholder: "AI 生成分类", text: binding(\.category))
+                LabeledField(title: "标签（逗号分隔）", placeholder: "AI 生成标签", text: Binding(
+                    get: { tagsText.isEmpty ? note.tags.joined(separator: ",") : tagsText },
+                    set: { tagsText = $0; self.note?.tags = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty } }
+                ))
+                TextEditorField(title: "摘要", placeholder: "AI 生成摘要", text: binding(\.summary), minHeight: 80)
+                TextEditorField(title: "正文", placeholder: "AI 生成正文", text: binding(\.content), minHeight: 120)
+                Toggle("提醒我", isOn: Binding(
+                    get: { note.reminderAt != nil },
+                    set: { enabled in
+                        if enabled {
+                            self.note?.reminderAt = note.reminderAt ?? Date().addingTimeInterval(3600)
+                            self.note?.reminderSnoozeHours = note.reminderSnoozeHours ?? 3
+                        } else {
+                            self.note?.reminderAt = nil
+                        }
+                    }
+                ))
+                if note.reminderAt != nil {
+                    DatePicker(
+                        "提醒时间",
+                        selection: Binding(
+                            get: { note.reminderAt ?? Date() },
+                            set: { self.note?.reminderAt = $0 }
+                        ),
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    .datePickerStyle(.compact)
+                    LabeledField(title: "提醒内容", placeholder: "默认使用摘要", text: Binding(
+                        get: { note.reminderText ?? "" },
+                        set: { self.note?.reminderText = $0 }
+                    ))
+                    LabeledField(title: "未完成后延后（小时）", placeholder: "例如：3", text: Binding(
+                        get: { String(note.reminderSnoozeHours ?? 3) },
+                        set: { self.note?.reminderSnoozeHours = Int($0) ?? 3 }
+                    ))
+                }
+            }
+            .padding(12)
+            .background(AppTheme.surfaceMuted)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private func binding(_ keyPath: WritableKeyPath<AINotePayload, String>) -> Binding<String> {
+        Binding(
+            get: { note?[keyPath: keyPath] ?? "" },
+            set: { newValue in
+                if note != nil { note?[keyPath: keyPath] = newValue }
+            }
+        )
+    }
+}
+
+private struct AISummaryEditor: View {
+    @Binding var summary: AISummaryPayload?
+    @State private var tagsText: String = ""
+
+    var body: some View {
+        if let summary {
+            VStack(alignment: .leading, spacing: 8) {
+                LabeledField(title: "标题", placeholder: "AI 生成标题", text: binding(\.title))
+                LabeledField(title: "分类", placeholder: "AI 生成分类", text: binding(\.category))
+                LabeledField(title: "标签（逗号分隔）", placeholder: "AI 生成标签", text: Binding(
+                    get: { tagsText.isEmpty ? summary.tags.joined(separator: ",") : tagsText },
+                    set: { tagsText = $0; self.summary?.tags = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty } }
+                ))
+                TextEditorField(title: "摘要", placeholder: "AI 生成摘要", text: binding(\.summary), minHeight: 80)
+                TextEditorField(title: "优化后的总结", placeholder: "AI 生成总结内容", text: binding(\.content), minHeight: 120)
+            }
+            .padding(12)
+            .background(AppTheme.surfaceMuted)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private func binding(_ keyPath: WritableKeyPath<AISummaryPayload, String>) -> Binding<String> {
+        Binding(
+            get: { summary?[keyPath: keyPath] ?? "" },
+            set: { newValue in
+                if summary != nil { summary?[keyPath: keyPath] = newValue }
+            }
+        )
+    }
+}
+
+private struct AISummaryPreview: View {
+    let summary: AISummaryPayload
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(summary.title)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Text(summary.summary)
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.textSecondary)
+            HStack(spacing: 8) {
+                if !summary.category.isEmpty {
+                    Text(summary.category)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(AppTheme.textOnPrimary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.primary.opacity(0.75))
+                        .clipShape(Capsule())
+                }
+                ForEach(summary.tags, id: \.self) { tag in
+                    Text(tag)
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.accentStrong)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.accentStrong.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+            }
+            Text(summary.content)
+                .font(.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(4)
+        }
+        .padding(12)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+private func extractJSON(from text: String) -> String {
+    if let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}") {
+        return String(text[start...end])
+    }
+    return text
+}
+
+private func parseReminderDate(_ raw: String) -> Date? {
+    let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty, trimmed.lowercased() != "null" else { return nil }
+    let iso = ISO8601DateFormatter()
+    if let d = iso.date(from: trimmed) { return d }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "zh_CN")
+    formatter.dateFormat = "yyyy-MM-dd HH:mm"
+    if let d = formatter.date(from: trimmed) { return d }
+    formatter.dateFormat = "MM-dd HH:mm"
+    if let d = formatter.date(from: trimmed) {
+        let cal = Calendar.current
+        let year = cal.component(.year, from: Date())
+        if let merged = cal.date(bySetting: .year, value: year, of: d) {
+            return merged
+        }
+        return d
+    }
+    return nil
 }
 
 // MARK: - 生成逻辑
