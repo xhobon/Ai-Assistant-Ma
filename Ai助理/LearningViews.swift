@@ -53,9 +53,6 @@ struct IndonesianLearningView: View {
                     .ignoresSafeArea(edges: .top)
             )
             .hideNavigationBarOnMac()
-            .task {
-                await viewModel.bootstrap()
-            }
         }
     }
 
