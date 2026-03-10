@@ -14,7 +14,11 @@ final class ServerConfigStore: ObservableObject {
     static let shared = ServerConfigStore()
 
     /// 注意：这里要与实际部署后端的 Vercel 域名保持一致
+    #if DEBUG
+    private static let builtInProductionURL = "http://127.0.0.1:8080"
+    #else
     private static let builtInProductionURL = "https://ai-assistant-ma.vercel.app"
+    #endif
 
     var baseURL: URL {
         URL(string: Self.builtInProductionURL) ?? URL(string: "https://ai-assistant-ma.vercel.app")!
@@ -138,6 +142,9 @@ final class ClearDataStore: ObservableObject {
     /// 清除本地存储的收藏等；并发送通知让翻译/学习等页面清空内存数据
     func clearAll() {
         UserDefaults.standard.removeObject(forKey: "favorite_vocab_ids")
+        UserDefaults.standard.removeObject(forKey: "learning_categories_cache")
+        UserDefaults.standard.removeObject(forKey: "learning_active_days")
+        UserDefaults.standard.removeObject(forKey: "learning_active_day_synced")
         NotificationCenter.default.post(name: .clearLocalData, object: nil)
     }
 }
@@ -689,6 +696,36 @@ final class APIClient {
             totalLearningMinutes: res.totalLearningMinutes,
             learningSessions: res.learningSessions
         )
+    }
+
+    // MARK: - Learning (Cloud)
+    func getLearningCategories() async throws -> [VocabCategory] {
+        let res: LearningCategoriesResponse = try await request("api/learning/categories", method: "GET")
+        return res.categories
+    }
+
+    func getLearningFavorites() async throws -> [String] {
+        let res: LearningFavoritesResponse = try await request("api/learning/favorites", method: "GET", authorized: true)
+        return res.favorites
+    }
+
+    func setLearningFavorite(vocabId: String, isFavorite: Bool) async throws {
+        struct Res: Codable { let ok: Bool }
+        let body: [String: Any] = [
+            "vocabId": vocabId,
+            "isFavorite": isFavorite
+        ]
+        _ = try await request("api/learning/favorites", method: "POST", body: body, authorized: true) as Res
+    }
+
+    func logLearningSession(minutes: Int, masteredCount: Int) async throws {
+        struct Res: Codable { let log: LearningSessionLog }
+        struct LearningSessionLog: Codable { let id: String }
+        let body: [String: Any] = [
+            "minutes": minutes,
+            "masteredCount": masteredCount
+        ]
+        _ = try await request("api/learning/session", method: "POST", body: body, authorized: true) as Res
     }
 
     // MARK: - Notes & Summaries

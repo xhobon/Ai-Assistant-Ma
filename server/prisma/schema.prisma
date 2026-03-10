@@ -151,6 +151,8 @@ model VocabularyItem {
   categoryId String
   textZh     String
   textId     String
+  exampleZh  String
+  exampleId  String
   audioUrl   String?
   category   VocabCategory @relation(fields: [categoryId], references: [id])
   favorites  Favorite[]

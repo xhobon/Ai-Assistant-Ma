@@ -34,14 +34,14 @@ struct LanguageOption: Identifiable, Hashable {
     static let all: [LanguageOption] = [.chinese, .indonesian]
 }
 
-struct VocabCategory: Identifiable, Hashable {
+struct VocabCategory: Identifiable, Hashable, Codable {
     let id: String
     let nameZh: String
     let nameId: String
     let items: [VocabItem]
 }
 
-struct VocabItem: Identifiable, Hashable {
+struct VocabItem: Identifiable, Hashable, Codable {
     let id: String
     let textZh: String
     let textId: String
@@ -63,6 +63,14 @@ struct UserStats: Codable {
     let totalTranslations: Int
     let totalLearningMinutes: Int
     let learningSessions: Int
+}
+
+struct LearningCategoriesResponse: Codable {
+    let categories: [VocabCategory]
+}
+
+struct LearningFavoritesResponse: Codable {
+    let favorites: [String]
 }
 
 /// 助理长期记忆条目（偏好、习惯、重要事实），用于个性化回复与持续学习

@@ -1584,10 +1584,20 @@ app.get("/api/translate/history", authMiddleware, async (req, res) => {
 app.get("/api/learning/categories", async (req, res) => {
   const categories = await prisma.vocabCategory.findMany({
     orderBy: { sortOrder: "asc" },
-    include: { items: true }
+    include: { items: { orderBy: { id: "asc" } } }
   });
 
   return res.json({ categories });
+});
+
+app.get("/api/learning/favorites", authMiddleware, async (req, res) => {
+  const list = await prisma.favorite.findMany({
+    where: { userId: req.user.sub },
+    select: { vocabId: true },
+    orderBy: { createdAt: "desc" }
+  });
+
+  return res.json({ favorites: list.map((f) => f.vocabId) });
 });
 
 app.post("/api/learning/favorites", authMiddleware, async (req, res) => {
