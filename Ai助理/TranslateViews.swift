@@ -9,46 +9,48 @@ struct AITranslateHomeView: View {
     @StateObject private var viewModel = TranslateViewModel()
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    // 快速入口：语音翻译 + 翻译记录
-                    ModernTranslationQuickLinksRow(
-                        history: viewModel.history,
-                        onReuse: { entry in
-                            viewModel.loadHistoryEntryForEditing(entry)
-                        }
-                    )
-                        .padding(.horizontal, 14)
-                    
-                    // 左右双输入框布局
-                    DualTranslationInputCard(viewModel: viewModel)
-                        .padding(.horizontal, 14)
-                    
-                    // 翻译按钮（支持 Cmd+Enter 快捷键）
-                    ModernTranslationActionBar(viewModel: viewModel)
-                        .padding(.horizontal, 14)
-                    
-                    // 历史记录
-                    ModernTranslationHistorySection(
-                        history: viewModel.history,
-                        onReuse: { entry in
-                            viewModel.loadHistoryEntryForEditing(entry)
-                        }
-                    )
-                        .padding(.horizontal, 14)
-                        .padding(.bottom, 32)
-                }
-                .padding(.top, 8)
-                .frame(maxWidth: 980, alignment: .top)
-                .frame(maxWidth: .infinity)
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                TranslatePageCompactHeader()
+                    .padding(.horizontal, 14)
+
+                // 快速入口：语音翻译 + 翻译记录
+                ModernTranslationQuickLinksRow(
+                    history: viewModel.history,
+                    onReuse: { entry in
+                        viewModel.loadHistoryEntryForEditing(entry)
+                    }
+                )
+                .padding(.horizontal, 14)
+                
+                // 双输入框（手机端上下，平板端左右）
+                DualTranslationInputCard(viewModel: viewModel)
+                    .padding(.horizontal, 14)
+                
+                // 翻译操作区
+                ModernTranslationActionBar(viewModel: viewModel)
+                    .padding(.horizontal, 14)
+                
+                // 历史记录
+                ModernTranslationHistorySection(
+                    history: viewModel.history,
+                    onReuse: { entry in
+                        viewModel.loadHistoryEntryForEditing(entry)
+                    }
+                )
+                .padding(.horizontal, 14)
+                .padding(.bottom, 28)
             }
-            .scrollIndicators(.automatic)
-            .background(AppTheme.pageBackground.ignoresSafeArea())
-            .hideNavigationBarOnMac()
-            .onTapGesture {
-                hideKeyboard()
-            }
+            // 预留侧边栏悬浮按钮位置，避免与内容重叠
+            .padding(.top, 56)
+            .frame(maxWidth: 980, alignment: .top)
+            .frame(maxWidth: .infinity)
+        }
+        .scrollIndicators(.automatic)
+        .background(AppTheme.pageBackground.ignoresSafeArea())
+        .hideNavigationBarOnMac()
+        .onTapGesture {
+            hideKeyboard()
         }
         .alert("提示", isPresented: Binding(
             get: { viewModel.alertMessage != nil },
@@ -107,22 +109,14 @@ struct TranslateHeroHeader: View {
 struct ModernTranslationQuickLinksRow: View {
     let history: [TranslationEntry]
     var onReuse: (TranslationEntry) -> Void = { _ in }
+    @State private var showRealtime = false
+    @State private var showHistory = false
     
     var body: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("AI智能翻译")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text("实时语音翻译与历史入口")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                NavigationLink {
-                    RealTimeTranslationView()
+                Button {
+                    showRealtime = true
                 } label: {
                     ModernTranslationQuickLinkCard(
                         title: "实时语音翻译",
@@ -130,14 +124,12 @@ struct ModernTranslationQuickLinksRow: View {
                         systemImage: "waveform.circle.fill",
                         accent: AppTheme.primary
                     )
-                    .frame(width: 260, height: 92)
+                    .frame(maxWidth: .infinity, minHeight: 92)
                 }
                 .buttonStyle(.plain)
 
-                NavigationLink {
-                    AllTranslationRecordsView(history: history) { entry in
-                        onReuse(entry)
-                    }
+                Button {
+                    showHistory = true
                 } label: {
                     ModernTranslationQuickInfoCard(
                         title: "翻译记录",
@@ -145,11 +137,18 @@ struct ModernTranslationQuickLinksRow: View {
                         systemImage: "clock.arrow.circlepath",
                         count: history.count
                     )
-                    .frame(width: 210, height: 92)
+                    .frame(maxWidth: .infinity, minHeight: 92)
                 }
                 .buttonStyle(.plain)
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .fullScreenCoverOrSheet(isPresented: $showRealtime) {
+            RealTimeTranslationView()
+        }
+        .fullScreenCoverOrSheet(isPresented: $showHistory) {
+            AllTranslationRecordsView(history: history) { entry in
+                onReuse(entry)
+            }
         }
     }
 }
@@ -1386,9 +1385,12 @@ struct DualTranslationInputCard: View {
     @ObservedObject var viewModel: TranslateViewModel
     @State private var leftExpanded = false
     @State private var rightExpanded = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    
+    private var isCompact: Bool { horizontalSizeClass == .compact }
     
     var body: some View {
-        HStack(spacing: 16) {
+        Group {
             // 左侧：中文输入框（可编辑）；回车或 Cmd+Enter 触发翻译
             TranslationInputBox(
                 title: viewModel.sourceLang.name,
@@ -1431,11 +1433,24 @@ struct DualTranslationInputCard: View {
                 onEnterToTranslate: { viewModel.translate() }
             )
         }
-        .padding(16)
+        .modifier(DualInputStackModifier(isCompact: isCompact))
+        .padding(14)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
         .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+}
+
+private struct DualInputStackModifier: ViewModifier {
+    let isCompact: Bool
+    
+    func body(content: Content) -> some View {
+        if isCompact {
+            VStack(spacing: 12) { content }
+        } else {
+            HStack(spacing: 16) { content }
+        }
     }
 }
 
@@ -1655,6 +1670,7 @@ struct ModernTranslationInputCard: View {
 struct ModernTranslationActionBar: View {
     @ObservedObject var viewModel: TranslateViewModel
     private let barHeight: CGFloat = 44
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     private var canTranslate: Bool {
         let leftHasText = !viewModel.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -1662,57 +1678,63 @@ struct ModernTranslationActionBar: View {
         return leftHasText || rightHasText
     }
     
+    private var isCompact: Bool { horizontalSizeClass == .compact }
+    
     var body: some View {
-        HStack(spacing: 12) {
-            Button(action: { viewModel.swapLanguages() }) {
-                HStack(spacing: 6) {
-                    Text(viewModel.sourceLang.name)
-                        .font(.subheadline.weight(.semibold))
-                    Image(systemName: "arrow.left.arrow.right")
-                        .font(.caption.weight(.semibold))
-                    Text(viewModel.targetLang.name)
-                        .font(.subheadline.weight(.semibold))
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                Button(action: { viewModel.swapLanguages() }) {
+                    HStack(spacing: 6) {
+                        Text(viewModel.sourceLang.name)
+                            .font(.subheadline.weight(.semibold))
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.caption.weight(.semibold))
+                        Text(viewModel.targetLang.name)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .frame(height: barHeight)
+                    .padding(.horizontal, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(AppTheme.surface)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(AppTheme.unifiedButtonBorder, lineWidth: 1)
+                    )
                 }
-                .foregroundStyle(AppTheme.textPrimary)
-                .frame(height: barHeight)
-                .padding(.horizontal, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(AppTheme.surface)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(AppTheme.unifiedButtonBorder, lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-
-            // 清空内容按钮：清空左右两个输入框
-            Button(action: {
-                viewModel.sourceText = ""
-                viewModel.translatedText = ""
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "xmark.circle")
-                        .font(.subheadline)
-                    Text("清空内容")
-                        .font(.subheadline)
+                .buttonStyle(.plain)
+                
+                // 清空内容按钮：清空左右两个输入框
+                Button(action: {
+                    viewModel.sourceText = ""
+                    viewModel.translatedText = ""
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "xmark.circle")
+                            .font(.subheadline)
+                        Text("清空内容")
+                            .font(.subheadline)
+                    }
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .frame(height: barHeight)
+                    .padding(.horizontal, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(AppTheme.surface)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
                 }
-                .foregroundStyle(AppTheme.textSecondary)
-                .frame(height: barHeight)
-                .padding(.horizontal, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(AppTheme.surface)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(AppTheme.border, lineWidth: 1)
-                )
+                .buttonStyle(.plain)
+                .disabled(!canTranslate)
+                
+                if !isCompact { Spacer(minLength: 0) }
             }
-            .buttonStyle(.plain)
-            .disabled(!canTranslate)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             // 翻译按钮（支持 Cmd+Enter 快捷键）
             Button(action: { viewModel.translate() }) {
@@ -1729,8 +1751,8 @@ struct ModernTranslationActionBar: View {
                     }
                 }
                 .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
                 .frame(height: barHeight)
-                .padding(.horizontal, 20)
                 .background(canTranslate ? AppTheme.unifiedButtonPrimary : AppTheme.unifiedButtonPrimary.opacity(0.5))
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }

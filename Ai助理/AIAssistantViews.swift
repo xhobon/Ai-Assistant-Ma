@@ -709,21 +709,6 @@ struct AIAssistantChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AIAssistantChatHeader(
-                title: title,
-                unreadCount: 0,
-                isMuted: speechSettings.playbackMuted,
-                onMute: {
-                    speechSettings.playbackMuted.toggle()
-                    if speechSettings.playbackMuted { viewModel.stopSpeaking() }
-                },
-                onNewChat: { viewModel.resetConversation() },
-                onHistory: {
-                    Task { await viewModel.loadConversationHistory() }
-                    showHistoryDialog = true
-                }
-            )
-
             VStack(spacing: 0) {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -918,6 +903,28 @@ struct AIAssistantChatView: View {
         #if os(iOS)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
+        .toolbar {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button {
+                    viewModel.resetConversation()
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .tint(AppTheme.primary)
+                .accessibilityLabel("新对话")
+
+                Button {
+                    Task { await viewModel.loadConversationHistory() }
+                    showHistoryDialog = true
+                } label: {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .tint(AppTheme.primary)
+                .accessibilityLabel("历史对话")
+            }
+        }
         #elseif os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
             // 窗口失焦时停止播放
@@ -1592,86 +1599,65 @@ struct VideoCallView: View {
     }
 }
 
-/// 参考图：左侧返回、中间头像+名称+「内容由AI生成」、右侧喇叭(静音)+新对话
-struct AIAssistantChatHeader: View {
-    let title: String
-    var unreadCount: Int = 0
-    var isMuted: Bool = false
-    var onMute: () -> Void = {}
-    var onNewChat: () -> Void
-    var onHistory: () -> Void = {}
-
-    var body: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(AppTheme.accentWarm.opacity(0.25))
-                        .frame(width: 40, height: 40)
-                    Image(systemName: "face.smiling")
-                        .font(.system(size: 20))
-                        .foregroundStyle(AppTheme.textPrimary.opacity(0.9))
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("内容由AI生成")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer()
-
-            UnifiedAppIconButton(systemImage: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill") {
-                onMute()
-            }
-            .accessibilityLabel(isMuted ? "取消静音" : "静音")
-
-            UnifiedAppIconButton(systemImage: "square.and.pencil") {
-                onNewChat()
-            }
-            .accessibilityLabel("新对话")
-
-            UnifiedAppIconButton(systemImage: "clock.arrow.circlepath") {
-                onHistory()
-            }
-            .accessibilityLabel("历史对话")
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-    }
-}
-
 struct ConversationHistorySheet: View {
     let items: [CloudConversationSummary]
     let isLoading: Bool
     var onRefresh: () -> Void
     var onPick: (CloudConversationSummary) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var keyword: String = ""
     
     private let formatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "MM/dd HH:mm"
         return f
     }()
+
+    private var filteredItems: [CloudConversationSummary] {
+        let q = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return items }
+        return items.filter {
+            $0.title.localizedCaseInsensitiveContains(q) ||
+            $0.lastMessage.localizedCaseInsensitiveContains(q)
+        }
+    }
     
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
                 Text("历史对话")
-                    .font(.headline.weight(.bold))
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
                 Button("刷新") { onRefresh() }
                     .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.primary)
                 Button("关闭") { dismiss() }
                     .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textSecondary)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            
-            Divider()
-            
+            .padding(.top, 14)
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(AppTheme.textSecondary)
+                TextField("搜索标题或内容", text: $keyword)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(AppTheme.textPrimary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(AppTheme.surfaceMuted)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(AppTheme.border, lineWidth: 1)
+            )
+            .padding(.horizontal, 16)
+
             if isLoading {
                 VStack(spacing: 12) {
                     ProgressView()
@@ -1680,20 +1666,20 @@ struct ConversationHistorySheet: View {
                         .foregroundStyle(AppTheme.textSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if items.isEmpty {
+            } else if filteredItems.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "clock")
                         .font(.title2)
                         .foregroundStyle(AppTheme.textSecondary)
-                    Text("暂无历史对话")
+                    Text(keyword.isEmpty ? "暂无历史对话" : "没有匹配内容")
                         .font(.subheadline)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(items) { item in
+                    LazyVStack(spacing: 10) {
+                        ForEach(filteredItems) { item in
                             Button {
                                 onPick(item)
                             } label: {
@@ -1720,7 +1706,7 @@ struct ConversationHistorySheet: View {
                                         .foregroundStyle(AppTheme.textSecondary)
                                 }
                                 .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
+                                .padding(.vertical, 12)
                                 .background(AppTheme.surface)
                                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 .overlay(
@@ -1735,7 +1721,11 @@ struct ConversationHistorySheet: View {
                 }
             }
         }
+        #if os(iOS)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #else
         .frame(minWidth: 520, minHeight: 430)
+        #endif
         .background(AppTheme.pageBackground)
         .onAppear { onRefresh() }
     }
@@ -1862,15 +1852,9 @@ struct ChatComposerBar: View {
             .disabled(hasInputText && !canSend)
             .accessibilityLabel(hasInputText ? "发送" : (isListening ? "正在听" : "语音输入"))
 
-            Button(action: onVoiceCall) {
-                Image(systemName: "waveform")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(Color.black)
-                    .clipShape(Circle())
+            UnifiedAppIconButton(systemImage: "waveform") {
+                onVoiceCall()
             }
-            .buttonStyle(.plain)
             .accessibilityLabel("语音通话")
 
             UnifiedAppIconButton(systemImage: "plus.circle.fill") {

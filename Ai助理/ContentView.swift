@@ -102,6 +102,15 @@ struct SidebarRow: View {
     }
 }
 
+private struct SidebarToggleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1.0)
+            .opacity(configuration.isPressed ? 0.9 : 1.0)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
 struct ContentView: View {
     @State private var selectedItem: SidebarItem = .partner
     @State private var detailResetSeed = 0
@@ -109,20 +118,13 @@ struct ContentView: View {
     @ObservedObject private var appearance = AppearanceStore.shared
     @State private var copyToastMessage: String?
     #if os(iOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var sidebarVisibility: NavigationSplitViewVisibility = .detailOnly
     @State private var isCompactSidebarPresented = false
+    @GestureState private var sidebarDragTranslation: CGFloat = 0
     #endif
     private var primarySidebarItems: [SidebarItem] {
         // 侧边栏只保留：助理、笔记、总结、翻译、学习（写作/PPT 入口已移动到助理页面的加号里）
         SidebarItem.allCases.filter { ![.profile, .writing, .ppt].contains($0) }
     }
-    #if os(iOS)
-    private var isCompactLayout: Bool {
-        horizontalSizeClass == .compact
-    }
-    #endif
-
     /// 根据当前选中的页面返回窗口标题
     private var currentWindowTitle: String {
         switch selectedItem {
@@ -154,15 +156,68 @@ struct ContentView: View {
             selectedItem = item
         }
         #if os(iOS)
-        withAnimation(.easeInOut(duration: 0.2)) {
-            if isCompactLayout {
-                isCompactSidebarPresented = false
-            } else {
-                sidebarVisibility = .detailOnly
-            }
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+            isCompactSidebarPresented = false
         }
         #endif
     }
+
+#if os(iOS)
+    private var sidebarWidth: CGFloat {
+        min(UIScreen.main.bounds.width * 0.74, 300)
+    }
+
+    private func openSidebar() {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+            isCompactSidebarPresented = true
+        }
+    }
+
+    private func closeSidebar() {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+            isCompactSidebarPresented = false
+        }
+    }
+    
+    private var sidebarFloatingToggleButton: some View {
+        Button {
+            isCompactSidebarPresented ? closeSidebar() : openSidebar()
+        } label: {
+            Image(systemName: isCompactSidebarPresented ? "xmark" : "sidebar.left")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(isCompactSidebarPresented ? AppTheme.textOnPrimary : AppTheme.textPrimary)
+                .frame(width: 42, height: 42)
+                .background(isCompactSidebarPresented ? AppTheme.primary : Color(.systemBackground).opacity(0.92), in: Circle())
+                .overlay(
+                    Circle().stroke(AppTheme.border.opacity(isCompactSidebarPresented ? 0 : 1), lineWidth: 1)
+                )
+                .shadow(
+                    color: isCompactSidebarPresented ? AppTheme.primary.opacity(0.18) : Color.black.opacity(0.08),
+                    radius: isCompactSidebarPresented ? 8 : 4,
+                    x: 0,
+                    y: isCompactSidebarPresented ? 4 : 2
+                )
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(SidebarToggleButtonStyle())
+        .contentShape(Rectangle())
+        .padding(4)
+        .accessibilityLabel(isCompactSidebarPresented ? "关闭侧边栏" : "打开侧边栏")
+    }
+
+    private var sidebarToolbarButton: some View {
+        Button {
+            openSidebar()
+        } label: {
+            Image(systemName: "sidebar.left")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+                .frame(width: 30, height: 30)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("打开侧边栏")
+    }
+#endif
 
     private var sidebarContent: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -239,80 +294,85 @@ struct ContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea(.container, edges: .top)
         .hideNavigationBarOnMac()
         .id("detail-\(selectedItem.rawValue)-\(detailResetSeed)")
 #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        .overlay(alignment: .topLeading) {
-            if isCompactLayout || sidebarVisibility == .detailOnly {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        if isCompactLayout {
-                            isCompactSidebarPresented.toggle()
-                        } else {
-                            sidebarVisibility = .all
-                        }
-                    }
-                } label: {
-                    Image(systemName: "sidebar.left")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .frame(width: 42, height: 42)
-                        .background(.ultraThinMaterial, in: Circle())
-                        .overlay(
-                            Circle().stroke(AppTheme.border, lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 12)
-                .padding(.top, 10)
-                .accessibilityLabel("打开侧边栏")
-            }
-        }
 #endif
     }
 
     var body: some View {
         Group {
 #if os(iOS)
-            if isCompactLayout {
-                ZStack(alignment: .leading) {
-                    detailColumn
+            NavigationStack {
+                GeometryReader { proxy in
+                    ZStack(alignment: .topLeading) {
+                        detailColumn
+                            .contentShape(Rectangle())
+                            .highPriorityGesture(
+                                DragGesture(minimumDistance: 18)
+                                    .onEnded { value in
+                                        guard !isCompactSidebarPresented else { return }
+                                        let fromLeftEdge = value.startLocation.x <= 24
+                                        if fromLeftEdge && value.translation.width > 72 {
+                                            openSidebar()
+                                        }
+                                    }
+                            )
 
-                    if isCompactSidebarPresented {
-                        Color.black.opacity(0.18)
-                            .ignoresSafeArea()
-                            .onTapGesture {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    isCompactSidebarPresented = false
+                        if isCompactSidebarPresented {
+                            Color.black.opacity(0.18)
+                                .ignoresSafeArea()
+                                .onTapGesture {
+                                    closeSidebar()
                                 }
-                            }
-                            .transition(.opacity)
-                            .zIndex(1)
+                                .transition(.opacity)
+                                .zIndex(1)
 
-                        sidebarContent
-                            .frame(width: min(UIScreen.main.bounds.width * 0.84, 320))
-                            .frame(maxHeight: .infinity, alignment: .topLeading)
-                            .shadow(color: Color.black.opacity(0.12), radius: 18, y: 8)
-                            .transition(.move(edge: .leading))
-                            .zIndex(2)
+                            sidebarContent
+                                .frame(width: sidebarWidth)
+                                .frame(maxHeight: .infinity, alignment: .topLeading)
+                                .offset(x: min(0, sidebarDragTranslation))
+                                .gesture(
+                                    DragGesture(minimumDistance: 12)
+                                        .updating($sidebarDragTranslation) { value, state, _ in
+                                            if value.translation.width < 0 {
+                                                state = value.translation.width
+                                            }
+                                        }
+                                        .onEnded { value in
+                                            if value.translation.width < -70 {
+                                                closeSidebar()
+                                            }
+                                        }
+                                )
+                                .shadow(color: Color.black.opacity(0.12), radius: 18, y: 8)
+                                .transition(.move(edge: .leading))
+                                .zIndex(2)
+
+                            sidebarFloatingToggleButton
+                                .padding(.top, max(proxy.safeAreaInsets.top + 6, 14))
+                                .padding(.leading, max(sidebarWidth - 50, 12))
+                                .zIndex(3)
+                        }
                     }
                 }
-                .onAppear {
-                    isCompactSidebarPresented = false
-                }
-                .animation(.easeInOut(duration: 0.2), value: isCompactSidebarPresented)
-            } else {
-                NavigationSplitView(columnVisibility: $sidebarVisibility) {
-                    sidebarColumn
-                } detail: {
-                    detailColumn
-                }
-                .onAppear {
-                    sidebarVisibility = .detailOnly
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(AppTheme.pageBackground.ignoresSafeArea())
+                .navigationTitle(currentWindowTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        if !isCompactSidebarPresented {
+                            sidebarToolbarButton
+                        }
+                    }
                 }
             }
+            .onAppear {
+                isCompactSidebarPresented = false
+            }
+            .animation(.spring(response: 0.28, dampingFraction: 0.88), value: isCompactSidebarPresented)
 #else
             NavigationSplitView {
                 sidebarColumn
@@ -326,6 +386,8 @@ struct ContentView: View {
             SpeechService.shared.stopSpeaking()
         }
         .preferredColorScheme(appearance.colorScheme)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(AppTheme.pageBackground.ignoresSafeArea())
         .toast(message: $copyToastMessage)
         .onReceive(NotificationCenter.default.publisher(for: .globalCopySucceeded)) { _ in
             withAnimation(.easeInOut(duration: 0.2)) {

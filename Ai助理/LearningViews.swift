@@ -252,33 +252,34 @@ struct LearningResourceSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                // 左侧：主标题 + 小标题
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("学习主题")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text("按主题浏览高频词汇与场景 · 共 \(categories.count) 类")
-                        .font(.caption2)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("学习主题")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("按主题浏览高频词汇与场景 · 共 \(categories.count) 类")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
 
-                Spacer(minLength: 8)
-
-                // 右侧：难度筛选 + 仅看收藏，与标题垂直居中对齐
-                HStack(spacing: 6) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
                     ForEach(difficulties, id: \.self) { item in
                         Button {
                             selectedDifficulty = item
                         } label: {
                             Text(item)
-                                .font(.caption.weight(selectedDifficulty == item ? .semibold : .regular))
-                                .foregroundStyle(selectedDifficulty == item ? .white : AppTheme.textSecondary)
+                                .font(.caption.weight(selectedDifficulty == item ? .semibold : .medium))
+                                .foregroundStyle(selectedDifficulty == item ? .white : AppTheme.textPrimary)
+                                .frame(minWidth: 44)
                                 .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
+                                .padding(.vertical, 6)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(selectedDifficulty == item ? AppTheme.accentStrong : AppTheme.surface)
+                                    Capsule()
+                                        .fill(selectedDifficulty == item ? AppTheme.accentStrong : AppTheme.surfaceMuted)
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .stroke(selectedDifficulty == item ? AppTheme.accentStrong : AppTheme.border, lineWidth: 1)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -287,22 +288,28 @@ struct LearningResourceSection: View {
                     Button {
                         showFavoritesOnly.toggle()
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 6) {
                             Image(systemName: showFavoritesOnly ? "heart.fill" : "heart")
+                                .font(.caption)
                             Text("仅看收藏")
                                 .font(.caption.weight(.semibold))
                         }
                         .foregroundStyle(showFavoritesOnly ? AppTheme.accentStrong : AppTheme.textSecondary)
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.vertical, 6)
                         .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(showFavoritesOnly ? AppTheme.accentStrong.opacity(0.15) : AppTheme.surface)
+                            Capsule()
+                                .fill(showFavoritesOnly ? AppTheme.accentStrong.opacity(0.12) : AppTheme.surfaceMuted)
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(showFavoritesOnly ? AppTheme.accentStrong.opacity(0.6) : AppTheme.border, lineWidth: 1)
                         )
                     }
                     .buttonStyle(.plain)
                 }
             }
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in

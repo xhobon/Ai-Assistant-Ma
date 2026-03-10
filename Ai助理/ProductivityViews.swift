@@ -187,10 +187,11 @@ struct NotesWorkspaceView: View {
                     LabeledField(title: "标题", placeholder: "例如：会议纪要 / 读书笔记", text: $title)
                     TextEditorField(title: "内容", placeholder: "支持粘贴、语音转写或手动输入", text: $content, minHeight: 160)
                     LabeledField(title: "标签（用逗号分隔）", placeholder: "例如：工作,学习,重要", text: $tags)
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         ProductivityActionButton(isRecording ? "转写中" : "语音转写", systemImage: "mic.fill", style: .outline) {
                             isRecording.toggle()
                         }
+                        .frame(maxWidth: .infinity)
                         ProductivityActionButton("保存笔记", systemImage: "tray.and.arrow.down", style: .filled) {
                             guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                             notes.insert(
@@ -206,7 +207,9 @@ struct NotesWorkspaceView: View {
                             content = ""
                             tags = ""
                         }
+                        .frame(maxWidth: .infinity)
                     }
+                    .padding(.top, 2)
                 }
             }
 
@@ -260,18 +263,27 @@ struct SummaryWorkspaceView: View {
                     TextEditorField(title: "原始内容", placeholder: "粘贴需要总结的内容", text: $sourceText, minHeight: 180)
                     ChipPicker(title: "总结方式", options: modes, selection: $mode)
                     ChipPicker(title: "长度", options: lengths, selection: $length)
-                    HStack(spacing: 12) {
+                    VStack(spacing: 10) {
                         ProductivityActionButton("生成总结", systemImage: "bolt.fill", style: .filled) {
                             result = SummaryGenerator.generate(text: sourceText, mode: mode, length: length)
                         }
-                        ProductivityActionButton("复制", systemImage: "doc.on.doc", style: .outline) {
-                            ClipboardService.copy(result)
+                        .frame(maxWidth: .infinity)
+
+                        HStack(spacing: 10) {
+                            ProductivityActionButton("复制", systemImage: "doc.on.doc", style: .outline) {
+                                ClipboardService.copy(result)
+                            }
+                            .frame(maxWidth: .infinity)
+
+                            ProductivityActionButton("清空", systemImage: "trash", style: .ghost) {
+                                sourceText = ""
+                                result = ""
+                            }
+                            .frame(maxWidth: .infinity)
                         }
-                        ProductivityActionButton("清空", systemImage: "trash", style: .ghost) {
-                            sourceText = ""
-                            result = ""
-                        }
+                        .frame(maxWidth: .infinity)
                     }
+                    .padding(.top, 2)
                 }
             }
 
