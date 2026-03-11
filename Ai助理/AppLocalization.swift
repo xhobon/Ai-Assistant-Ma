@@ -5,7 +5,6 @@ import Combine
 enum AppLanguage: String, CaseIterable, Identifiable {
     case chinese = "zh"
     case indonesian = "id"
-    case english = "en"
 
     var id: String { rawValue }
 
@@ -13,7 +12,6 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         switch self {
         case .chinese: return L("中文")
         case .indonesian: return L("Bahasa Indonesia")
-        case .english: return L("English")
         }
     }
 
@@ -22,8 +20,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         switch code {
         case "zh": return .chinese
         case "id": return .indonesian
-        case "en": return .english
-        default: return .english
+        default: return .chinese
         }
     }
 
@@ -31,7 +28,6 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         switch self {
         case .chinese: return "zh-Hans"
         case .indonesian: return "id"
-        case .english: return "en"
         }
     }
 }

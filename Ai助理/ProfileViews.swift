@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import AuthenticationServices
 
 struct ProfileCenterView: View {
     @EnvironmentObject private var languageStore: AppLanguageStore
@@ -79,7 +80,7 @@ struct ProfileCenterView: View {
                     default: break
                     }
                 }
-                ProfileHintCard(text: "在设置中可管理通知、隐私与语言等选项，确保你的对话记录与个人信息安全。")
+                ProfileHintCard(text: L("profile_settings_hint"))
 
                 ProfileSectionHeader(title: "服务与支持")
                 ProfileMenuList(items: helpItems) { item in
@@ -512,6 +513,7 @@ struct MemberBenefitsCard: View {
             Text(L("会员专享 4 大权益"))
                 .font(.headline)
                 .foregroundStyle(AppTheme.textPrimary)
+                .appLabelStyle(minScale: 0.8)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ForEach(benefits) { benefit in
@@ -528,9 +530,11 @@ struct MemberBenefitsCard: View {
                             Text(L(benefit.title))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
+                                .appLabelStyle(minScale: 0.8)
                             Text(L(benefit.subtitle))
                                 .font(.caption2)
                                 .foregroundStyle(AppTheme.textSecondary)
+                                .appLabelStyle(minScale: 0.8)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -985,6 +989,7 @@ struct TaskRow: View {
                     Text(L(task.title))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
+                        .appLabelStyle(minScale: 0.8)
                     Spacer()
                     UnifiedAppButton(
                         title: task.actionTitle,
@@ -993,12 +998,13 @@ struct TaskRow: View {
                     ) {
                         ClipboardService.copy("\(task.title)\n\(task.subtitle)")
                     }
-                    .frame(width: 88)
+                    .frame(minWidth: 88)
                 }
 
                 Text(L(task.subtitle))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
 
                 HStack(spacing: 10) {
                     ProgressView(value: task.progress)
@@ -1107,6 +1113,15 @@ struct AppSettingsView: View {
                 )
 
                 SettingsRow(
+                    systemImage: "sparkles",
+                    title: L("voice_enhanced_title"),
+                    subtitle: L("voice_enhanced_subtitle"),
+                    showChevron: false
+                ) {
+                    toastMessage = L("voice_enhanced_hint")
+                }
+
+                SettingsRow(
                     systemImage: "antenna.radiowaves.left.and.right",
                     title: L("voice_test_title"),
                     subtitle: L("voice_test_subtitle"),
@@ -1165,7 +1180,6 @@ struct AppSettingsView: View {
                     switch languageStore.current {
                     case .chinese: lang = "zh-CN"
                     case .indonesian: lang = "id-ID"
-                    case .english: lang = "en-US"
                     }
                     SpeechService.shared.speak(L("voice_preview_sample"), language: lang)
                 }
@@ -1178,11 +1192,10 @@ struct AppSettingsView: View {
                 SettingsSegmentedRow(
                     systemImage: "globe",
                     title: "Language",
-                    subtitle: "中文 / Bahasa Indonesia / English",
+                    subtitle: "中文 / Bahasa Indonesia",
                     options: [
                         (label: "中文", value: "zh"),
-                        (label: "Bahasa Indonesia", value: "id"),
-                        (label: "English", value: "en")
+                        (label: "Bahasa Indonesia", value: "id")
                     ],
                     selection: Binding(
                         get: { languageStore.current.rawValue },
@@ -1844,6 +1857,7 @@ struct AuthView: View {
     @State private var isSubmitting = false
     @State private var isSendingCode = false
     @State private var isGoogleSigningIn = false
+    @State private var isAppleSigningIn = false
     @State private var message: String?
     @State private var statusText: String?
     @FocusState private var focusedField: Field?
@@ -1855,7 +1869,7 @@ struct AuthView: View {
     }
 
     private var isSendCodeDisabled: Bool {
-        isSendingCode || isSubmitting || isGoogleSigningIn || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        isSendingCode || isSubmitting || isGoogleSigningIn || isAppleSigningIn || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var submitButtonTitle: String {
@@ -1874,6 +1888,11 @@ struct AuthView: View {
                                 .font(.title3.weight(.bold))
                                 .foregroundStyle(AppTheme.textPrimary)
                                 .padding(.top, 4)
+                            Text(L("登录后可同步数据，并启用云端长期记忆。"))
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 8)
                             modeSwitchSection
                             formSection
                             statusSection
@@ -2030,7 +2049,7 @@ struct AuthView: View {
     }
 
     private var submitSection: some View {
-        HStack(spacing: 10) {
+        VStack(spacing: 12) {
             Button {
                 onTapSubmit()
             } label: {
@@ -2042,8 +2061,10 @@ struct AuthView: View {
                     }
                     Text(submitButtonTitle)
                         .font(.headline)
+                        .appButtonLabelStyle(minScale: 0.7)
                 }
                 .frame(maxWidth: .infinity)
+                .frame(height: 44)
                 .padding(.vertical, 13)
                 .background(AppTheme.primaryGradient)
                 .foregroundStyle(.white)
@@ -2051,8 +2072,31 @@ struct AuthView: View {
                 .shadow(color: AppTheme.primary.opacity(0.22), radius: 10, x: 0, y: 4)
             }
             .buttonStyle(.plain)
-            .disabled(isSubmitting || isSendingCode || isGoogleSigningIn)
-            .opacity((isSubmitting || isSendingCode || isGoogleSigningIn) ? 0.7 : 1)
+            .disabled(isSubmitting || isSendingCode || isGoogleSigningIn || isAppleSigningIn)
+            .opacity((isSubmitting || isSendingCode || isGoogleSigningIn || isAppleSigningIn) ? 0.7 : 1)
+
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(AppTheme.border)
+                    .frame(height: 1)
+                Text(L("或使用"))
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+                Rectangle()
+                    .fill(AppTheme.border)
+                    .frame(height: 1)
+            }
+
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.fullName, .email]
+            } onCompletion: { result in
+                onTapAppleSignIn(result)
+            }
+            .signInWithAppleButtonStyle(.black)
+            .frame(height: 44)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .disabled(isSubmitting || isSendingCode || isGoogleSigningIn || isAppleSigningIn)
+            .opacity((isSubmitting || isSendingCode || isGoogleSigningIn || isAppleSigningIn) ? 0.7 : 1)
 
             Button {
                 onTapGoogleSignIn()
@@ -2064,10 +2108,12 @@ struct AuthView: View {
                     } else {
                         Image(systemName: "globe")
                     }
-                    Text("Google")
+                    Text("provider_google")
                         .font(.subheadline.weight(.semibold))
+                        .appButtonLabelStyle(minScale: 0.7)
                 }
-                .frame(minWidth: 118)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
                 .padding(.vertical, 13)
                 .padding(.horizontal, 12)
                 .background(AppTheme.surface)
@@ -2079,8 +2125,8 @@ struct AuthView: View {
                 )
             }
             .buttonStyle(.plain)
-            .disabled(isSubmitting || isSendingCode || isGoogleSigningIn)
-            .opacity((isSubmitting || isSendingCode || isGoogleSigningIn) ? 0.65 : 1)
+            .disabled(isSubmitting || isSendingCode || isGoogleSigningIn || isAppleSigningIn)
+            .opacity((isSubmitting || isSendingCode || isGoogleSigningIn || isAppleSigningIn) ? 0.65 : 1)
         }
     }
 
@@ -2128,7 +2174,7 @@ struct AuthView: View {
 
     @MainActor
     private func onTapSubmit() {
-        guard !isSubmitting, !isSendingCode, !isGoogleSigningIn else { return }
+        guard !isSubmitting, !isSendingCode, !isGoogleSigningIn, !isAppleSigningIn else { return }
         if let err = validateEmail() {
             message = err
             return
@@ -2179,7 +2225,7 @@ struct AuthView: View {
 
     @MainActor
     private func onTapGoogleSignIn() {
-        guard !isGoogleSigningIn, !isSubmitting, !isSendingCode else { return }
+        guard !isGoogleSigningIn, !isSubmitting, !isSendingCode, !isAppleSigningIn else { return }
         isGoogleSigningIn = true
         statusText = L("正在打开 Google 登录...")
         Task {
@@ -2200,6 +2246,63 @@ struct AuthView: View {
                 isGoogleSigningIn = false
             }
         }
+    }
+
+    @MainActor
+    private func onTapAppleSignIn(_ result: Result<ASAuthorization, Error>) {
+        guard !isAppleSigningIn, !isSubmitting, !isSendingCode, !isGoogleSigningIn else { return }
+        isAppleSigningIn = true
+        statusText = L("正在打开 Apple 登录...")
+
+        Task {
+            do {
+                let credential = try appleCredential(from: result)
+                let userId = credential.user
+                let email = credential.email ?? ""
+                let displayName = formattedAppleName(credential.fullName) ?? "Apple 用户"
+                let auth = try await APIClient.shared.loginWithApple(
+                    userId: userId,
+                    email: email,
+                    displayName: displayName
+                )
+                await MainActor.run {
+                    TokenStore.shared.token = auth.token
+                    statusText = L("Apple 登录成功")
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    if let authError = error as? ASAuthorizationError, authError.code == .canceled {
+                        statusText = L("已取消 Apple 登录")
+                    } else {
+                        statusText = L("Apple 登录失败")
+                        message = userFacingMessage(for: error)
+                    }
+                }
+            }
+            await MainActor.run {
+                isAppleSigningIn = false
+            }
+        }
+    }
+
+    private func appleCredential(from result: Result<ASAuthorization, Error>) throws -> ASAuthorizationAppleIDCredential {
+        switch result {
+        case .success(let authorization):
+            if let credential = authorization.credential as? ASAuthorizationAppleIDCredential {
+                return credential
+            }
+            throw APIClientError.serverError(L("Apple 登录失败"))
+        case .failure(let error):
+            throw error
+        }
+    }
+
+    private func formattedAppleName(_ name: PersonNameComponents?) -> String? {
+        guard let name else { return nil }
+        let formatter = PersonNameComponentsFormatter()
+        let text = formatter.string(from: name).trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
     }
 }
 

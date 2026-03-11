@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 97B58E812F4A333A005357CF /* Build configuration list for PBXProject "AI Helper" */;
+			buildConfigurationList = 97B58E812F4A333A005357CF /* Build configuration list for PBXProject "Ai助理" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -318,7 +318,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		97B58E812F4A333A005357CF /* Build configuration list for PBXProject "AI Helper" */ = {
+		97B58E812F4A333A005357CF /* Build configuration list for PBXProject "Ai助理" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				97B58E912F4A333B005357CF /* Debug */,

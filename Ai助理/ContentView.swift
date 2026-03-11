@@ -11,16 +11,16 @@ enum SidebarItem: Int, CaseIterable {
     case practice = 6       // 练习
     case profile = 7        // 设置
 
-    var title: String {
+    var titleKey: String {
         switch self {
-        case .partner: return "助理"
-        case .writing: return "写作"
-        case .ppt: return "PPT"
-        case .notesSummary: return "记录"
-        case .translate: return "翻译"
-        case .learning: return "学习"
-        case .practice: return "练习"
-        case .profile: return "设置"
+        case .partner: return "sidebar_partner"
+        case .writing: return "sidebar_writing"
+        case .ppt: return "sidebar_ppt"
+        case .notesSummary: return "sidebar_notes"
+        case .translate: return "sidebar_translate"
+        case .learning: return "sidebar_learning"
+        case .practice: return "sidebar_practice"
+        case .profile: return "sidebar_settings"
         }
     }
 
@@ -54,12 +54,14 @@ struct SidebarLogoView: View {
                     .foregroundStyle(AppTheme.textOnPrimary)
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text(L("AI 全能助理"))
+                Text("app_name")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text("Workspace")
+                    .appLabelStyle(minScale: 0.8)
+                Text("workspace_label")
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
             }
             Spacer(minLength: 0)
         }
@@ -87,11 +89,10 @@ struct SidebarRow: View {
                 .frame(width: 28, height: 28)
                 .background(isSelected ? sidebarActiveFg.opacity(0.12) : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            Text(languageStore.localized(item.title))
+            Text(languageStore.localized(item.titleKey))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isSelected ? AppTheme.textPrimary : sidebarInactive)
-                .lineLimit(1)
-                .minimumScaleFactor(0.9)
+                .appButtonLabelStyle(minScale: 0.7)
                 .layoutPriority(1)
             Spacer(minLength: 0)
         }
@@ -130,14 +131,14 @@ struct ContentView: View {
     /// 根据当前选中的页面返回窗口标题
     private var currentWindowTitle: String {
         switch selectedItem {
-        case .partner: return "AI助理"
-        case .writing: return "写作"
-        case .ppt: return "PPT"
-        case .notesSummary: return "记录"
-        case .translate: return "AI翻译"
-        case .learning: return "印尼语学习"
-        case .practice: return "练习"
-        case .profile: return "设置"
+        case .partner: return languageStore.localized("window_partner")
+        case .writing: return languageStore.localized("window_writing")
+        case .ppt: return languageStore.localized("window_ppt")
+        case .notesSummary: return languageStore.localized("window_notes")
+        case .translate: return languageStore.localized("window_translate")
+        case .learning: return languageStore.localized("window_learning")
+        case .practice: return languageStore.localized("window_practice")
+        case .profile: return languageStore.localized("window_settings")
         }
     }
 
@@ -185,10 +186,10 @@ struct ContentView: View {
             Image(systemName: "sidebar.left")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(AppTheme.textPrimary)
-                .frame(width: 30, height: 30)
+                .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(L("打开侧边栏"))
+        .accessibilityLabel(L("sidebar_open"))
     }
 
     private var sidebarContent: some View {
@@ -259,7 +260,6 @@ struct ContentView: View {
                 .confirmationDialog(L("Language"), isPresented: $showLanguageDialog) {
                     Button(L("中文")) { languageStore.setLanguage(code: "zh") }
                     Button(L("Bahasa Indonesia")) { languageStore.setLanguage(code: "id") }
-                    Button(L("English")) { languageStore.setLanguage(code: "en") }
                     Button(L("取消"), role: .cancel) {}
                 }
 

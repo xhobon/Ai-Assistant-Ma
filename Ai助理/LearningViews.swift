@@ -9,6 +9,7 @@ struct IndonesianLearningView: View {
     @State private var selectedDifficulty: LearningDifficulty = .all
     @State private var showFavoritesOnly = false
     @State private var learningStart: Date? = nil
+    @State private var lastAppliedLanguage: AppLanguage? = nil
 
     private let difficulties = LearningDifficulty.allCases
 
@@ -27,12 +28,6 @@ struct IndonesianLearningView: View {
                         difficulties: difficulties
                     )
                     .padding(.horizontal, horizontalPadding)
-
-                    LearningModeCard(selectedMode: Binding(
-                        get: { viewModel.mode },
-                        set: { viewModel.setMode($0) }
-                    ))
-                        .padding(.horizontal, horizontalPadding)
 
                     LearningStatsSummaryCard(
                         practiceSessions: statsStore.practiceSessions,
@@ -74,6 +69,10 @@ struct IndonesianLearningView: View {
             .onAppear {
                 learningStart = Date()
                 dailyStore.refreshTasks(for: Date())
+                applyLanguageDefaultIfNeeded()
+            }
+            .onChange(of: languageStore.current) { _ in
+                applyLanguageDefaultIfNeeded()
             }
             .onDisappear {
                 if let start = learningStart {
@@ -117,6 +116,14 @@ struct IndonesianLearningView: View {
             return .intermediate
         }
         return .advanced
+    }
+
+    private func applyLanguageDefaultIfNeeded() {
+        let currentLanguage = languageStore.current
+        guard lastAppliedLanguage != currentLanguage else { return }
+        let defaultMode: LearningMode = (currentLanguage == .indonesian) ? .idToZh : .zhToId
+        viewModel.setMode(defaultMode)
+        lastAppliedLanguage = currentLanguage
     }
 }
 
@@ -216,35 +223,6 @@ struct LearningSearchPanel: View {
     }
 }
 
-struct LearningModeCard: View {
-    @EnvironmentObject private var languageStore: AppLanguageStore
-    @Binding var selectedMode: LearningMode
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(languageStore.localized("learning_mode_title"))
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.textPrimary)
-                .appLabelStyle(minScale: 0.8)
-            Picker("", selection: $selectedMode) {
-                Text(languageStore.localized("learning_mode_zh_id"))
-                    .appLabelStyle(minScale: 0.7)
-                    .tag(LearningMode.zhToId)
-                Text(languageStore.localized("learning_mode_id_zh"))
-                    .appLabelStyle(minScale: 0.7)
-                    .tag(LearningMode.idToZh)
-            }
-            .pickerStyle(.segmented)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
-        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
-    }
-}
-
 struct LearningStatsSummaryCard: View {
     @EnvironmentObject private var languageStore: AppLanguageStore
     let practiceSessions: Int
@@ -309,11 +287,11 @@ struct DailyTaskCard: View {
                                 Text(languageStore.localized(task.titleKey))
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(AppTheme.textPrimary)
-                                    .appLabelStyle(minScale: 0.8)
+                                    .appButtonLabelStyle(minScale: 0.7)
                                 Text(languageStore.localized(task.subtitleKey))
                                     .font(.caption2)
                                     .foregroundStyle(AppTheme.textSecondary)
-                                    .appLabelStyle(minScale: 0.8)
+                                    .appButtonLabelStyle(minScale: 0.7)
                             }
                             Spacer(minLength: 0)
                         }
@@ -565,7 +543,7 @@ struct LearningResourceCard: View {
             Text(mode == .zhToId ? category.nameZh : category.nameId)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
-                .appLabelStyle(minScale: 0.7)
+                .appButtonLabelStyle(minScale: 0.7)
         }
         .frame(minWidth: 72)
         .padding(.vertical, 8)

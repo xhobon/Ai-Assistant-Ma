@@ -1610,6 +1610,7 @@ struct GlassTag: View {
 
     var body: some View {
         Text(text)
+            .appLabelStyle(minScale: 0.8)
             .font(.caption)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -1663,8 +1664,10 @@ struct UnifiedAppButton: View {
                 }
                 Text(title)
                     .font(.callout.weight(.semibold))
+                    .appButtonLabelStyle(minScale: 0.7)
             }
-            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
             .padding(.horizontal, 18)
             .background(buttonBackground)
             .foregroundStyle(style == .primary ? AppTheme.textOnPrimary : AppTheme.unifiedButtonBorder)
@@ -1704,7 +1707,7 @@ struct UnifiedAppIconButton: View {
             Image(systemName: systemImage)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isPrimary ? .white : AppTheme.unifiedButtonBorder)
-                .frame(width: 36, height: 36)
+                .frame(width: 44, height: 44)
                 .background {
                     if isPrimary {
                         AppTheme.primaryGradient
@@ -1725,6 +1728,71 @@ struct UnifiedAppIconButton: View {
                 )
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Multilingual-stable UI primitives
+struct AppButton: View {
+    var title: LocalizedStringKey
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 15))
+                .appButtonLabelStyle(minScale: 0.7)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+        }
+        .background(Color.blue.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
+struct AppCard<Content: View>: View {
+    var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 120)
+        .padding()
+        .background(.ultraThinMaterial)
+        .cornerRadius(16)
+    }
+}
+
+struct AppLabel: View {
+    private let text: Text
+
+    init(_ key: LocalizedStringKey) {
+        self.text = Text(key)
+    }
+
+    init(_ value: String) {
+        self.text = Text(value)
+    }
+
+    var body: some View {
+        text
+            .appLabelStyle(minScale: 0.8)
+    }
+}
+
+extension Text {
+    func appLabelStyle(minScale: CGFloat = 0.8) -> some View {
+        self
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .minimumScaleFactor(minScale)
+    }
+
+    func appButtonLabelStyle(minScale: CGFloat = 0.7) -> some View {
+        self
+            .lineLimit(1)
+            .minimumScaleFactor(minScale)
     }
 }
 

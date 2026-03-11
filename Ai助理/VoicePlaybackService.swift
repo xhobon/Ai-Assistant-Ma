@@ -201,6 +201,12 @@ final class VoicePlaybackService: NSObject, ObservableObject {
     }
 
     private func speakSystem(text: String, languageHint: String?, onFinish: (() -> Void)?) {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+            try AVAudioSession.sharedInstance().setActive(true, options: [])
+        } catch {
+            print("System TTS audio session setup failed: \(error.localizedDescription)")
+        }
         let lang = detectLanguage(text) ?? languageHint ?? "zh-CN"
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: lang)
@@ -272,7 +278,7 @@ final class VoicePlaybackService: NSObject, ObservableObject {
     }
 
     private func detectLanguage(_ text: String) -> String? {
-        return LanguageDetector.detect(from: text)?.localeIdentifier ?? "en-US"
+        return LanguageDetector.detect(from: text)?.localeIdentifier ?? "zh-CN"
     }
 
     private func chunkByLength(_ text: String, maxLength: Int) -> [String] {

@@ -125,7 +125,7 @@
 "设置" = "Pengaturan";
 "AI助理" = "Asisten AI";
 "AI翻译" = "Terjemahan AI";
-"印尼语学习" = "Belajar Bahasa Indonesia";
+"印尼语学习" = "Belajar Bahasa Mandarin";
 "学习进度" = "Progres Belajar";
 "完成" = "Selesai";
 "坚持" = "Konsistensi";
@@ -149,7 +149,7 @@
 
 "Language" = "Bahasa";
 "设置应用显示语言。" = "Atur bahasa tampilan aplikasi.";
-"中文 / Bahasa Indonesia / English" = "中文 / Bahasa Indonesia / English";
+"中文 / Bahasa Indonesia / English" = "中文 / Bahasa Indonesia";
 "AI 全能助理" = "Asisten AI";
 "Workspace" = "Workspace";
 "搜索历史对话" = "Cari riwayat percakapan";
@@ -1005,6 +1005,9 @@ Di satu sisi, pada tahun 2019 saya konsisten menjalankan rencana belajar, mengal
 "voice_test_subtitle" = "Periksa apakah suara online tersedia";
 "voice_test_success" = "Suara online tersedia";
 "voice_test_failed" = "Suara online tidak tersedia. Periksa jaringan atau coba lagi nanti.";
+"voice_enhanced_title" = "Unduh Suara Enhanced";
+"voice_enhanced_subtitle" = "Lebih natural saat offline";
+"voice_enhanced_hint" = "Buka Pengaturan > Aksesibilitas > Konten Dibacakan > Suara, lalu unduh suara Enhanced/Premium untuk bahasa Anda.";
 "voice_unmute_required" = "Aktifkan pemutaran suara terlebih dulu.";
 "错误提示：%@" = "Peringatan kesalahan: %@";
 "ocr_prompt_with_text" = "Tolong identifikasi dan ringkas gambar ini. Berikut teks OCR: 
@@ -1014,7 +1017,7 @@ Di satu sisi, pada tahun 2019 saya konsisten menjalankan rencana belajar, mengal
 Berikut teks OCR dari gambar, mohon analisis: 
 %@";
 "ocr_prompt_describe" = "Tolong jelaskan dan analisis isi gambar ini.";
-"learning_header_title" = "Belajar Bahasa Indonesia";
+"learning_header_title" = "Belajar Bahasa Mandarin";
 "learning_header_subtitle_short" = "Kosakata, frasa, dan percakapan";
 "learning_header_badge" = "Hari ini 20 menit";
 "learning_header_headline" = "Mulai ritme belajar yang efektif";
@@ -1051,7 +1054,7 @@ Berikut teks OCR dari gambar, mohon analisis:
 "window_ppt" = "PPT";
 "window_notes" = "Catatan";
 "window_translate" = "AI Terjemah";
-"window_learning" = "Belajar Bahasa Indonesia";
+"window_learning" = "Belajar Bahasa Mandarin";
 "window_practice" = "Latihan";
 "window_settings" = "Pengaturan";
 "learning_filter_favorites" = "Hanya Favorit";
@@ -1068,3 +1071,11 @@ Berikut teks OCR dari gambar, mohon analisis:
 "profile_vip_title" = "Keanggotaan VIP";
 "learning_header_subtitle" = "Mulai ritme belajar yang efisien · Kosakata & situasi berfrekuensi tinggi";
 "语音与朗读" = "Suara & Pembacaan";
+"provider_google" = "Google";
+"或使用" = "atau gunakan";
+"正在打开 Apple 登录..." = "Membuka login Apple...";
+"Apple 登录成功" = "Login Apple berhasil";
+"Apple 登录失败" = "Login Apple gagal";
+"已取消 Apple 登录" = "Login Apple dibatalkan";
+"profile_settings_hint" = "Kelola notifikasi, privasi, dan bahasa di Pengaturan untuk menjaga catatan chat dan informasi pribadimu tetap aman.";
+"Apple 登录失败" = "Login Apple gagal";

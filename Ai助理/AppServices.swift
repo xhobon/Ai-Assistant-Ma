@@ -260,6 +260,7 @@ final class SpeechSettingsStore: ObservableObject {
 final class APIClient {
     static let shared = APIClient()
     private var webAuthSession: ASWebAuthenticationSession?
+    private var appleAuthCoordinator: AppleAuthCoordinator?
     private let authPresentationProvider = WebAuthPresentationContextProvider()
 
     enum AssistantStreamEvent {
@@ -452,6 +453,37 @@ final class APIClient {
             method: "GET"
         )
         return AuthResponse(token: auth.token, user: auth.user)
+    }
+
+    func loginWithApple(userId: String, email: String, displayName: String) async throws -> AuthResponse {
+        try await socialLogin(
+            provider: "apple",
+            providerUserId: userId,
+            email: email,
+            displayName: displayName
+        )
+    }
+
+    func startAppleSignIn() async throws -> ASAuthorizationAppleIDCredential {
+        try await withCheckedThrowingContinuation { continuation in
+            let request = ASAuthorizationAppleIDProvider().createRequest()
+            request.requestedScopes = [.fullName, .email]
+
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            let coordinator = AppleAuthCoordinator { result in
+                self.appleAuthCoordinator = nil
+                switch result {
+                case .success(let credential):
+                    continuation.resume(returning: credential)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+            self.appleAuthCoordinator = coordinator
+            controller.delegate = coordinator
+            controller.presentationContextProvider = coordinator
+            controller.performRequests()
+        }
     }
 
     private func startGoogleWebAuth() async throws -> URL {
@@ -976,6 +1008,33 @@ final class WebAuthPresentationContextProvider: NSObject, ASWebAuthenticationPre
     }
 }
 
+final class AppleAuthCoordinator: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    private let onComplete: (Result<ASAuthorizationAppleIDCredential, Error>) -> Void
+
+    init(onComplete: @escaping (Result<ASAuthorizationAppleIDCredential, Error>) -> Void) {
+        self.onComplete = onComplete
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        if let credential = authorization.credential as? ASAuthorizationAppleIDCredential {
+            onComplete(.success(credential))
+        } else {
+            onComplete(.failure(APIClientError.serverError(L("Apple 登录失败"))))
+        }
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        onComplete(.failure(error))
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+        return windows.first(where: { $0.isKeyWindow }) ?? windows.first ?? UIWindow(frame: .zero)
+    }
+}
+
 final class SpeechService: NSObject, ObservableObject {
     static let shared = SpeechService()
     @Published var isPlaying = false
@@ -1137,7 +1196,7 @@ final class SpeechService: NSObject, ObservableObject {
     }
 
     private func detectLanguageCode(for text: String) -> String? {
-        return LanguageDetector.detect(from: text)?.localeIdentifier ?? "en-US"
+        return LanguageDetector.detect(from: text)?.localeIdentifier ?? "zh-CN"
     }
 }
 

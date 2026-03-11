@@ -13,19 +13,17 @@ struct PracticeHomeView: View {
     @StateObject private var wrongStore = WrongBookStore.shared
     @StateObject private var learningModel = LearningViewModel()
     @AppStorage("learning_mode") private var storedMode: String = LearningMode.zhToId.rawValue
-    @State private var selectedCount: Int = 10
-    @State private var selectedTypes: Set<PracticeQuestionType> = Set(PracticeQuestionType.allCases)
+    @State private var lastAppliedLanguage: AppLanguage? = nil
+    @State private var selectedType: PracticeQuestionType = .multipleChoice
     @State private var showSession = false
     @State private var sessionSource: PracticeSource = .all
-    @State private var selectedDifficulty: LearningDifficulty = .all
-    @State private var showFavoritesOnly = false
+    @State private var selectedDifficulty: LearningDifficulty = .beginner
     @State private var challengeEnabled = false
     @State private var comboEnabled = true
     @State private var timeLimit = 30
     @State private var autoBonusEnabled = true
 
-    private let questionCounts = [5, 10, 20]
-    private let difficulties = LearningDifficulty.allCases
+    private let difficulties: [LearningDifficulty] = [.beginner, .intermediate, .advanced]
     private let timeOptions = [15, 30, 45]
 
     var body: some View {
@@ -37,13 +35,9 @@ struct PracticeHomeView: View {
                         .padding(.horizontal, 14)
 
                     PracticeModeCard(
-                        selectedMode: Binding(
-                            get: { LearningMode(rawValue: storedMode) ?? .zhToId },
-                            set: { storedMode = $0.rawValue }
-                        ),
-                        selectedCount: $selectedCount,
-                        questionCounts: questionCounts,
-                        selectedTypes: $selectedTypes
+                        selectedDifficulty: $selectedDifficulty,
+                        difficulties: difficulties,
+                        selectedType: $selectedType
                     )
                     .padding(.horizontal, 14)
 
@@ -53,16 +47,6 @@ struct PracticeHomeView: View {
                         timeOptions: timeOptions,
                         comboEnabled: $comboEnabled,
                         autoBonusEnabled: $autoBonusEnabled
-                    )
-                    .padding(.horizontal, 14)
-
-                    PracticeCategorySection(
-                        categories: learningModel.categories,
-                        selectedCategoryId: $learningModel.selectedCategoryId,
-                        difficulties: difficulties,
-                        selectedDifficulty: $selectedDifficulty,
-                        showFavoritesOnly: $showFavoritesOnly,
-                        mode: LearningMode(rawValue: storedMode) ?? .zhToId
                     )
                     .padding(.horizontal, 14)
 
@@ -83,6 +67,12 @@ struct PracticeHomeView: View {
             .background(AppTheme.pageBackground.ignoresSafeArea(edges: .top))
             .navigationTitle(languageStore.localized("practice_title"))
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                applyLanguageDefaultIfNeeded()
+            }
+            .onChange(of: languageStore.current) { _ in
+                applyLanguageDefaultIfNeeded()
+            }
             .safeAreaInset(edge: .bottom) {
                 PracticeStartBar(
                     wrongBookCount: wrongStore.items.count,
@@ -100,10 +90,11 @@ struct PracticeHomeView: View {
                 PracticeSessionView(
                     mode: LearningMode(rawValue: storedMode) ?? .zhToId,
                     questionCount: selectedCount,
-                    types: Array(selectedTypes),
+                    types: [selectedType],
                     source: sessionSource,
                     sourceItems: filteredItems,
                     allItems: allItems,
+                    difficulty: selectedDifficulty,
                     challengeEnabled: challengeEnabled,
                     timeLimit: timeLimit,
                     comboEnabled: challengeEnabled ? comboEnabled : false,
@@ -118,23 +109,17 @@ struct PracticeHomeView: View {
     }
 
     private var filteredItems: [VocabItem] {
-        let base: [VocabItem]
-        if let selectedId = learningModel.selectedCategoryId,
-           let category = learningModel.categories.first(where: { $0.id == selectedId }) {
-            base = category.items
-        } else {
-            base = allItems
+        let base = allItems
+        return base.filter { difficultyForItem($0) == selectedDifficulty }
+    }
+
+    private var selectedCount: Int {
+        switch selectedDifficulty {
+        case .beginner: return 5
+        case .intermediate: return 10
+        case .advanced: return 20
+        case .all: return 10
         }
-
-        let difficultyFiltered = selectedDifficulty == .all
-            ? base
-            : base.filter { difficultyForItem($0) == selectedDifficulty }
-
-        if showFavoritesOnly {
-            return difficultyFiltered.filter { learningModel.favoriteIds.contains($0.id) }
-        }
-
-        return difficultyFiltered
     }
 
     private func difficultyForItem(_ item: VocabItem) -> LearningDifficulty {
@@ -146,6 +131,16 @@ struct PracticeHomeView: View {
             return .intermediate
         }
         return .advanced
+    }
+
+    private func applyLanguageDefaultIfNeeded() {
+        let currentLanguage = languageStore.current
+        guard lastAppliedLanguage != currentLanguage else { return }
+        let defaultMode: LearningMode = (currentLanguage == .indonesian) ? .idToZh : .zhToId
+        if LearningMode(rawValue: storedMode) != defaultMode {
+            storedMode = defaultMode.rawValue
+        }
+        lastAppliedLanguage = currentLanguage
     }
 }
 
@@ -164,16 +159,15 @@ struct PracticeHeaderCard: View {
                         .foregroundStyle(AppTheme.accentWarm)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(languageStore.localized("practice_title"))
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
                     Text(languageStore.localized("practice_subtitle"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
+                        .appLabelStyle(minScale: 0.8)
                 }
                 Spacer(minLength: 0)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -198,7 +192,7 @@ struct PracticeStartBar: View {
                 ) {
                     onWrongBook()
                 }
-                .frame(width: 120)
+                .frame(minWidth: 120)
                 .disabled(wrongBookCount == 0)
                 .opacity(wrongBookCount == 0 ? 0.6 : 1)
 
@@ -220,6 +214,7 @@ struct PracticeStartBar: View {
                     Text(languageStore.localizedFormat("wrong_book_subtitle", wrongBookCount))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
+                        .appLabelStyle(minScale: 0.8)
                     Spacer(minLength: 0)
                 }
             }
@@ -238,44 +233,26 @@ struct PracticeStartBar: View {
     }
 }
 
+
 struct PracticeModeCard: View {
     @EnvironmentObject private var languageStore: AppLanguageStore
-    @Binding var selectedMode: LearningMode
-    @Binding var selectedCount: Int
-    let questionCounts: [Int]
-    @Binding var selectedTypes: Set<PracticeQuestionType>
+    @Binding var selectedDifficulty: LearningDifficulty
+    let difficulties: [LearningDifficulty]
+    @Binding var selectedType: PracticeQuestionType
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(languageStore.localized("practice_mode_title"))
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.textPrimary)
-
-            Picker("", selection: $selectedMode) {
-                Text(languageStore.localized("learning_mode_zh_id")).tag(LearningMode.zhToId)
-                Text(languageStore.localized("learning_mode_id_zh")).tag(LearningMode.idToZh)
-            }
-            .pickerStyle(.segmented)
-
-            HStack(spacing: 8) {
-                ForEach(questionCounts, id: \.self) { count in
-                    Button {
-                        selectedCount = count
-                    } label: {
-                        Text("\(count)")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(selectedCount == count ? .white : AppTheme.textPrimary)
-                            .frame(minWidth: 44)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                Capsule().fill(selectedCount == count ? AppTheme.accentStrong : AppTheme.surfaceMuted)
-                            )
-                            .overlay(
-                                Capsule().stroke(selectedCount == count ? AppTheme.accentStrong : AppTheme.border, lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
+            HStack {
+                if difficulties.indices.contains(0) {
+                    difficultyButton(for: difficulties[0])
+                }
+                Spacer(minLength: 8)
+                if difficulties.indices.contains(1) {
+                    difficultyButton(for: difficulties[1])
+                }
+                Spacer(minLength: 8)
+                if difficulties.indices.contains(2) {
+                    difficultyButton(for: difficulties[2])
                 }
             }
 
@@ -283,22 +260,19 @@ struct PracticeModeCard: View {
                 Text(languageStore.localized("practice_type_title"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(Array(PracticeQuestionType.allCases.enumerated()), id: \.element) { index, type in
                             let tint = tintForIndex(index)
                             Button {
-                                if selectedTypes.contains(type) {
-                                    selectedTypes.remove(type)
-                                } else {
-                                    selectedTypes.insert(type)
-                                }
+                                selectedType = type
                             } label: {
                                 PracticeTypeCard(
                                     title: label(for: type),
                                     systemImage: icon(for: type),
                                     tint: tint,
-                                    isSelected: selectedTypes.contains(type)
+                                    isSelected: selectedType == type
                                 )
                             }
                             .buttonStyle(.plain)
@@ -307,6 +281,7 @@ struct PracticeModeCard: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -355,6 +330,28 @@ struct PracticeModeCard: View {
         ]
         return tints[index % tints.count]
     }
+
+    @ViewBuilder
+    private func difficultyButton(for difficulty: LearningDifficulty) -> some View {
+        Button {
+            selectedDifficulty = difficulty
+        } label: {
+            Text(languageStore.localized(difficulty.labelKey))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(selectedDifficulty == difficulty ? .white : AppTheme.textPrimary)
+                .appButtonLabelStyle(minScale: 0.7)
+                .frame(minWidth: 52)
+                .frame(height: 32)
+                .padding(.horizontal, 6)
+                .background(
+                    Capsule().fill(selectedDifficulty == difficulty ? AppTheme.accentStrong : AppTheme.surfaceMuted)
+                )
+                .overlay(
+                    Capsule().stroke(selectedDifficulty == difficulty ? AppTheme.accentStrong : AppTheme.border, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
 }
 
 struct PracticeCategorySection: View {
@@ -372,9 +369,11 @@ struct PracticeCategorySection: View {
                 Text(languageStore.localized("practice_category_title"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
+                    .appLabelStyle(minScale: 0.8)
                 Text(languageStore.localizedFormat("practice_category_subtitle", categories.count))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -386,7 +385,9 @@ struct PracticeCategorySection: View {
                             Text(languageStore.localized(item.labelKey))
                                 .font(.caption.weight(selectedDifficulty == item ? .semibold : .medium))
                                 .foregroundStyle(selectedDifficulty == item ? .white : AppTheme.textPrimary)
+                                .appButtonLabelStyle(minScale: 0.7)
                                 .frame(minWidth: 44)
+                                .frame(height: 44)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
                                 .background(
@@ -407,10 +408,12 @@ struct PracticeCategorySection: View {
                         HStack(spacing: 6) {
                             Image(systemName: showFavoritesOnly ? "heart.fill" : "heart")
                                 .font(.caption)
-                            Text(languageStore.localized("仅看收藏"))
+                            Text(languageStore.localized("learning_filter_favorites"))
                                 .font(.caption.weight(.semibold))
+                                .appButtonLabelStyle(minScale: 0.7)
                         }
                         .foregroundStyle(showFavoritesOnly ? AppTheme.accentStrong : AppTheme.textSecondary)
+                        .frame(height: 44)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(
@@ -446,6 +449,7 @@ struct PracticeCategorySection: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -479,9 +483,11 @@ struct PracticeChallengeCard: View {
                     Text(languageStore.localized("practice_challenge_title"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
+                        .appLabelStyle(minScale: 0.8)
                     Text(languageStore.localized("practice_challenge_subtitle"))
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textSecondary)
+                        .appLabelStyle(minScale: 0.8)
                 }
                 Spacer(minLength: 0)
                 Toggle("", isOn: $isEnabled)
@@ -492,6 +498,7 @@ struct PracticeChallengeCard: View {
                 Text(languageStore.localized("practice_challenge_time"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
                 HStack(spacing: 8) {
                     ForEach(timeOptions, id: \.self) { option in
                         Button {
@@ -500,6 +507,8 @@ struct PracticeChallengeCard: View {
                             Text(languageStore.localizedFormat("practice_challenge_seconds", option))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(timeLimit == option ? .white : AppTheme.textPrimary)
+                                .appButtonLabelStyle(minScale: 0.7)
+                                .frame(height: 44)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
                                 .background(
@@ -526,14 +535,17 @@ struct PracticeChallengeCard: View {
                         Text(languageStore.localized("practice_challenge_combo"))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(AppTheme.textPrimary)
+                            .appButtonLabelStyle(minScale: 0.7)
                         Text(languageStore.localized("practice_challenge_combo_subtitle"))
                             .font(.caption2)
                             .foregroundStyle(AppTheme.textSecondary)
+                            .appButtonLabelStyle(minScale: 0.7)
                     }
                     Spacer(minLength: 0)
                     Image(systemName: comboEnabled ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(comboEnabled ? AppTheme.accentStrong : AppTheme.textTertiary)
                 }
+                .frame(height: 44)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 10)
                 .background(AppTheme.surfaceMuted)
@@ -553,14 +565,17 @@ struct PracticeChallengeCard: View {
                         Text(languageStore.localized("practice_challenge_bonus"))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(AppTheme.textPrimary)
+                            .appButtonLabelStyle(minScale: 0.7)
                         Text(languageStore.localized("practice_challenge_bonus_subtitle"))
                             .font(.caption2)
                             .foregroundStyle(AppTheme.textSecondary)
+                            .appButtonLabelStyle(minScale: 0.7)
                     }
                     Spacer(minLength: 0)
                     Image(systemName: autoBonusEnabled ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(autoBonusEnabled ? AppTheme.accentStrong : AppTheme.textTertiary)
                 }
+                .frame(height: 44)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 10)
                 .background(AppTheme.surfaceMuted)
@@ -570,6 +585,7 @@ struct PracticeChallengeCard: View {
             .opacity(isEnabled ? 1 : 0.5)
             .disabled(!isEnabled)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -589,12 +605,14 @@ struct PracticeStatsCard: View {
             Text(languageStore.localized("practice_stats_title"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
+                .appLabelStyle(minScale: 0.8)
             HStack(spacing: 8) {
                 ProgressStatCard(title: languageStore.localized("practice_stats_sessions"), value: "\(practiceSessions)", color: AppTheme.accentStrong, icon: "checkmark.seal.fill")
                 ProgressStatCard(title: languageStore.localized("practice_stats_accuracy"), value: accuracyText, color: AppTheme.brandBlue, icon: "chart.bar.fill")
                 ProgressStatCard(title: languageStore.localized("practice_stats_minutes"), value: "\(learningMinutes)", color: AppTheme.accentWarm, icon: "clock.fill")
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -627,18 +645,21 @@ struct WrongBookEntryCard: View {
                 Text(languageStore.localized("wrong_book_title"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
+                    .appLabelStyle(minScale: 0.8)
                 Text(languageStore.localizedFormat("wrong_book_subtitle", count))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
             }
             Spacer(minLength: 0)
             UnifiedAppButton(title: languageStore.localized("wrong_book_action"), systemImage: nil, style: .outline) {
                 onReview()
             }
-            .frame(width: 90)
+            .frame(minWidth: 90)
             .disabled(count == 0)
             .opacity(count == 0 ? 0.6 : 1)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -695,10 +716,10 @@ struct PracticeTypeCard: View {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
-                .lineLimit(2)
+                .appButtonLabelStyle(minScale: 0.7)
                 .multilineTextAlignment(.center)
         }
-        .frame(width: 84)
+        .frame(minWidth: 84)
         .padding(.vertical, 8)
         .background(isSelected ? tint.opacity(0.12) : AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -723,6 +744,7 @@ struct PracticeSessionView: View {
     let source: PracticeSource
     let sourceItems: [VocabItem]
     let allItems: [VocabItem]
+    let difficulty: LearningDifficulty
     let challengeEnabled: Bool
     let timeLimit: Int
     let comboEnabled: Bool
@@ -922,12 +944,14 @@ struct PracticeSessionView: View {
                     Text(languageStore.localized("practice_true_false_source"))
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textTertiary)
+                        .appLabelStyle(minScale: 0.8)
                     Text(sourceText)
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                     Text(languageStore.localized("practice_true_false_candidate"))
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textTertiary)
+                        .appLabelStyle(minScale: 0.8)
                     Text(candidateText)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
@@ -1005,6 +1029,7 @@ struct PracticeSessionView: View {
                 Text(languageStore.localized("practice_word_build_hint"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 8)], spacing: 8) {
                     ForEach(buildOptions) { token in
                         PracticeWordChip(title: token.value, style: .secondary) {
@@ -1027,6 +1052,8 @@ struct PracticeSessionView: View {
                             Text(token.value)
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
+                                .appButtonLabelStyle(minScale: 0.7)
+                                .frame(height: 44)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
                                 .background(AppTheme.accentWarm.opacity(0.18))
@@ -1067,6 +1094,7 @@ struct PracticeSessionView: View {
                     Text(languageStore.localized("practice_listening_hint"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
+                        .appLabelStyle(minScale: 0.8)
                 }
                 ForEach(options, id: \.self) { option in
                     PracticeOptionButton(title: option, isSelected: selectedOption == option) {
@@ -1085,6 +1113,7 @@ struct PracticeSessionView: View {
                 Text(languageStore.localized("practice_sentence_order_hint"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 8)], spacing: 8) {
                     ForEach(availableWords) { token in
                         PracticeWordChip(title: token.word, style: .secondary) {
@@ -1121,6 +1150,7 @@ struct PracticeSessionView: View {
                     Text(languageStore.localized("practice_dictation_hint"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
+                        .appLabelStyle(minScale: 0.8)
                 }
                 TextField(languageStore.localized("practice_dictation_placeholder"), text: $dictationText)
                     .textFieldStyle(.plain)
@@ -1151,11 +1181,13 @@ struct PracticeSessionView: View {
                 Text(languageStore.localized("practice_shadowing_hint"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(languageStore.localized("practice_shadowing_recognized"))
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textTertiary)
+                        .appLabelStyle(minScale: 0.8)
                     Text(shadowingText.isEmpty ? languageStore.localized("practice_shadowing_placeholder") : shadowingText)
                         .font(.subheadline)
                         .foregroundStyle(shadowingText.isEmpty ? AppTheme.textTertiary : AppTheme.textPrimary)
@@ -1179,10 +1211,12 @@ struct PracticeSessionView: View {
                             Text(languageStore.localizedFormat("practice_shadowing_score", Int(shadowingScore * 100)))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
+                                .appLabelStyle(minScale: 0.8)
                             Spacer()
                             Text(shadowingFeedback(for: shadowingScore))
                                 .font(.caption2)
                                 .foregroundStyle(AppTheme.textSecondary)
+                                .appLabelStyle(minScale: 0.8)
                         }
                         ProgressView(value: shadowingScore)
                             .tint(shadowingScore >= 0.75 ? AppTheme.success : AppTheme.accentWarm)
@@ -1303,7 +1337,7 @@ struct PracticeSessionView: View {
             let wrongItems = wrongStore.items.filter { $0.mode == mode }
             questions = PracticeGenerator.generateQuestions(from: wrongItems, allItems: allItems)
         } else {
-            questions = PracticeGenerator.generateQuestions(mode: mode, count: questionCount, types: types, sourceItems: sourceItems)
+            questions = PracticeGenerator.generateQuestions(mode: mode, count: questionCount, types: types, sourceItems: sourceItems, difficulty: difficulty)
         }
         startTime = Date()
         resetState()
@@ -1593,12 +1627,15 @@ struct PracticeOptionButton: View {
                 Text(title)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(AppTheme.textPrimary)
+                    .appButtonLabelStyle(minScale: 0.7)
                 Spacer(minLength: 0)
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(AppTheme.accentStrong)
                 }
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
             .padding(12)
             .background(isSelected ? AppTheme.accentStrong.opacity(0.12) : AppTheme.surfaceMuted)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -1622,9 +1659,11 @@ struct PracticeBinaryButton: View {
                     .font(.caption)
                 Text(title)
                     .font(.caption.weight(.semibold))
+                    .appButtonLabelStyle(minScale: 0.7)
             }
             .foregroundStyle(isSelected ? .white : tint)
             .frame(maxWidth: .infinity)
+            .frame(height: 44)
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -1650,6 +1689,7 @@ struct PracticePowerUpRow: View {
             Text(languageStore.localized("practice_powerup_title"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.textSecondary)
+                .appLabelStyle(minScale: 0.8)
             Spacer(minLength: 0)
             Button(action: onBoost) {
                 HStack(spacing: 6) {
@@ -1657,8 +1697,10 @@ struct PracticePowerUpRow: View {
                         .font(.caption)
                     Text(languageStore.localizedFormat("practice_powerup_time", boosts))
                         .font(.caption.weight(.semibold))
+                        .appButtonLabelStyle(minScale: 0.7)
                 }
                 .foregroundStyle(boosts > 0 ? AppTheme.brandBlue : AppTheme.textTertiary)
+                .frame(height: 44)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(AppTheme.surfaceMuted)
@@ -1687,9 +1729,11 @@ struct ComboBurstView: View {
             Text("+\(value)")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(AppTheme.textPrimary)
+                .appLabelStyle(minScale: 0.8)
             Text(languageStore.localized("practice_combo"))
                 .font(.caption2)
                 .foregroundStyle(AppTheme.textSecondary)
+                .appLabelStyle(minScale: 0.8)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -1788,6 +1832,8 @@ struct PracticeWordChip: View {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
+                .appButtonLabelStyle(minScale: 0.7)
+                .frame(height: 44)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(style == .primary ? AppTheme.accentWarm.opacity(0.18) : AppTheme.surfaceMuted)
@@ -1830,10 +1876,12 @@ struct PracticeAnswerStateView: View {
             Text(isCorrect ? languageStore.localized("practice_correct") : languageStore.localized("practice_wrong"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(isCorrect ? AppTheme.success : AppTheme.error)
+                .appLabelStyle(minScale: 0.8)
             if !isCorrect {
                 Text(detail)
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
             }
         }
         .padding(8)
@@ -1858,6 +1906,7 @@ struct PracticeResultView: View {
             Text(languageStore.localized("practice_result_title"))
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
+                .appLabelStyle(minScale: 0.8)
             Text("\(results.filter { $0.isCorrect }.count) / \(results.count)")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(AppTheme.accentStrong)
@@ -1866,6 +1915,7 @@ struct PracticeResultView: View {
                 Text(languageStore.localized("practice_result_correct"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
                 ForEach(results.filter { $0.isCorrect }) { item in
                     Text(resultLabel(for: item.question))
                         .font(.caption)
@@ -1877,6 +1927,7 @@ struct PracticeResultView: View {
                 Text(languageStore.localized("practice_result_wrong"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
                 ForEach(results.filter { !$0.isCorrect }) { item in
                     Text(resultLabel(for: item.question))
                         .font(.caption)
@@ -1888,6 +1939,7 @@ struct PracticeResultView: View {
                 onDone()
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(AppTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -1932,9 +1984,11 @@ struct PracticeEmptyStateView: View {
             Text(languageStore.localized("practice_empty_title"))
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(AppTheme.textSecondary)
+                .appLabelStyle(minScale: 0.8)
             Text(languageStore.localized("practice_empty_subtitle"))
                 .font(.caption)
                 .foregroundStyle(AppTheme.textTertiary)
+                .appLabelStyle(minScale: 0.8)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)

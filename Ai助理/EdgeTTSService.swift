@@ -149,7 +149,7 @@ final class EdgeTTSService: NSObject {
     }
 
     private func detectLanguage(for text: String) -> String {
-        guard let lang = LanguageDetector.detect(from: text) else { return "en" }
+        guard let lang = LanguageDetector.detect(from: text) else { return "zh" }
         return lang.rawValue
     }
 }

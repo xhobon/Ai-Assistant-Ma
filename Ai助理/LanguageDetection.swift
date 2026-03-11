@@ -4,13 +4,11 @@ import NaturalLanguage
 enum SupportedLanguage: String {
     case zh
     case id
-    case en
 
     var localeIdentifier: String {
         switch self {
         case .zh: return "zh-CN"
         case .id: return "id-ID"
-        case .en: return "en-US"
         }
     }
 }
@@ -32,15 +30,13 @@ struct LanguageDetector {
                     return .zh
                 case .indonesian:
                     return .id
-                case .english:
-                    return .en
                 default:
                     break
                 }
             }
         }
 
-        return .en
+        return .zh
     }
 
     static func detectLocale(from text: String) -> Locale? {
@@ -52,9 +48,8 @@ struct LanguageDetector {
         for preferred in Locale.preferredLanguages {
             if preferred.hasPrefix("zh") { return Locale(identifier: "zh-CN") }
             if preferred.hasPrefix("id") { return Locale(identifier: "id-ID") }
-            if preferred.hasPrefix("en") { return Locale(identifier: "en-US") }
         }
-        return Locale(identifier: "en-US")
+        return Locale(identifier: "zh-CN")
     }
 
     private static func containsChinese(_ text: String) -> Bool {

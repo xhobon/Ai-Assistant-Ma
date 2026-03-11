@@ -6,7 +6,8 @@ struct PracticeGenerator {
         mode: LearningMode,
         count: Int,
         types: [PracticeQuestionType],
-        sourceItems: [VocabItem]
+        sourceItems: [VocabItem],
+        difficulty: LearningDifficulty? = nil
     ) -> [PracticeQuestion] {
         let pool = sourceItems.shuffled()
         let selectedTypes = types.isEmpty ? PracticeQuestionType.allCases : types
@@ -17,7 +18,7 @@ struct PracticeGenerator {
             let item = pool[index]
             index += 1
             let type = selectedTypes[questions.count % selectedTypes.count]
-            if let question = makeQuestion(type: type, item: item, mode: mode, allItems: sourceItems) {
+            if let question = makeQuestion(type: type, item: item, mode: mode, allItems: sourceItems, difficulty: difficulty) {
                 questions.append(question)
             }
         }
@@ -25,7 +26,7 @@ struct PracticeGenerator {
         if questions.count < count {
             while questions.count < count, let random = sourceItems.randomElement() {
                 let type = selectedTypes.randomElement() ?? .multipleChoice
-                if let question = makeQuestion(type: type, item: random, mode: mode, allItems: sourceItems) {
+                if let question = makeQuestion(type: type, item: random, mode: mode, allItems: sourceItems, difficulty: difficulty) {
                     questions.append(question)
                 }
             }
@@ -38,7 +39,7 @@ struct PracticeGenerator {
         var questions: [PracticeQuestion] = []
         for wrong in wrongItems {
             guard let item = allItems.first(where: { $0.id == wrong.itemId }) else { continue }
-            if let question = makeQuestion(type: wrong.type, item: item, mode: wrong.mode, allItems: allItems) {
+            if let question = makeQuestion(type: wrong.type, item: item, mode: wrong.mode, allItems: allItems, difficulty: nil) {
                 questions.append(question)
             }
         }
@@ -49,49 +50,51 @@ struct PracticeGenerator {
         type: PracticeQuestionType,
         item: VocabItem,
         mode: LearningMode,
-        allItems: [VocabItem]
+        allItems: [VocabItem],
+        difficulty: LearningDifficulty?
     ) -> PracticeQuestion? {
         switch type {
         case .multipleChoice:
-            return makeMultipleChoice(item: item, mode: mode, allItems: allItems)
+            return makeMultipleChoice(item: item, mode: mode, allItems: allItems, difficulty: difficulty)
         case .trueFalse:
-            return makeTrueFalse(item: item, mode: mode, allItems: allItems)
+            return makeTrueFalse(item: item, mode: mode, allItems: allItems, difficulty: difficulty)
         case .matching:
             return makeMatching(item: item, mode: mode, allItems: allItems)
         case .fillBlank:
-            return makeFillBlank(item: item, mode: mode)
+            return makeFillBlank(item: item, mode: mode, difficulty: difficulty)
         case .wordBuild:
-            return makeWordBuild(item: item, mode: mode)
+            return makeWordBuild(item: item, mode: mode, difficulty: difficulty)
         case .translation:
-            return makeTranslation(item: item, mode: mode)
+            return makeTranslation(item: item, mode: mode, difficulty: difficulty)
         case .listening:
-            return makeListening(item: item, mode: mode, allItems: allItems)
+            return makeListening(item: item, mode: mode, allItems: allItems, difficulty: difficulty)
         case .sentenceOrder:
-            return makeSentenceOrder(item: item, mode: mode)
+            return makeSentenceOrder(item: item, mode: mode, difficulty: difficulty)
         case .dictation:
-            return makeDictation(item: item, mode: mode)
+            return makeDictation(item: item, mode: mode, difficulty: difficulty)
         case .shadowing:
-            return makeShadowing(item: item, mode: mode)
+            return makeShadowing(item: item, mode: mode, difficulty: difficulty)
         }
     }
 
-    private static func makeMultipleChoice(item: VocabItem, mode: LearningMode, allItems: [VocabItem]) -> PracticeQuestion? {
+    private static func makeMultipleChoice(item: VocabItem, mode: LearningMode, allItems: [VocabItem], difficulty: LearningDifficulty?) -> PracticeQuestion? {
         let correct: String
         let source: String
         let targetLanguage: String
         let distractorPool: [String]
 
+        let useExample = shouldUseExample(for: item, mode: mode, difficulty: difficulty, maxWords: 4, maxChars: 20)
         switch mode {
         case .zhToId:
-            source = item.textZh
-            correct = item.textId
+            source = useExample ? item.exampleZh : item.textZh
+            correct = useExample ? item.exampleId : item.textId
             targetLanguage = "id"
-            distractorPool = allItems.map { $0.textId }
+            distractorPool = useExample ? allItems.map { $0.exampleId } : allItems.map { $0.textId }
         case .idToZh:
-            source = item.textId
-            correct = item.textZh
+            source = useExample ? item.exampleId : item.textId
+            correct = useExample ? item.exampleZh : item.textZh
             targetLanguage = "zh"
-            distractorPool = allItems.map { $0.textZh }
+            distractorPool = useExample ? allItems.map { $0.exampleZh } : allItems.map { $0.textZh }
         }
 
         let options = buildOptions(correct: correct, from: distractorPool, count: 4)
@@ -135,23 +138,24 @@ struct PracticeGenerator {
         )
     }
 
-    private static func makeTrueFalse(item: VocabItem, mode: LearningMode, allItems: [VocabItem]) -> PracticeQuestion? {
+    private static func makeTrueFalse(item: VocabItem, mode: LearningMode, allItems: [VocabItem], difficulty: LearningDifficulty?) -> PracticeQuestion? {
         let source: String
         let correct: String
         let targetLanguage: String
         let distractorPool: [String]
 
+        let useExample = shouldUseExample(for: item, mode: mode, difficulty: difficulty, maxWords: 4, maxChars: 20)
         switch mode {
         case .zhToId:
-            source = item.textZh
-            correct = item.textId
+            source = useExample ? item.exampleZh : item.textZh
+            correct = useExample ? item.exampleId : item.textId
             targetLanguage = "id"
-            distractorPool = allItems.map { $0.textId }
+            distractorPool = useExample ? allItems.map { $0.exampleId } : allItems.map { $0.textId }
         case .idToZh:
-            source = item.textId
-            correct = item.textZh
+            source = useExample ? item.exampleId : item.textId
+            correct = useExample ? item.exampleZh : item.textZh
             targetLanguage = "zh"
-            distractorPool = allItems.map { $0.textZh }
+            distractorPool = useExample ? allItems.map { $0.exampleZh } : allItems.map { $0.textZh }
         }
 
         let shouldUseCorrect = Bool.random()
@@ -171,11 +175,19 @@ struct PracticeGenerator {
         )
     }
 
-    private static func makeFillBlank(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
-        let sentence = item.textId
+    private static func makeFillBlank(item: VocabItem, mode: LearningMode, difficulty: LearningDifficulty?) -> PracticeQuestion? {
+        let useExample = shouldUseExample(for: item, mode: mode, difficulty: difficulty, maxWords: 8, maxChars: 32)
+        let sentence: String
+        switch mode {
+        case .zhToId:
+            sentence = useExample ? item.exampleId : item.textId
+        case .idToZh:
+            sentence = useExample ? item.exampleZh : item.textZh
+        }
         let words = sentence.split(separator: " ")
         if words.count >= 2 {
-            let index = Int.random(in: 0..<words.count)
+            let candidates = words.enumerated().filter { $0.element.count >= 2 }.map { $0.offset }
+            let index = candidates.randomElement() ?? Int.random(in: 0..<words.count)
             let answer = String(words[index])
             var promptWords = words.map(String.init)
             promptWords[index] = "____"
@@ -189,10 +201,11 @@ struct PracticeGenerator {
             )
         }
 
-        let fallback = item.exampleId
+        let fallback = mode == .idToZh ? item.exampleZh : item.exampleId
         let fallbackWords = fallback.split(separator: " ")
         guard fallbackWords.count >= 2 else { return nil }
-        let index = Int.random(in: 0..<fallbackWords.count)
+        let candidates = fallbackWords.enumerated().filter { $0.element.count >= 2 }.map { $0.offset }
+        let index = candidates.randomElement() ?? Int.random(in: 0..<fallbackWords.count)
         let answer = String(fallbackWords[index])
         var promptWords = fallbackWords.map(String.init)
         promptWords[index] = "____"
@@ -206,19 +219,20 @@ struct PracticeGenerator {
         )
     }
 
-    private static func makeWordBuild(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
+    private static func makeWordBuild(item: VocabItem, mode: LearningMode, difficulty: LearningDifficulty?) -> PracticeQuestion? {
         let prompt: String
         let answer: String
         let targetLanguage: String
 
+        let useExample = shouldUseExample(for: item, mode: mode, difficulty: difficulty, maxWords: 4, maxChars: 18)
         switch mode {
         case .zhToId:
-            prompt = item.textZh
-            answer = item.textId
+            prompt = useExample ? item.exampleZh : item.textZh
+            answer = useExample ? item.exampleId : item.textId
             targetLanguage = "id"
         case .idToZh:
-            prompt = item.textId
-            answer = item.textZh
+            prompt = useExample ? item.exampleId : item.textId
+            answer = useExample ? item.exampleZh : item.textZh
             targetLanguage = "zh"
         }
 
@@ -234,18 +248,19 @@ struct PracticeGenerator {
         )
     }
 
-    private static func makeTranslation(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
+    private static func makeTranslation(item: VocabItem, mode: LearningMode, difficulty: LearningDifficulty?) -> PracticeQuestion? {
         let source: String
         let answer: String
         let targetLanguage: String
+        let useExample = shouldUseExample(for: item, mode: mode, difficulty: difficulty, maxWords: 8, maxChars: 32)
         switch mode {
         case .zhToId:
-            source = item.textZh
-            answer = item.textId
+            source = useExample ? item.exampleZh : item.textZh
+            answer = useExample ? item.exampleId : item.textId
             targetLanguage = "id"
         case .idToZh:
-            source = item.textId
-            answer = item.textZh
+            source = useExample ? item.exampleId : item.textId
+            answer = useExample ? item.exampleZh : item.textZh
             targetLanguage = "zh"
         }
         return PracticeQuestion(
@@ -257,26 +272,27 @@ struct PracticeGenerator {
         )
     }
 
-    private static func makeListening(item: VocabItem, mode: LearningMode, allItems: [VocabItem]) -> PracticeQuestion? {
+    private static func makeListening(item: VocabItem, mode: LearningMode, allItems: [VocabItem], difficulty: LearningDifficulty?) -> PracticeQuestion? {
         let audioText: String
         let answer: String
         let targetLanguage: String
         let audioLanguage: String
         let distractorPool: [String]
 
+        let useExample = shouldUseExample(for: item, mode: mode, difficulty: difficulty, maxWords: 4, maxChars: 20)
         switch mode {
         case .zhToId:
-            audioText = item.textId
-            answer = item.textZh
+            audioText = useExample ? item.exampleId : item.textId
+            answer = useExample ? item.exampleZh : item.textZh
             targetLanguage = "zh"
             audioLanguage = "id-ID"
-            distractorPool = allItems.map { $0.textZh }
+            distractorPool = useExample ? allItems.map { $0.exampleZh } : allItems.map { $0.textZh }
         case .idToZh:
-            audioText = item.textZh
-            answer = item.textId
+            audioText = useExample ? item.exampleZh : item.textZh
+            answer = useExample ? item.exampleId : item.textId
             targetLanguage = "id"
             audioLanguage = "zh-CN"
-            distractorPool = allItems.map { $0.textId }
+            distractorPool = useExample ? allItems.map { $0.exampleId } : allItems.map { $0.textId }
         }
 
         let options = buildOptions(correct: answer, from: distractorPool, count: 4)
@@ -289,15 +305,16 @@ struct PracticeGenerator {
         )
     }
 
-    private static func makeSentenceOrder(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
+    private static func makeSentenceOrder(item: VocabItem, mode: LearningMode, difficulty: LearningDifficulty?) -> PracticeQuestion? {
         let sentence: String
         let language: String
+        let useExample = shouldUseExample(for: item, mode: mode, difficulty: difficulty, maxWords: 10, maxChars: 40)
         switch mode {
         case .zhToId:
-            sentence = item.exampleId
+            sentence = useExample ? item.exampleId : item.textId
             language = "id"
         case .idToZh:
-            sentence = item.exampleZh
+            sentence = useExample ? item.exampleZh : item.textZh
             language = "zh"
         }
         let words = sentence.split(separator: " ").map(String.init)
@@ -312,21 +329,22 @@ struct PracticeGenerator {
         )
     }
 
-    private static func makeDictation(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
+    private static func makeDictation(item: VocabItem, mode: LearningMode, difficulty: LearningDifficulty?) -> PracticeQuestion? {
         let audioText: String
         let answer: String
         let targetLanguage: String
         let audioLanguage: String
 
+        let useExample = shouldUseExample(for: item, mode: mode, difficulty: difficulty, maxWords: 10, maxChars: 48)
         switch mode {
         case .zhToId:
-            audioText = item.exampleId
-            answer = item.exampleId
+            audioText = useExample ? item.exampleId : item.textId
+            answer = useExample ? item.exampleId : item.textId
             targetLanguage = "id"
             audioLanguage = "id-ID"
         case .idToZh:
-            audioText = item.exampleZh
-            answer = item.exampleZh
+            audioText = useExample ? item.exampleZh : item.textZh
+            answer = useExample ? item.exampleZh : item.textZh
             targetLanguage = "zh"
             audioLanguage = "zh-CN"
         }
@@ -340,21 +358,22 @@ struct PracticeGenerator {
         )
     }
 
-    private static func makeShadowing(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
+    private static func makeShadowing(item: VocabItem, mode: LearningMode, difficulty: LearningDifficulty?) -> PracticeQuestion? {
         let audioText: String
         let answer: String
         let targetLanguage: String
         let audioLanguage: String
 
+        let useExample = shouldUseExample(for: item, mode: mode, difficulty: difficulty, maxWords: 10, maxChars: 48)
         switch mode {
         case .zhToId:
-            audioText = item.exampleId
-            answer = item.exampleId
+            audioText = useExample ? item.exampleId : item.textId
+            answer = useExample ? item.exampleId : item.textId
             targetLanguage = "id"
             audioLanguage = "id-ID"
         case .idToZh:
-            audioText = item.exampleZh
-            answer = item.exampleZh
+            audioText = useExample ? item.exampleZh : item.textZh
+            answer = useExample ? item.exampleZh : item.textZh
             targetLanguage = "zh"
             audioLanguage = "zh-CN"
         }
@@ -381,6 +400,52 @@ struct PracticeGenerator {
             options.insert(correct)
         }
         return Array(options).shuffled()
+    }
+
+    private static func shouldUseExample(
+        for item: VocabItem,
+        mode: LearningMode,
+        difficulty: LearningDifficulty?,
+        maxWords: Int,
+        maxChars: Int
+    ) -> Bool {
+        let (exampleSource, exampleTarget): (String, String)
+        switch mode {
+        case .zhToId:
+            exampleSource = item.exampleZh
+            exampleTarget = item.exampleId
+        case .idToZh:
+            exampleSource = item.exampleId
+            exampleTarget = item.exampleZh
+        }
+
+        guard isShortText(exampleSource, maxWords: maxWords, maxChars: maxChars),
+              isShortText(exampleTarget, maxWords: maxWords, maxChars: maxChars) else {
+            return false
+        }
+
+        let probability: Double
+        switch difficulty {
+        case .advanced:
+            probability = 0.8
+        case .intermediate:
+            probability = 0.5
+        case .beginner:
+            probability = 0.2
+        case .all, .none:
+            probability = 0.4
+        }
+        return Double.random(in: 0...1) < probability
+    }
+
+    private static func isShortText(_ text: String, maxWords: Int, maxChars: Int) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        let words = trimmed.split(separator: " ")
+        if words.count >= 2 {
+            return words.count <= maxWords && trimmed.count <= maxChars
+        }
+        return trimmed.count <= maxChars
     }
 
     private static func tokenizeForBuild(answer: String, targetLanguage: String) -> ([String], String) {

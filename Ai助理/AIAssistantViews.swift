@@ -542,17 +542,19 @@ struct HomeQuickEntryCard: View {
                 Text(L(service.title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
+                    .appButtonLabelStyle(minScale: 0.7)
 
                 HStack(spacing: 6) {
                     Text(L(service.action))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
+                        .appButtonLabelStyle(minScale: 0.7)
                     Image(systemName: "arrow.right")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(AppTheme.textSecondary)
                 }
             }
-            .frame(width: 160, alignment: .leading)
+            .frame(minWidth: 160, alignment: .leading)
             .padding(14)
             .background(AppTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -583,8 +585,10 @@ struct AIAssistantCategoryTabs: View {
                         }
                         Text(L(item))
                             .font(.subheadline.weight(selected == item ? .semibold : .regular))
+                            .appButtonLabelStyle(minScale: 0.7)
                     }
                     .foregroundStyle(selected == item ? AppTheme.textPrimary : AppTheme.textSecondary)
+                    .frame(height: 44)
                     .padding(.vertical, 8)
                     .padding(.horizontal, 12)
                     .background(selected == item ? AppTheme.surface : AppTheme.surfaceMuted)
@@ -793,9 +797,10 @@ struct AIAssistantChatView: View {
                                     .stroke(AppTheme.unifiedButtonBorder.opacity(0.25), lineWidth: 1)
                             )
 
-                        Text("图片已添加")
+                        Text("assistant_image_added")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(AppTheme.textPrimary)
+                            .appLabelStyle(minScale: 0.8)
 
                         Spacer()
 
@@ -807,7 +812,7 @@ struct AIAssistantChatView: View {
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("移除图片")
+                        .accessibilityLabel(L("assistant_image_remove"))
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
@@ -2249,15 +2254,17 @@ struct ChatThreadCard: View {
                 Text(L(thread.time))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .appLabelStyle(minScale: 0.8)
             }
 
             Text(L(thread.title))
                 .font(.subheadline.weight(.semibold))
+                .appLabelStyle(minScale: 0.8)
 
             Text(L(thread.preview))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .lineLimit(2)
+                .appLabelStyle(minScale: 0.8)
 
             HStack(spacing: 6) {
                 ForEach(thread.tags, id: \.self) { tag in
@@ -2265,7 +2272,7 @@ struct ChatThreadCard: View {
                 }
             }
         }
-        .frame(width: 220, alignment: .leading)
+        .frame(minWidth: 220, alignment: .leading)
         .glassCard()
     }
 }

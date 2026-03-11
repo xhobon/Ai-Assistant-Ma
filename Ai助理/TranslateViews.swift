@@ -67,7 +67,7 @@ struct ModernTranslateHeroHeader: View {
             subtitle: "即时翻译 · 语音与文本同步",
             badgeText: "双向互译",
             headline: "输入文本或使用语音开始翻译",
-            subheadline: "支持实时语音翻译与历史记录同步",
+            subheadline: L("支持实时语音翻译与历史记录同步"),
             style: .gradient
         )
     }
@@ -678,7 +678,7 @@ struct RealTimeTranslationView: View {
                                     if entry.sourceLanguage == .chinese {
                                         // 原文是中文：中文为“原文气泡”，印尼文为“译文气泡”
                                         RealtimeSpeechBubble(
-                                            title: "中文",
+                                            title: L("中文"),
                                             text: entry.chinese,
                                             placeholder: "",
                                             languageTint: AppTheme.accentWarm,
@@ -688,7 +688,7 @@ struct RealTimeTranslationView: View {
                                             onCopy: { ClipboardService.copy(entry.chinese) }
                                         )
                                         RealtimeSpeechBubble(
-                                            title: "印度尼西亚语",
+                                            title: L("印度尼西亚语"),
                                             text: entry.indonesian,
                                             placeholder: "",
                                             languageTint: AppTheme.brandBlue,
@@ -699,7 +699,7 @@ struct RealTimeTranslationView: View {
                                     } else {
                                         // 原文是印尼文：印尼文为“原文气泡”，中文为“译文气泡”
                                         RealtimeSpeechBubble(
-                                            title: "印度尼西亚语",
+                                            title: L("印度尼西亚语"),
                                             text: entry.indonesian,
                                             placeholder: "",
                                             languageTint: AppTheme.brandBlue,
@@ -708,7 +708,7 @@ struct RealTimeTranslationView: View {
                                             onCopy: { ClipboardService.copy(entry.indonesian) }
                                         )
                                         RealtimeSpeechBubble(
-                                            title: "中文",
+                                            title: L("中文"),
                                             text: entry.chinese,
                                             placeholder: "",
                                             languageTint: AppTheme.accentWarm,
@@ -726,9 +726,9 @@ struct RealTimeTranslationView: View {
                                     let chineseText = viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText
                                     let indonesianText = viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText
                                     RealtimeSpeechBubble(
-                                        title: "中文",
+                                        title: L("中文"),
                                         text: chineseText,
-                                        placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
+                                        placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? L("翻译中...") : L("等待语音..."),
                                         languageTint: AppTheme.accentWarm,
                                         alignTrailing: true,
                                         isSource: true,
@@ -736,9 +736,9 @@ struct RealTimeTranslationView: View {
                                         onCopy: { ClipboardService.copy(chineseText) }
                                     )
                                     RealtimeSpeechBubble(
-                                        title: "印度尼西亚语",
+                                        title: L("印度尼西亚语"),
                                         text: indonesianText,
-                                        placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
+                                        placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? L("翻译中...") : L("等待语音..."),
                                         languageTint: AppTheme.brandBlue,
                                         isSource: false,
                                         languageForSpeech: "id-ID",
@@ -749,18 +749,18 @@ struct RealTimeTranslationView: View {
                                     let indonesianText = viewModel.leftText.isEmpty ? viewModel.leftTranslated : viewModel.leftText
                                     let chineseText = viewModel.rightText.isEmpty ? viewModel.rightTranslated : viewModel.rightText
                                     RealtimeSpeechBubble(
-                                        title: "印度尼西亚语",
+                                        title: L("印度尼西亚语"),
                                         text: indonesianText,
-                                        placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? "翻译中..." : "等待语音...",
+                                        placeholder: (viewModel.isTranslating && viewModel.leftText.isEmpty) ? L("翻译中...") : L("等待语音..."),
                                         languageTint: AppTheme.brandBlue,
                                         isSource: true,
                                         languageForSpeech: "id-ID",
                                         onCopy: { ClipboardService.copy(indonesianText) }
                                     )
                                     RealtimeSpeechBubble(
-                                        title: "中文",
+                                        title: L("中文"),
                                         text: chineseText,
-                                        placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? "翻译中..." : "等待语音...",
+                                        placeholder: (viewModel.isTranslating && viewModel.rightText.isEmpty) ? L("翻译中...") : L("等待语音..."),
                                         languageTint: AppTheme.accentWarm,
                                         alignTrailing: true,
                                         isSource: false,
@@ -839,7 +839,7 @@ private struct RealTimeLiveBanner: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(isRecording ? "正在监听语音输入" : "等待语音输入")
+                Text(isRecording ? L("正在监听语音输入") : L("等待语音输入"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                     Text(Lf("当前主讲语言：%@", sourceLanguage))
@@ -847,7 +847,7 @@ private struct RealTimeLiveBanner: View {
                     .foregroundStyle(AppTheme.textSecondary)
             }
             Spacer(minLength: 8)
-            Text(isRecording ? "实时中" : "空闲")
+            Text(isRecording ? L("实时中") : L("空闲"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(isRecording ? AppTheme.primary : AppTheme.textSecondary)
                 .padding(.horizontal, 8)
@@ -878,15 +878,15 @@ struct RealTimeStatusStrip: View {
                     .foregroundStyle(isRecording ? AppTheme.accentWarm : AppTheme.textSecondary)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(isRecording ? "正在识别语音" : "等待语音输入")
+                Text(isRecording ? L("正在识别语音") : L("等待语音输入"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text(isRecording ? "说话时请保持手机稳定" : "点击任一语言按钮开始")
+                Text(isRecording ? L("说话时请保持手机稳定") : L("点击任一语言按钮开始"))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
             }
             Spacer(minLength: 0)
-            Text(isRecording ? "正在输入" : "待机中")
+            Text(isRecording ? L("正在输入") : L("待机中"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(isRecording ? AppTheme.accentWarm : AppTheme.textTertiary)
                 .padding(.horizontal, 8)
@@ -919,12 +919,12 @@ struct RealTimeWaveformPanel: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer(minLength: 0)
-                Text(isLeftActive || isRightActive ? "正在识别" : "等待语音")
+                Text(isLeftActive || isRightActive ? L("正在识别") : L("等待语音"))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textTertiary)
             }
-            WaveformRow(title: "印尼语", isActive: isLeftActive, tint: AppTheme.brandBlue)
-            WaveformRow(title: "中文", isActive: isRightActive, tint: AppTheme.accentWarm)
+            WaveformRow(title: L("印尼语"), isActive: isLeftActive, tint: AppTheme.brandBlue)
+            WaveformRow(title: L("中文"), isActive: isRightActive, tint: AppTheme.accentWarm)
     }
         .padding(12)
         .background(AppTheme.surface)
@@ -991,13 +991,13 @@ struct VoiceControlBar: View {
     private var centerHint: String {
         if isLeftRecording { return "正在听印尼语..." }
         if isRightRecording { return "正在听中文..." }
-        return "点击左右麦克风开始实时翻译"
+        return L("点击左右麦克风开始实时翻译")
     }
 
     var body: some View {
         HStack(spacing: 8) {
             VoiceRecordButton(
-                title: "印尼语",
+                title: L("印尼语"),
                 tint: AppTheme.brandBlue,
                 isRecording: isLeftRecording,
                 action: onLeft
@@ -1013,7 +1013,7 @@ struct VoiceControlBar: View {
                 .clipShape(Capsule())
             Spacer(minLength: 0)
             VoiceRecordButton(
-                title: "中文",
+                title: L("中文"),
                 tint: AppTheme.accentWarm,
                 isRecording: isRightRecording,
                 action: onRight
