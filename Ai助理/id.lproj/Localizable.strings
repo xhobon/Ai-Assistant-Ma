@@ -25,7 +25,7 @@
 "practice_challenge_bonus" = "Bonus waktu";
 "practice_challenge_bonus_subtitle" = "Tambah detik untuk jawaban benar";
 "practice_powerup_title" = "Power-up";
-"practice_powerup_time" = "Waktu +5d · %d";
+"practice_powerup_time" = "Waktu +5s · %d";
 "practice_combo" = "Combo";
 "practice_stats_title" = "Statistik latihan";
 "practice_stats_sessions" = "Jumlah latihan";
