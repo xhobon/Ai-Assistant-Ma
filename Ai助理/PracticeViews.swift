@@ -1561,6 +1561,7 @@ struct PracticePowerUpRow: View {
 }
 
 struct ComboBurstView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     let value: Int
 
     var body: some View {
@@ -1570,7 +1571,7 @@ struct ComboBurstView: View {
             Text("+\(value)")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text("Combo")
+            Text(languageStore.localized("practice_combo"))
                 .font(.caption2)
                 .foregroundStyle(AppTheme.textSecondary)
         }
@@ -1583,13 +1584,14 @@ struct ComboBurstView: View {
 }
 
 struct ShadowingAlignmentView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     let expected: String
     let recognized: String
     let targetLanguage: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("对齐")
+            Text(languageStore.localized("practice_shadowing_align_title"))
                 .font(.caption2)
                 .foregroundStyle(AppTheme.textTertiary)
             FlowWrap(tokens: alignedTokens(expected: expected, recognized: recognized, targetLanguage: targetLanguage)) { token in
