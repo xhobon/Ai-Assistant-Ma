@@ -854,6 +854,12 @@ struct AIAssistantChatView: View {
             }
             .padding(.bottom, 8)
         }
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                hideKeyboard()
+            }
+        )
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
         .photosPicker(isPresented: $showMorePhotosPicker, selection: $selectedPhotoItem, matching: .images)
         .fullScreenCoverOrSheet(isPresented: $showCameraPicker) {

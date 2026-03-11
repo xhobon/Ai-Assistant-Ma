@@ -397,6 +397,14 @@ struct ContentView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                selectedSidebarItem = item
+                                showSidebarDeleteConfirm = true
+                            } label: {
+                                Label(L("删除对话"), systemImage: "trash")
+                            }
+                        }
                         .contextMenu {
                             Button(L("重命名")) {
                                 selectedSidebarItem = item
@@ -429,22 +437,34 @@ struct ContentView: View {
     }
 
     private func loadSidebarHistoryAsync() async {
-        isSidebarHistoryLoading = true
-        defer { isSidebarHistoryLoading = false }
-        
+        await MainActor.run {
+            isSidebarHistoryLoading = true
+        }
+        defer {
+            Task { @MainActor in
+                isSidebarHistoryLoading = false
+            }
+        }
+
         if tokenStore.isLoggedIn {
-            do {
-                let cached = LocalDataStore.shared.loadCloudConversationSummaries()
-                if !cached.isEmpty {
+            let cached = await Task.detached {
+                LocalDataStore.shared.loadCloudConversationSummaries()
+            }.value
+            if !cached.isEmpty {
+                await MainActor.run {
                     sidebarHistory = cached
                 }
-                if hasLoadedSidebarHistory {
-                    return
-                }
+            }
+            if hasLoadedSidebarHistory {
+                return
+            }
+            do {
                 let remote = try await APIClient.shared.getConversations(take: 50)
-                sidebarHistory = remote
+                await MainActor.run {
+                    sidebarHistory = remote
+                    hasLoadedSidebarHistory = true
+                }
                 LocalDataStore.shared.saveCloudConversationSummaries(remote)
-                hasLoadedSidebarHistory = true
                 return
             } catch {
                 #if DEBUG
@@ -452,7 +472,12 @@ struct ContentView: View {
                 #endif
             }
         }
-        sidebarHistory = LocalDataStore.shared.loadLocalConversationSummaries()
+        let local = await Task.detached {
+            LocalDataStore.shared.loadLocalConversationSummaries()
+        }.value
+        await MainActor.run {
+            sidebarHistory = local
+        }
     }
 
     private var detailColumn: some View {

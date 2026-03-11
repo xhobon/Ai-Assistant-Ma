@@ -46,8 +46,13 @@ final class ChatViewModel: ObservableObject {
         // 加载或创建本地对话ID
         if let savedId = LocalDataStore.shared.loadCurrentConversationId() {
             localConversationId = savedId
-            // 加载本地保存的消息
-            messages = LocalDataStore.shared.loadConversation(id: savedId)
+            // 异步加载本地保存的消息，避免阻塞启动
+            Task.detached { [weak self] in
+                let loaded = LocalDataStore.shared.loadConversation(id: savedId)
+                await MainActor.run {
+                    self?.messages = loaded
+                }
+            }
         } else {
             localConversationId = UUID().uuidString
             LocalDataStore.shared.saveCurrentConversationId(localConversationId)
