@@ -105,8 +105,9 @@ struct PracticeGenerator {
     }
 
     private static func makeMatching(item: VocabItem, mode: LearningMode, allItems: [VocabItem]) -> PracticeQuestion? {
-        let candidates = allItems.shuffled().prefix(3)
-        guard candidates.count >= 3 else { return nil }
+        let others = allItems.filter { $0.id != item.id }.shuffled()
+        let candidates = [item] + Array(others.prefix(2))
+        guard candidates.count == 3 else { return nil }
         var left: [String] = []
         var right: [String] = []
         var pairs: [PracticeMatchPair] = []

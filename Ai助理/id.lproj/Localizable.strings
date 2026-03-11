@@ -1006,3 +1006,11 @@ Di satu sisi, pada tahun 2019 saya konsisten menjalankan rencana belajar, mengal
 "voice_test_success" = "Suara online tersedia";
 "voice_test_failed" = "Suara online tidak tersedia. Periksa jaringan atau coba lagi nanti.";
 "voice_unmute_required" = "Aktifkan pemutaran suara terlebih dulu.";
+"错误提示：%@" = "Peringatan kesalahan: %@";
+"ocr_prompt_with_text" = "Tolong identifikasi dan ringkas gambar ini. Berikut teks OCR: 
+%@";
+"ocr_prompt_append" = "
+
+Berikut teks OCR dari gambar, mohon analisis: 
+%@";
+"ocr_prompt_describe" = "Tolong jelaskan dan analisis isi gambar ini.";

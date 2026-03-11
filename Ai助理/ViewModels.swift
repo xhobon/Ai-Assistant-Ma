@@ -120,15 +120,15 @@ final class ChatViewModel: ObservableObject {
                         if !cleanOCR.isEmpty {
                             let snippet = String(cleanOCR.prefix(2500))
                             if effectiveMessage.isEmpty {
-                                effectiveMessage = "请基于这张图片识别并总结。以下是OCR识别文字：\n\(snippet)"
+                                effectiveMessage = Lf("ocr_prompt_with_text", snippet)
                             } else {
-                                effectiveMessage += "\n\n以下是图片OCR识别文字，请结合分析：\n\(snippet)"
+                                effectiveMessage += Lf("ocr_prompt_append", snippet)
                             }
                         } else if effectiveMessage.isEmpty {
-                            effectiveMessage = "请描述并分析这张图片内容。"
+                            effectiveMessage = L("ocr_prompt_describe")
                         }
                     } else if effectiveMessage.isEmpty {
-                        effectiveMessage = "请描述并分析这张图片内容。"
+                        effectiveMessage = L("ocr_prompt_describe")
                     }
                 }
                 let promptContext = await buildPromptContext(for: effectiveMessage.isEmpty ? trimmed : effectiveMessage)

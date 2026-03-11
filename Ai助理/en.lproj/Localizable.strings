@@ -1006,3 +1006,11 @@ On the one hand, in 2019 I stuck to my study plan, made progress, improved my ab
 "未提供应用关键词。" = "App keyword not provided.";
 "出现错误" = "An error occurred";
 "重试" = "Retry";
+"错误提示：%@" = "Error message: %@";
+"ocr_prompt_with_text" = "Please identify and summarize this image. OCR text: 
+%@";
+"ocr_prompt_append" = "
+
+Here is the OCR text from the image, please analyze: 
+%@";
+"ocr_prompt_describe" = "Please describe and analyze the image content.";

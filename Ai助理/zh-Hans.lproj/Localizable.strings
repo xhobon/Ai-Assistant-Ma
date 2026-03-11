@@ -492,3 +492,11 @@
 "voice_test_success" = "在线语音可用";
 "voice_test_failed" = "在线语音不可用，请检查网络或稍后重试";
 "voice_unmute_required" = "请先开启语音播放";
+"错误提示：%@" = "错误提示：%@";
+"ocr_prompt_with_text" = "请基于这张图片识别并总结。以下是OCR识别文字：
+%@";
+"ocr_prompt_append" = "
+
+以下是图片OCR识别文字，请结合分析：
+%@";
+"ocr_prompt_describe" = "请描述并分析这张图片内容。";

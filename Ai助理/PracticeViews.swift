@@ -624,8 +624,8 @@ struct PracticeSessionView: View {
     @State private var translationText = ""
     @State private var dictationText = ""
     @State private var trueFalseSelection: Bool? = nil
-    @State private var orderedWords: [String] = []
-    @State private var availableWords: [String] = []
+    @State private var orderedWords: [PracticeWordToken] = []
+    @State private var availableWords: [PracticeWordToken] = []
     @State private var buildSelection: [PracticeToken] = []
     @State private var buildOptions: [PracticeToken] = []
     @State private var shadowingText = ""
@@ -667,6 +667,7 @@ struct PracticeSessionView: View {
                     if challengeEnabled {
                         PracticePowerUpRow(
                             boosts: timeBoosts,
+                            isDisabled: answered,
                             onBoost: { applyTimeBoost() }
                         )
                     }
@@ -971,19 +972,19 @@ struct PracticeSessionView: View {
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 8)], spacing: 8) {
-                    ForEach(availableWords, id: \.self) { word in
-                        PracticeWordChip(title: word, style: .secondary) {
-                            availableWords.removeAll { $0 == word }
-                            orderedWords.append(word)
+                    ForEach(availableWords) { token in
+                        PracticeWordChip(title: token.word, style: .secondary) {
+                            availableWords.removeAll { $0.id == token.id }
+                            orderedWords.append(token)
                         }
                     }
                 }
                 Divider()
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 8)], spacing: 8) {
-                    ForEach(orderedWords, id: \.self) { word in
-                        PracticeWordChip(title: word, style: .primary) {
-                            orderedWords.removeAll { $0 == word }
-                            availableWords.append(word)
+                    ForEach(orderedWords) { token in
+                        PracticeWordChip(title: token.word, style: .primary) {
+                            orderedWords.removeAll { $0.id == token.id }
+                            availableWords.append(token)
                         }
                     }
                 }
@@ -993,7 +994,7 @@ struct PracticeSessionView: View {
             }
             .onAppear {
                 if availableWords.isEmpty {
-                    availableWords = words
+                    availableWords = words.map { PracticeWordToken(word: $0) }
                     orderedWords = []
                 }
             }
@@ -1116,7 +1117,7 @@ struct PracticeSessionView: View {
             correct = normalized(selectedOption) == normalized(answer)
             detail = answer
         case .sentenceOrder(_, let answer, _):
-            let combined = orderedWords.joined(separator: " ")
+            let combined = orderedWords.map { $0.word }.joined(separator: " ")
             correct = normalized(combined) == normalized(answer)
             detail = answer
         case .dictation(_, let answer, _, _):
@@ -1527,6 +1528,7 @@ struct PracticeBinaryButton: View {
 struct PracticePowerUpRow: View {
     @EnvironmentObject private var languageStore: AppLanguageStore
     let boosts: Int
+    let isDisabled: Bool
     let onBoost: () -> Void
 
     var body: some View {
@@ -1549,8 +1551,8 @@ struct PracticePowerUpRow: View {
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(boosts == 0)
-            .opacity(boosts == 0 ? 0.5 : 1)
+            .disabled(boosts == 0 || isDisabled)
+            .opacity((boosts == 0 || isDisabled) ? 0.5 : 1)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -1679,6 +1681,16 @@ struct PracticeWordChip: View {
                 .overlay(Capsule().stroke(AppTheme.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct PracticeWordToken: Identifiable, Hashable {
+    let id: String
+    let word: String
+
+    init(id: String = UUID().uuidString, word: String) {
+        self.id = id
+        self.word = word
     }
 }
 

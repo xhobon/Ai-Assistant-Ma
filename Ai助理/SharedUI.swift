@@ -2442,6 +2442,7 @@ struct ErrorHandlingView<Data, Content: View, ErrorContent: View>: View {
 }
 
 struct SmartErrorView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     let error: Error
     let retryAction: (() -> Void)?
     
@@ -2451,6 +2452,7 @@ struct SmartErrorView: View {
     }
     
     var body: some View {
+        let _ = languageStore.current
         ModernCard(style: .elevated) {
             VStack(spacing: ModernDesignSystem.Spacing.lg) {
                 VStack(spacing: ModernDesignSystem.Spacing.md) {
@@ -2473,7 +2475,7 @@ struct SmartErrorView: View {
             .padding(ModernDesignSystem.Spacing.lg)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("错误提示：\(errorMessage)")
+        .accessibilityLabel(Lf("错误提示：%@", errorMessage))
     }
     
     private var errorIcon: String {

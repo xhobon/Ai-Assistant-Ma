@@ -545,8 +545,8 @@ final class LocalDataStore: ObservableObject {
         }
         var raw = firstUser.content
         raw = raw
-            .replacingOccurrences(of: "[图片]", with: " ")
-            .replacingOccurrences(of: "[用户附了一张图]", with: " ")
+            .replacingOccurrences(of: L("image_tag"), with: " ")
+            .replacingOccurrences(of: L("user_attached_image_tag"), with: " ")
         raw = raw.replacingOccurrences(of: "\\[文件:[^\\]]+\\]", with: " ", options: .regularExpression)
         raw = raw.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
         if raw.isEmpty {
