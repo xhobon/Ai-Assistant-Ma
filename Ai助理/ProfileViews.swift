@@ -841,7 +841,6 @@ struct ProfileMenuItem: Identifiable, Hashable {
 // MARK: - Member Recharge
 
 struct MemberRechargeView: View {
-    @Environment(\.dismiss) private var dismiss
     @State private var selectedPlanId: String = "life"
     @State private var selectedPaymentId: String = "wechat"
 
@@ -865,10 +864,6 @@ struct MemberRechargeView: View {
 
     var body: some View {
         AppPageScaffold(maxWidth: 960, spacing: 18) {
-            MemberRechargeHeader {
-                dismiss()
-            }
-
             MemberBenefitsCard(benefits: benefits)
 
             ProfileSectionHeader(title: "充值会员", subtitle: "推荐永久会员方案")
@@ -876,81 +871,14 @@ struct MemberRechargeView: View {
             }
             PaymentOptionCard(options: paymentOptions, selectedId: $selectedPaymentId)
         }
-    }
-}
-
-struct MemberRechargeHeader: View {
-    var onBack: () -> Void
-
-    var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .frame(width: 36, height: 36)
-                        .background(AppTheme.surface)
-                        .clipShape(Circle())
-                }
-
-                Spacer()
-
-                Text("会员中心")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.textPrimary)
-
-                Spacer()
-
-                Color.clear
-                    .frame(width: 36, height: 36)
-            }
-
-            ZStack(alignment: .trailing) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                AppTheme.primary.opacity(0.9),
-                                AppTheme.secondary.opacity(0.85)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("VIP会员")
-                            .font(.headline)
-                            .foregroundStyle(AppTheme.textOnPrimary)
-                        Text("升级解锁全部功能")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textOnPrimary.opacity(0.7))
-                    }
-
-                    Spacer()
-
-                    ZStack {
-                        Circle()
-                            .fill(AppTheme.accentWarm.opacity(0.9))
-                            .frame(width: 68, height: 68)
-                        Image(systemName: "crown.fill")
-                            .font(.title2)
-                            .foregroundStyle(AppTheme.textOnPrimary)
-                    }
-                }
-                .padding(16)
-            }
-            .frame(height: 120)
-        }
-        .padding(.top, 16)
+        .navigationTitle("会员中心")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
 // MARK: - Task Center
 
 struct TaskCenterView: View {
-    @Environment(\.dismiss) private var dismiss
 
     private let tasks: [RewardTask] = [
         RewardTask(
@@ -975,14 +903,12 @@ struct TaskCenterView: View {
 
     var body: some View {
         AppPageScaffold(maxWidth: 960, spacing: 18) {
-            TaskCenterHeader {
-                dismiss()
-            }
-
             TaskSummaryCard(availableDays: 0)
 
             TaskListCard(tasks: tasks)
         }
+        .navigationTitle("每日奖励任务")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -994,37 +920,6 @@ struct RewardTask: Identifiable, Hashable {
     let progressText: String
     let actionTitle: String
     let systemImage: String
-}
-
-struct TaskCenterHeader: View {
-    var onBack: () -> Void
-
-    var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .frame(width: 36, height: 36)
-                        .background(AppTheme.surface)
-                        .clipShape(Circle())
-                }
-
-                Spacer()
-
-                Text("每日奖励任务")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.textPrimary)
-
-                Spacer()
-
-                Color.clear
-                    .frame(width: 36, height: 36)
-            }
-        }
-        .padding(.top, 16)
-    }
 }
 
 struct TaskSummaryCard: View {

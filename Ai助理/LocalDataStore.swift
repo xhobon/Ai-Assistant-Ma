@@ -11,6 +11,7 @@ final class LocalDataStore: ObservableObject {
     private let memoriesKey = "local_assistant_memories"
     private let notesKey = "local_notes_v2"
     private let summariesKey = "local_summaries_v1"
+    private let cloudConversationSummariesKey = "cloud_conversation_summaries_v1"
 
     private init() {}
     
@@ -152,6 +153,7 @@ final class LocalDataStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: memoriesKey)
         UserDefaults.standard.removeObject(forKey: notesKey)
         UserDefaults.standard.removeObject(forKey: summariesKey)
+        UserDefaults.standard.removeObject(forKey: cloudConversationSummariesKey)
     }
 
     // MARK: - 助理长期记忆（未登录时本地存储，登录后与云端同步）
@@ -246,6 +248,21 @@ final class LocalDataStore: ObservableObject {
             list.insert(note, at: 0)
         }
         saveNotes(list)
+    }
+
+    // MARK: - Cloud Conversation Summaries (缓存)
+
+    func saveCloudConversationSummaries(_ list: [CloudConversationSummary]) {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(list) {
+            UserDefaults.standard.set(data, forKey: cloudConversationSummariesKey)
+        }
+    }
+
+    func loadCloudConversationSummaries() -> [CloudConversationSummary] {
+        guard let data = UserDefaults.standard.data(forKey: cloudConversationSummariesKey) else { return [] }
+        let decoder = JSONDecoder()
+        return (try? decoder.decode([CloudConversationSummary].self, from: data)) ?? []
     }
 
     // MARK: - Summaries

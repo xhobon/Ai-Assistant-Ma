@@ -3,7 +3,6 @@ import SwiftUI
 // MARK: - Settings UI Kit (shared layout/components)
 
 struct SettingsPage<Content: View>: View {
-    @Environment(\.dismiss) private var dismiss
     let title: String
     var trailing: AnyView? = nil
     @ViewBuilder let content: () -> Content
@@ -11,7 +10,6 @@ struct SettingsPage<Content: View>: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                SettingsHeader(title: title, trailing: trailing, onBack: { dismiss() })
                 content()
             }
             .frame(maxWidth: 980, alignment: .topLeading)
@@ -23,61 +21,8 @@ struct SettingsPage<Content: View>: View {
         .scrollIndicators(.automatic)
         .background(AppTheme.pageBackground.ignoresSafeArea())
         .hideNavigationBarOnMac()
-    }
-}
-
-struct SettingsHeader: View {
-    let title: String
-    var trailing: AnyView? = nil
-    var onBack: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(AppTheme.textOnPrimary)
-                    .frame(width: 38, height: 38)
-                    .background(AppTheme.primaryGradient)
-                    .clipShape(Circle())
-                    .shadow(color: AppTheme.primary.opacity(0.25), radius: 8, x: 0, y: 4)
-            }
-            .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text("设置与偏好")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-
-            Spacer()
-
-            if let trailing {
-                trailing
-            } else {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(AppTheme.surface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(AppTheme.border, lineWidth: 1)
-                    )
-                    .frame(width: 38, height: 38)
-                    .opacity(0.001)
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(AppTheme.surface.opacity(0.92))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AppTheme.border, lineWidth: 1)
-        )
-        .shadow(color: AppTheme.softShadow, radius: 10, x: 0, y: 4)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

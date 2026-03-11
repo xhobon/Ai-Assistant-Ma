@@ -111,6 +111,7 @@ struct ContentView: View {
     @State private var sidebarSearchText: String = ""
     @State private var sidebarHistory: [CloudConversationSummary] = []
     @State private var isSidebarHistoryLoading = false
+    @State private var hasLoadedSidebarHistory = false
     private var primarySidebarItems: [SidebarItem] {
         // 侧边栏只保留：助理、记录、翻译、学习（写作/PPT 入口已移动到助理页面的加号里）
         SidebarItem.allCases.filter { ![.profile, .writing, .ppt].contains($0) }
@@ -366,7 +367,17 @@ struct ContentView: View {
         
         if tokenStore.isLoggedIn {
             do {
-                sidebarHistory = try await APIClient.shared.getConversations(take: 50)
+                let cached = LocalDataStore.shared.loadCloudConversationSummaries()
+                if !cached.isEmpty {
+                    sidebarHistory = cached
+                }
+                if hasLoadedSidebarHistory {
+                    return
+                }
+                let remote = try await APIClient.shared.getConversations(take: 50)
+                sidebarHistory = remote
+                LocalDataStore.shared.saveCloudConversationSummaries(remote)
+                hasLoadedSidebarHistory = true
                 return
             } catch {
                 #if DEBUG
@@ -510,6 +521,7 @@ struct ContentView: View {
         }
         .onChange(of: tokenStore.token) { _, _ in
             loadSidebarHistory()
+            hasLoadedSidebarHistory = false
         }
         .onChange(of: isCompactSidebarPresented) { _, isOpen in
             if isOpen {

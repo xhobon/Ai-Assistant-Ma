@@ -34,6 +34,7 @@ final class ChatViewModel: ObservableObject {
     private var pendingImageData: Data? = nil
     private var cancellables = Set<AnyCancellable>()
     private var hasHydratedFromCloud = false
+    private var hasLoadedConversationHistory = false
     
     init(allowLocalExecution: Bool = false) {
         self.allowLocalExecution = allowLocalExecution
@@ -68,10 +69,12 @@ final class ChatViewModel: ObservableObject {
     private func handleAuthStateChanged() {
         if TokenStore.shared.isLoggedIn {
             Task { await syncFromCloud() }
+            hasLoadedConversationHistory = false
         } else {
             // 退出登录后回到本地会话上下文
             serverConversationId = nil
             hasHydratedFromCloud = false
+            hasLoadedConversationHistory = false
         }
     }
 
@@ -148,15 +151,25 @@ final class ChatViewModel: ObservableObject {
         defer { isLoadingConversationHistory = false }
         
         if TokenStore.shared.isLoggedIn {
-            do {
-                conversationHistory = try await APIClient.shared.getConversations(take: 50)
+            let cached = LocalDataStore.shared.loadCloudConversationSummaries()
+            if !cached.isEmpty {
+                conversationHistory = cached
+            }
+            if hasLoadedConversationHistory {
                 return
+            }
+            do {
+                let remote = try await APIClient.shared.getConversations(take: 50)
+                conversationHistory = remote
+                LocalDataStore.shared.saveCloudConversationSummaries(remote)
             } catch {
-                // 云端历史接口不可用时，静默回退到本地历史，避免弹出 HTML 错误内容
+                // 云端历史接口不可用时，静默回退缓存
                 #if DEBUG
-                print("[History] cloud conversations unavailable, fallback to local: \(error.localizedDescription)")
+                print("[History] cloud conversations unavailable, fallback to cache: \(error.localizedDescription)")
                 #endif
             }
+            hasLoadedConversationHistory = true
+            return
         }
         
         // 未登录回退：本地会话列表
