@@ -1524,6 +1524,194 @@ struct PracticeBinaryButton: View {
     }
 }
 
+struct PracticePowerUpRow: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
+    let boosts: Int
+    let onBoost: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(languageStore.localized("practice_powerup_title"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.textSecondary)
+            Spacer(minLength: 0)
+            Button(action: onBoost) {
+                HStack(spacing: 6) {
+                    Image(systemName: "timer")
+                        .font(.caption)
+                    Text(languageStore.localizedFormat("practice_powerup_time", boosts))
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(boosts > 0 ? AppTheme.brandBlue : AppTheme.textTertiary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(boosts == 0)
+            .opacity(boosts == 0 ? 0.5 : 1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+    }
+}
+
+struct ComboBurstView: View {
+    let value: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "flame.fill")
+                .foregroundStyle(AppTheme.accentWarm)
+            Text("+\(value)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Text("Combo")
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textSecondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(AppTheme.surface)
+        .clipShape(Capsule())
+        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+}
+
+struct ShadowingAlignmentView: View {
+    let expected: String
+    let recognized: String
+    let targetLanguage: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("对齐")
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textTertiary)
+            FlowWrap(tokens: alignedTokens(expected: expected, recognized: recognized, targetLanguage: targetLanguage)) { token in
+                Text(token.value)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(token.isMatch ? AppTheme.success : AppTheme.error)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background((token.isMatch ? AppTheme.success : AppTheme.error).opacity(0.12))
+                    .clipShape(Capsule())
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(AppTheme.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func alignedTokens(expected: String, recognized: String, targetLanguage: String) -> [ShadowingToken] {
+        let expectedTokens = tokenize(text: expected, targetLanguage: targetLanguage)
+        let recognizedTokens = tokenize(text: recognized, targetLanguage: targetLanguage)
+        var result: [ShadowingToken] = []
+        for (index, token) in expectedTokens.enumerated() {
+            let normalized = token.lowercased()
+            let match = index < recognizedTokens.count && normalized == recognizedTokens[index].lowercased()
+            result.append(ShadowingToken(value: token, isMatch: match))
+        }
+        return result
+    }
+
+    private func tokenize(text: String, targetLanguage: String) -> [String] {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if targetLanguage == "zh" {
+            return trimmed.map { String($0) }.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        }
+        return trimmed.split(separator: " ").map(String.init)
+    }
+}
+
+struct ShadowingToken: Identifiable {
+    let id = UUID()
+    let value: String
+    let isMatch: Bool
+}
+
+struct FlowWrap<Data: RandomAccessCollection, Content: View>: View where Data.Element: Identifiable {
+    let tokens: Data
+    let content: (Data.Element) -> Content
+
+    init(tokens: Data, @ViewBuilder content: @escaping (Data.Element) -> Content) {
+        self.tokens = tokens
+        self.content = content
+    }
+
+    var body: some View {
+        FlexibleView(data: tokens, spacing: 6, alignment: .leading, content: content)
+    }
+}
+
+struct FlexibleView<Data: RandomAccessCollection, Content: View>: View where Data.Element: Identifiable {
+    let data: Data
+    let spacing: CGFloat
+    let alignment: HorizontalAlignment
+    let content: (Data.Element) -> Content
+
+    @State private var sizes: [Data.Element.ID: CGSize] = [:]
+
+    var body: some View {
+        VStack(alignment: alignment, spacing: spacing) {
+            var currentWidth: CGFloat = 0
+            var row: [Data.Element] = []
+            ForEach(Array(data)) { element in
+                let size = sizes[element.id, default: CGSize(width: 60, height: 24)]
+                if currentWidth + size.width + spacing > UIScreen.main.bounds.width - 80, !row.isEmpty {
+                    rowView(row)
+                    row = [element]
+                    currentWidth = size.width + spacing
+                } else {
+                    row.append(element)
+                    currentWidth += size.width + spacing
+                }
+            }
+            if !row.isEmpty {
+                rowView(row)
+            }
+        }
+    }
+
+    private func rowView(_ row: [Data.Element]) -> some View {
+        HStack(spacing: spacing) {
+            ForEach(row) { element in
+                content(element)
+                    .fixedSize()
+                    .background(
+                        GeometryReader { proxy in
+                            Color.clear
+                                .onAppear { sizes[element.id] = proxy.size }
+                                .onChange(of: proxy.size) { _, newValue in sizes[element.id] = newValue }
+                        }
+                    )
+            }
+        }
+    }
+}
+
+enum PracticeFeedbackSound {
+    case success
+    case error
+    case boost
+
+    var soundId: SystemSoundID {
+        switch self {
+        case .success:
+            return 1104
+        case .error:
+            return 1103
+        case .boost:
+            return 1057
+        }
+    }
+}
+
 struct PracticeWordChip: View {
     enum Style {
         case primary
