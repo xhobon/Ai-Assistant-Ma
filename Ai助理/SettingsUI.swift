@@ -8,19 +8,9 @@ struct SettingsPage<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                content()
-            }
-            .frame(maxWidth: 980, alignment: .topLeading)
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 32)
-            .frame(maxWidth: .infinity, alignment: .top)
+        AppPageScaffold(maxWidth: 980, horizontalPadding: 20, topPadding: 16, bottomPadding: 32, spacing: 16) {
+            content()
         }
-        .scrollIndicators(.automatic)
-        .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -105,6 +105,7 @@ struct ContentView: View {
     @State private var detailResetSeed = 0
     @State private var detailMounted = true
     @ObservedObject private var tokenStore = TokenStore.shared
+    @ObservedObject private var syncStore = SyncStatusStore.shared
     @State private var copyToastMessage: String?
     @State private var isCompactSidebarPresented = false
     @GestureState private var sidebarDragTranslation: CGFloat = 0
@@ -112,6 +113,10 @@ struct ContentView: View {
     @State private var sidebarHistory: [CloudConversationSummary] = []
     @State private var isSidebarHistoryLoading = false
     @State private var hasLoadedSidebarHistory = false
+    @State private var showSidebarRenameDialog = false
+    @State private var showSidebarDeleteConfirm = false
+    @State private var sidebarRenameText: String = ""
+    @State private var selectedSidebarItem: CloudConversationSummary?
     private var primarySidebarItems: [SidebarItem] {
         // 侧边栏只保留：助理、记录、翻译、学习（写作/PPT 入口已移动到助理页面的加号里）
         SidebarItem.allCases.filter { ![.profile, .writing, .ppt].contains($0) }
@@ -293,6 +298,9 @@ struct ContentView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.textSecondary)
                 .padding(.horizontal, 12)
+
+            ChatSyncStatusRow(status: syncStore.status, errorText: syncStore.lastError)
+                .padding(.horizontal, 12)
             
             if isSidebarHistoryLoading {
                 Text("加载中...")
@@ -341,6 +349,17 @@ struct ContentView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            Button("重命名") {
+                                selectedSidebarItem = item
+                                sidebarRenameText = item.title
+                                showSidebarRenameDialog = true
+                            }
+                            Button("删除对话", role: .destructive) {
+                                selectedSidebarItem = item
+                                showSidebarDeleteConfirm = true
+                            }
+                        }
                         .padding(.horizontal, 8)
                     }
                 }
@@ -385,27 +404,7 @@ struct ContentView: View {
                 #endif
             }
         }
-        
-        let all = LocalDataStore.shared.loadAllConversations()
-        let formatter = ISO8601DateFormatter()
-        let localList: [CloudConversationSummary] = all.map { (id, rows) in
-            let last = rows.last
-            let first = rows.first
-            let lastText = (last?["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let firstText = (first?["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let titleRaw = (firstText?.isEmpty == false ? firstText! : "本地会话")
-            let title = String(titleRaw.prefix(20))
-            let lastTime = (last?["time"] as? TimeInterval) ?? Date().timeIntervalSince1970
-            let firstTime = (first?["time"] as? TimeInterval) ?? lastTime
-            return CloudConversationSummary(
-                id: id,
-                title: title,
-                createdAt: formatter.string(from: Date(timeIntervalSince1970: firstTime)),
-                updatedAt: formatter.string(from: Date(timeIntervalSince1970: lastTime)),
-                lastMessage: String((lastText ?? "").prefix(80))
-            )
-        }
-        sidebarHistory = localList.sorted { $0.updatedAt > $1.updatedAt }
+        sidebarHistory = LocalDataStore.shared.loadLocalConversationSummaries()
     }
 
     private var detailColumn: some View {
@@ -514,6 +513,28 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(AppTheme.pageBackground.ignoresSafeArea())
         .toast(message: $copyToastMessage)
+        .alert("重命名对话", isPresented: $showSidebarRenameDialog) {
+            TextField("对话标题", text: $sidebarRenameText)
+            Button("取消", role: .cancel) { selectedSidebarItem = nil }
+            Button("保存") {
+                guard let item = selectedSidebarItem else { return }
+                let title = normalizeTitle(sidebarRenameText)
+                Task { await renameSidebarConversation(id: item.id, title: title) }
+                selectedSidebarItem = nil
+            }
+        } message: {
+            Text("输入 6-20 个字符的标题")
+        }
+        .alert("删除对话", isPresented: $showSidebarDeleteConfirm) {
+            Button("取消", role: .cancel) { selectedSidebarItem = nil }
+            Button("删除", role: .destructive) {
+                guard let item = selectedSidebarItem else { return }
+                Task { await deleteSidebarConversation(id: item.id) }
+                selectedSidebarItem = nil
+            }
+        } message: {
+            Text("该操作将删除此对话及其消息，无法恢复。")
+        }
         .onReceive(NotificationCenter.default.publisher(for: .globalCopySucceeded)) { _ in
             withAnimation(.easeInOut(duration: 0.2)) {
                 copyToastMessage = "已复制到剪贴板"
@@ -527,6 +548,74 @@ struct ContentView: View {
             if isOpen {
                 loadSidebarHistory()
             }
+        }
+    }
+
+    private func normalizeTitle(_ raw: String) -> String {
+        let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        var chars = Array(cleaned)
+        if chars.count > 20 {
+            chars = Array(chars.prefix(20))
+        }
+        if chars.count < 6 {
+            var padded = Array("关于") + chars + Array("对话")
+            if padded.count < 6 {
+                padded.append(contentsOf: Array("记录"))
+            }
+            return String(padded.prefix(20))
+        }
+        return String(chars)
+    }
+
+    private func renameSidebarConversation(id: String, title: String) async {
+        guard !title.isEmpty else { return }
+        if tokenStore.isLoggedIn {
+            sidebarHistory = sidebarHistory.map { item in
+                guard item.id == id else { return item }
+                return CloudConversationSummary(
+                    id: item.id,
+                    title: title,
+                    createdAt: item.createdAt,
+                    updatedAt: ISO8601DateFormatter().string(from: Date()),
+                    lastMessage: item.lastMessage
+                )
+            }
+            LocalDataStore.shared.saveCloudConversationSummaries(sidebarHistory)
+            LocalDataStore.shared.enqueuePendingTitleUpdate(id: id, title: title)
+            syncStore.status = .syncing
+            do {
+                _ = try await APIClient.shared.updateConversationTitle(conversationId: id, title: title)
+                LocalDataStore.shared.removePendingTitleUpdate(id: id)
+                syncStore.status = .success
+                syncStore.lastError = nil
+            } catch {
+                syncStore.status = .failed
+                syncStore.lastError = error.localizedDescription
+            }
+        } else {
+            LocalDataStore.shared.updateLocalConversationTitle(id: id, title: title)
+            sidebarHistory = LocalDataStore.shared.loadLocalConversationSummaries()
+        }
+    }
+
+    private func deleteSidebarConversation(id: String) async {
+        if tokenStore.isLoggedIn {
+            sidebarHistory.removeAll { $0.id == id }
+            LocalDataStore.shared.saveCloudConversationSummaries(sidebarHistory)
+            LocalDataStore.shared.enqueuePendingDelete(id: id)
+            syncStore.status = .syncing
+            do {
+                try await APIClient.shared.deleteConversation(conversationId: id)
+                LocalDataStore.shared.removePendingDelete(id: id)
+                syncStore.status = .success
+                syncStore.lastError = nil
+            } catch {
+                syncStore.status = .failed
+                syncStore.lastError = error.localizedDescription
+            }
+        } else {
+            LocalDataStore.shared.deleteConversation(id: id)
+            sidebarHistory = LocalDataStore.shared.loadLocalConversationSummaries()
         }
     }
 }

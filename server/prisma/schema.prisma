@@ -78,6 +78,7 @@ model Conversation {
   userId    String
   title     String
   createdAt DateTime  @default(now())
+  lastMessageAt DateTime @default(now())
   user      User      @relation(fields: [userId], references: [id])
   messages  Message[]
 }

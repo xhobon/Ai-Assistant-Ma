@@ -56,6 +56,41 @@ function addNaturalPausesForZh(escapedText) {
     .replace(/([。！？!?\n])/g, "$1<break time=\"220ms\"/>");
 }
 
+function stripConversationTitleNoise(text) {
+  if (!text || typeof text !== "string") return "";
+  let s = text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/\[图片\]/g, " ")
+    .replace(/\[文件:[^\]]+\]/g, " ")
+    .replace(/\[用户附了一张图\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  s = s.replace(/^(请|帮我|帮忙|麻烦|能否|能不能|可以|想要|请帮我|帮我一下|帮忙一下)\s*/g, "");
+  return s.trim();
+}
+
+function clampTitleLength(title, min = 6, max = 20) {
+  const chars = Array.from(title || "");
+  if (chars.length >= min && chars.length <= max) return title;
+  if (chars.length > max) return chars.slice(0, max).join("");
+  return chars.join("");
+}
+
+function generateConversationTitle(rawMessage, fallback = "对话摘要") {
+  const cleaned = stripConversationTitleNoise(rawMessage);
+  if (!cleaned) {
+    return clampTitleLength("图片识别任务", 6, 20);
+  }
+  const noPunc = cleaned.replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+  const base = noPunc || cleaned;
+  const chars = Array.from(base);
+  if (chars.length >= 6) {
+    return clampTitleLength(chars.slice(0, 20).join(""), 6, 20);
+  }
+  const padded = `关于${base}咨询`;
+  return clampTitleLength(padded, 6, 20);
+}
+
 function clampNumber(n, min, max) {
   const x = Number(n);
   if (!Number.isFinite(x)) return null;
@@ -898,7 +933,7 @@ app.get("/api/conversations", authMiddleware, async (req, res) => {
   const take = Number.isFinite(takeRaw) ? Math.min(Math.max(takeRaw, 1), 100) : 20;
   const list = await prisma.conversation.findMany({
     where: { userId: req.user.sub },
-    orderBy: { createdAt: "desc" },
+    orderBy: { lastMessageAt: "desc" },
     take,
     include: {
       messages: {
@@ -913,7 +948,7 @@ app.get("/api/conversations", authMiddleware, async (req, res) => {
       id: c.id,
       title: c.title,
       createdAt: c.createdAt.toISOString(),
-      updatedAt: c.messages[0]?.createdAt?.toISOString?.() || c.createdAt.toISOString(),
+      updatedAt: c.lastMessageAt?.toISOString?.() || c.messages[0]?.createdAt?.toISOString?.() || c.createdAt.toISOString(),
       lastMessage: c.messages[0]?.content || ""
     }))
   });
@@ -942,6 +977,47 @@ app.get("/api/conversations/:id/messages", authMiddleware, async (req, res) => {
       time: m.createdAt.toISOString()
     }))
   });
+});
+
+app.patch("/api/conversations/:id/title", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const schema = z.object({
+    title: z.string().min(6).max(20)
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+  const cleanTitle = String(parsed.data.title).trim();
+  if (!cleanTitle) {
+    return res.status(400).json({ error: "标题不能为空" });
+  }
+  const conversation = await prisma.conversation.findFirst({
+    where: { id, userId: req.user.sub },
+    select: { id: true }
+  });
+  if (!conversation) {
+    return res.status(404).json({ error: "会话不存在" });
+  }
+  const updated = await prisma.conversation.update({
+    where: { id },
+    data: { title: cleanTitle }
+  });
+  return res.json({ ok: true, title: updated.title });
+});
+
+app.delete("/api/conversations/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const conversation = await prisma.conversation.findFirst({
+    where: { id, userId: req.user.sub },
+    select: { id: true }
+  });
+  if (!conversation) {
+    return res.status(404).json({ error: "会话不存在" });
+  }
+  await prisma.message.deleteMany({ where: { conversationId: id } });
+  await prisma.conversation.delete({ where: { id } });
+  return res.json({ ok: true });
 });
 
 // 文件上传处理中间件（解析multipart/form-data）
@@ -1060,12 +1136,25 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
         conversation = conversationId
           ? await prisma.conversation.findUnique({ where: { id: conversationId } })
           : await prisma.conversation.create({
-              data: { userId: req.user.sub, title: `对话-${nanoid(6)}` }
+              data: { userId: req.user.sub, title: generateConversationTitle(message || fileName || "文件分析") }
             });
         if (conversation) {
           await prisma.message.create({
             data: { conversationId: conversation.id, role: "user", content: `[文件: ${fileName}] ${message || "请分析这个文件"}` }
           });
+          const shouldRename = !conversation.title || conversation.title.startsWith("对话-");
+          if (shouldRename) {
+            const title = generateConversationTitle(message || fileName || "文件分析");
+            await prisma.conversation.update({
+              where: { id: conversation.id },
+              data: { title, lastMessageAt: new Date() }
+            });
+          } else {
+            await prisma.conversation.update({
+              where: { id: conversation.id },
+              data: { lastMessageAt: new Date() }
+            });
+          }
         }
       }
       
@@ -1120,6 +1209,10 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
         await prisma.message.create({
           data: { conversationId: conversation.id, role: "assistant", content: reply }
         });
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { lastMessageAt: new Date() }
+        });
       }
 
       if (req.user && reply) {
@@ -1164,12 +1257,25 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
     conversation = conversationId
       ? await prisma.conversation.findUnique({ where: { id: conversationId } })
       : await prisma.conversation.create({
-          data: { userId: req.user.sub, title: `对话-${nanoid(6)}` }
+          data: { userId: req.user.sub, title: generateConversationTitle(userMessageContent) }
         });
     if (conversation) {
       await prisma.message.create({
         data: { conversationId: conversation.id, role: "user", content: userMessageContent }
       });
+      const shouldRename = !conversation.title || conversation.title.startsWith("对话-");
+      if (shouldRename) {
+        const title = generateConversationTitle(userMessageContent);
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { title, lastMessageAt: new Date() }
+        });
+      } else {
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { lastMessageAt: new Date() }
+        });
+      }
     }
   }
 
@@ -1251,6 +1357,10 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
   if (conversation) {
     await prisma.message.create({
       data: { conversationId: conversation.id, role: "assistant", content: reply }
+    });
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessageAt: new Date() }
     });
   }
 

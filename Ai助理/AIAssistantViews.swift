@@ -709,6 +709,8 @@ struct AIAssistantChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
+                            ChatSyncStatusRow(status: viewModel.syncStatus, errorText: viewModel.lastSyncError)
+                                .padding(.top, 4)
                             ChatMessageSection(messages: viewModel.messages, onClear: viewModel.resetConversation)
                             if viewModel.isSending {
                                 ChatThinkingBubble()
@@ -896,6 +898,12 @@ struct AIAssistantChatView: View {
                 onPick: { item in
                     Task { await viewModel.switchToConversation(item) }
                     showHistoryDialog = false
+                },
+                onRename: { item, title in
+                    Task { await viewModel.renameConversation(id: item.id, newTitle: title) }
+                },
+                onDelete: { item in
+                    Task { await viewModel.deleteConversation(id: item.id) }
                 }
             )
         }
@@ -1423,8 +1431,14 @@ struct ConversationHistorySheet: View {
     let isLoading: Bool
     var onRefresh: () -> Void
     var onPick: (CloudConversationSummary) -> Void
+    var onRename: (CloudConversationSummary, String) -> Void
+    var onDelete: (CloudConversationSummary) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var keyword: String = ""
+    @State private var showRenameDialog = false
+    @State private var showDeleteConfirm = false
+    @State private var renameText: String = ""
+    @State private var selectedItem: CloudConversationSummary?
     
     private let formatter: DateFormatter = {
         let f = DateFormatter()
@@ -1534,6 +1548,17 @@ struct ConversationHistorySheet: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                Button("重命名") {
+                                    selectedItem = item
+                                    renameText = item.title
+                                    showRenameDialog = true
+                                }
+                                Button("删除对话", role: .destructive) {
+                                    selectedItem = item
+                                    showDeleteConfirm = true
+                                }
+                            }
                         }
                     }
                     .padding(12)
@@ -1543,6 +1568,34 @@ struct ConversationHistorySheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppTheme.pageBackground)
         .onAppear { onRefresh() }
+        .alert("重命名对话", isPresented: $showRenameDialog) {
+            TextField("对话标题", text: $renameText)
+            Button("取消", role: .cancel) {
+                selectedItem = nil
+            }
+            Button("保存") {
+                guard let item = selectedItem else { return }
+                let title = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !title.isEmpty {
+                    onRename(item, title)
+                }
+                selectedItem = nil
+            }
+        } message: {
+            Text("输入 6-20 个字符的标题")
+        }
+        .alert("删除对话", isPresented: $showDeleteConfirm) {
+            Button("取消", role: .cancel) {
+                selectedItem = nil
+            }
+            Button("删除", role: .destructive) {
+                guard let item = selectedItem else { return }
+                onDelete(item)
+                selectedItem = nil
+            }
+        } message: {
+            Text("该操作将删除此对话及其消息，无法恢复。")
+        }
     }
     
     private func formatDate(_ iso: String) -> String {
@@ -2162,7 +2215,7 @@ struct ChatMessageSection: View {
     var showDateSeparator: Bool = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        LazyVStack(alignment: .leading, spacing: 12) {
             if showDateSeparator, let first = messages.first {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(first.time.formatted(date: .abbreviated, time: .shortened))
@@ -2177,6 +2230,57 @@ struct ChatMessageSection: View {
                 ChatBubble(message: message)
             }
         }
+    }
+}
+
+struct ChatSyncStatusRow: View {
+    let status: SyncStatus
+    var errorText: String?
+
+    private var color: Color {
+        switch status {
+        case .idle: return AppTheme.textTertiary
+        case .syncing: return AppTheme.accentWarm
+        case .success: return AppTheme.success
+        case .failed: return AppTheme.error
+        }
+    }
+
+    private var icon: String {
+        switch status {
+        case .idle: return "cloud"
+        case .syncing: return "arrow.triangle.2.circlepath"
+        case .success: return "checkmark.circle.fill"
+        case .failed: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(color)
+            Text(status.label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.textSecondary)
+            if status == .failed, let errorText, !errorText.isEmpty {
+                Text("·")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textTertiary)
+                Text("稍后自动重试")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
     }
 }
 

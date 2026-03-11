@@ -204,6 +204,7 @@ struct ProfileLoginCard: View {
 
 struct AccountProfileCenterView: View {
     @ObservedObject private var tokenStore = TokenStore.shared
+    @Environment(\.dismiss) private var dismiss
     @State private var profile: UserDTO?
     @State private var loading = false
     @State private var message: String?
@@ -1492,24 +1493,53 @@ struct AuthView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
+            ZStack {
+                AppTheme.pageBackground.ignoresSafeArea()
                 ScrollView {
-                    VStack(spacing: 18) {
-                        modeSwitchSection
-                        formSection
-                        statusSection
-                        submitSection
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 20)
+                        VStack(spacing: 18) {
+                            Text(mode == .login ? "登录" : "注册")
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                                .padding(.top, 4)
+                            modeSwitchSection
+                            formSection
+                            statusSection
+                            submitSection
+                        }
+                        .frame(maxWidth: 520)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 22)
+                        .background(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(AppTheme.surface)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(AppTheme.border.opacity(0.7), lineWidth: 1)
+                        )
+                        .shadow(color: AppTheme.softShadow, radius: 18, x: 0, y: 8)
+                        Spacer(minLength: 40)
                     }
-                    .frame(maxWidth: 860)
-                    .padding(20)
                     .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 }
             }
-            .background(AppTheme.pageBackground.ignoresSafeArea())
-            #if os(iOS)
-            .navigationTitle(mode == .login ? "登录" : "注册")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                    }
+                    .accessibilityLabel("返回")
+                }
+            }
             .navigationBarTitleDisplayMode(.inline)
-            #endif
         }
         .alert("提示", isPresented: Binding(
             get: { message != nil },

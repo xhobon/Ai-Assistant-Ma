@@ -19,6 +19,8 @@ final class ChatViewModel: ObservableObject {
     @Published var alertMessage: String?
     @Published var conversationHistory: [CloudConversationSummary] = []
     @Published var isLoadingConversationHistory = false
+    @Published var syncStatus: SyncStatus = .idle
+    @Published var lastSyncError: String?
     /// 本机执行模式：助理返回 [CMD] 时等待用户确认执行
     @Published var pendingCommand: (displayText: String, command: String, conversationId: String?)?
     /// 命令已执行，等待用户确认后再将结果发送至服务器（保护隐私）
@@ -35,6 +37,8 @@ final class ChatViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var hasHydratedFromCloud = false
     private var hasLoadedConversationHistory = false
+    private var syncRetryCount = 0
+    private var pendingSyncTask: Task<Void, Never>?
     
     init(allowLocalExecution: Bool = false) {
         self.allowLocalExecution = allowLocalExecution
@@ -75,6 +79,7 @@ final class ChatViewModel: ObservableObject {
             serverConversationId = nil
             hasHydratedFromCloud = false
             hasLoadedConversationHistory = false
+            setSyncStatus(.idle)
         }
     }
 
@@ -151,48 +156,120 @@ final class ChatViewModel: ObservableObject {
         defer { isLoadingConversationHistory = false }
         
         if TokenStore.shared.isLoggedIn {
+            setSyncStatus(.syncing)
             let cached = LocalDataStore.shared.loadCloudConversationSummaries()
             if !cached.isEmpty {
                 conversationHistory = cached
             }
             if hasLoadedConversationHistory {
+                setSyncStatus(.success)
                 return
             }
             do {
+                try await syncPendingConversationOps()
                 let remote = try await APIClient.shared.getConversations(take: 50)
-                conversationHistory = remote
-                LocalDataStore.shared.saveCloudConversationSummaries(remote)
+                let pendingTitles = LocalDataStore.shared.loadPendingTitleUpdates()
+                let pendingDeletes = Set(LocalDataStore.shared.loadPendingDeletes())
+                let merged = remote
+                    .filter { !pendingDeletes.contains($0.id) }
+                    .map { item -> CloudConversationSummary in
+                        if let title = pendingTitles[item.id] {
+                            return CloudConversationSummary(
+                                id: item.id,
+                                title: title,
+                                createdAt: item.createdAt,
+                                updatedAt: ISO8601DateFormatter().string(from: Date()),
+                                lastMessage: item.lastMessage
+                            )
+                        }
+                        return item
+                    }
+                conversationHistory = merged
+                LocalDataStore.shared.saveCloudConversationSummaries(merged)
+                setSyncStatus(.success)
             } catch {
                 // 云端历史接口不可用时，静默回退缓存
                 #if DEBUG
                 print("[History] cloud conversations unavailable, fallback to cache: \(error.localizedDescription)")
                 #endif
+                setSyncStatus(.failed, error: error.localizedDescription)
+                scheduleSyncRetry()
             }
             hasLoadedConversationHistory = true
             return
         }
         
         // 未登录回退：本地会话列表
-        let all = LocalDataStore.shared.loadAllConversations()
-        let formatter = ISO8601DateFormatter()
-        let localList: [CloudConversationSummary] = all.map { (id, rows) in
-            let last = rows.last
-            let first = rows.first
-            let lastText = (last?["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let firstText = (first?["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let titleRaw = (firstText?.isEmpty == false ? firstText! : "本地会话")
-            let title = String(titleRaw.prefix(20))
-            let lastTime = (last?["time"] as? TimeInterval) ?? Date().timeIntervalSince1970
-            let firstTime = (first?["time"] as? TimeInterval) ?? lastTime
-            return CloudConversationSummary(
-                id: id,
-                title: title,
-                createdAt: formatter.string(from: Date(timeIntervalSince1970: firstTime)),
-                updatedAt: formatter.string(from: Date(timeIntervalSince1970: lastTime)),
-                lastMessage: String((lastText ?? "").prefix(80))
-            )
+        conversationHistory = LocalDataStore.shared.loadLocalConversationSummaries()
+    }
+
+    /// 更新会话标题（支持本地与云端）
+    func renameConversation(id: String, newTitle: String) async {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let normalized = normalizeTitle(trimmed)
+        if TokenStore.shared.isLoggedIn {
+            conversationHistory = conversationHistory.map { item in
+                guard item.id == id else { return item }
+                return CloudConversationSummary(
+                    id: item.id,
+                    title: normalized,
+                    createdAt: item.createdAt,
+                    updatedAt: ISO8601DateFormatter().string(from: Date()),
+                    lastMessage: item.lastMessage
+                )
+            }
+            LocalDataStore.shared.saveCloudConversationSummaries(conversationHistory)
+        } else {
+            LocalDataStore.shared.updateLocalConversationTitle(id: id, title: normalized)
+            conversationHistory = LocalDataStore.shared.loadLocalConversationSummaries()
         }
-        conversationHistory = localList.sorted { $0.updatedAt > $1.updatedAt }
+
+        guard TokenStore.shared.isLoggedIn else { return }
+        LocalDataStore.shared.enqueuePendingTitleUpdate(id: id, title: normalized)
+        setSyncStatus(.syncing)
+        do {
+            let updatedTitle = try await APIClient.shared.updateConversationTitle(conversationId: id, title: normalized)
+            LocalDataStore.shared.removePendingTitleUpdate(id: id)
+            conversationHistory = conversationHistory.map { item in
+                guard item.id == id else { return item }
+                return CloudConversationSummary(
+                    id: item.id,
+                    title: updatedTitle,
+                    createdAt: item.createdAt,
+                    updatedAt: ISO8601DateFormatter().string(from: Date()),
+                    lastMessage: item.lastMessage
+                )
+            }
+            LocalDataStore.shared.saveCloudConversationSummaries(conversationHistory)
+            setSyncStatus(.success)
+        } catch {
+            setSyncStatus(.failed, error: error.localizedDescription)
+            scheduleSyncRetry()
+        }
+    }
+
+    /// 删除会话（本地立即删除，云端失败时自动重试）
+    func deleteConversation(id: String) async {
+        if TokenStore.shared.isLoggedIn {
+            conversationHistory.removeAll { $0.id == id }
+            LocalDataStore.shared.saveCloudConversationSummaries(conversationHistory)
+        } else {
+            LocalDataStore.shared.deleteConversation(id: id)
+            conversationHistory = LocalDataStore.shared.loadLocalConversationSummaries()
+        }
+
+        guard TokenStore.shared.isLoggedIn else { return }
+        LocalDataStore.shared.enqueuePendingDelete(id: id)
+        setSyncStatus(.syncing)
+        do {
+            try await APIClient.shared.deleteConversation(conversationId: id)
+            LocalDataStore.shared.removePendingDelete(id: id)
+            setSyncStatus(.success)
+        } catch {
+            setSyncStatus(.failed, error: error.localizedDescription)
+            scheduleSyncRetry()
+        }
     }
     
     /// 切换到历史会话继续对话
@@ -407,15 +484,19 @@ final class ChatViewModel: ObservableObject {
         guard TokenStore.shared.isLoggedIn else { return }
         if hasHydratedFromCloud { return }
         do {
+            setSyncStatus(.syncing)
+            try await syncPendingConversationOps()
             let conversations = try await APIClient.shared.getConversations(take: 1)
             guard let latest = conversations.first else {
                 hasHydratedFromCloud = true
+                setSyncStatus(.success)
                 return
             }
             let cloudMessages = try await APIClient.shared.getConversationMessages(conversationId: latest.id)
             guard !cloudMessages.isEmpty else {
                 serverConversationId = latest.id
                 hasHydratedFromCloud = true
+                setSyncStatus(.success)
                 return
             }
             serverConversationId = latest.id
@@ -423,10 +504,68 @@ final class ChatViewModel: ObservableObject {
             saveMessagesToLocal()
             hasHydratedFromCloud = true
             statusText = "AI 已就绪"
+            setSyncStatus(.success)
         } catch {
             // 同步失败不打断本地可用性，保持静默回退
             print("[ChatViewModel] 云端会话同步失败: \(error.localizedDescription)")
+            setSyncStatus(.failed, error: error.localizedDescription)
+            scheduleSyncRetry()
         }
+    }
+
+    private func syncPendingConversationOps() async throws {
+        guard TokenStore.shared.isLoggedIn else { return }
+        let pendingDeletes = LocalDataStore.shared.loadPendingDeletes()
+        for id in pendingDeletes {
+            do {
+                try await APIClient.shared.deleteConversation(conversationId: id)
+                LocalDataStore.shared.removePendingDelete(id: id)
+            } catch {
+                throw error
+            }
+        }
+        let pendingTitles = LocalDataStore.shared.loadPendingTitleUpdates()
+        for (id, title) in pendingTitles {
+            do {
+                _ = try await APIClient.shared.updateConversationTitle(conversationId: id, title: title)
+                LocalDataStore.shared.removePendingTitleUpdate(id: id)
+            } catch {
+                throw error
+            }
+        }
+    }
+
+    private func scheduleSyncRetry() {
+        pendingSyncTask?.cancel()
+        syncRetryCount = min(syncRetryCount + 1, 5)
+        let delay = Double(2 * syncRetryCount)
+        pendingSyncTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            await self?.loadConversationHistory()
+        }
+    }
+
+    private func setSyncStatus(_ status: SyncStatus, error: String? = nil) {
+        syncStatus = status
+        lastSyncError = error
+        SyncStatusStore.shared.status = status
+        SyncStatusStore.shared.lastError = error
+    }
+
+    private func normalizeTitle(_ raw: String) -> String {
+        let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        var chars = Array(cleaned)
+        if chars.count > 20 {
+            chars = Array(chars.prefix(20))
+        }
+        if chars.count < 6 {
+            var padded = Array("关于") + chars + Array("对话")
+            if padded.count < 6 {
+                padded.append(contentsOf: Array("记录"))
+            }
+            return String(padded.prefix(20))
+        }
+        return String(chars)
     }
 
     /// 发送一条消息并等待 AI 回复（用于语音/视频通话）；本机执行模式下若有 [CMD] 只返回文案不执行

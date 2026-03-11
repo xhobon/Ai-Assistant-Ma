@@ -12,6 +12,10 @@ final class LocalDataStore: ObservableObject {
     private let notesKey = "local_notes_v2"
     private let summariesKey = "local_summaries_v1"
     private let cloudConversationSummariesKey = "cloud_conversation_summaries_v1"
+    private let localConversationSummariesKey = "local_conversation_summaries_v1"
+    private let localConversationCustomTitlesKey = "local_conversation_custom_titles_v1"
+    private let pendingTitleUpdatesKey = "pending_conversation_title_updates_v1"
+    private let pendingDeleteIdsKey = "pending_conversation_delete_ids_v1"
 
     private init() {}
     
@@ -29,6 +33,7 @@ final class LocalDataStore: ObservableObject {
             ]
         }
         UserDefaults.standard.set(conversations, forKey: conversationsKey)
+        updateLocalConversationSummary(id: id, messages: messages)
     }
     
     /// 加载对话消息
@@ -65,6 +70,7 @@ final class LocalDataStore: ObservableObject {
         var conversations = loadAllConversations()
         conversations.removeValue(forKey: id)
         UserDefaults.standard.set(conversations, forKey: conversationsKey)
+        removeLocalConversationSummary(id: id)
     }
     
     /// 保存当前对话ID
@@ -154,6 +160,10 @@ final class LocalDataStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: notesKey)
         UserDefaults.standard.removeObject(forKey: summariesKey)
         UserDefaults.standard.removeObject(forKey: cloudConversationSummariesKey)
+        UserDefaults.standard.removeObject(forKey: localConversationSummariesKey)
+        UserDefaults.standard.removeObject(forKey: localConversationCustomTitlesKey)
+        UserDefaults.standard.removeObject(forKey: pendingTitleUpdatesKey)
+        UserDefaults.standard.removeObject(forKey: pendingDeleteIdsKey)
     }
 
     // MARK: - 助理长期记忆（未登录时本地存储，登录后与云端同步）
@@ -265,6 +275,170 @@ final class LocalDataStore: ObservableObject {
         return (try? decoder.decode([CloudConversationSummary].self, from: data)) ?? []
     }
 
+    // MARK: - Local Conversation Summaries
+
+    func loadLocalConversationSummaries() -> [CloudConversationSummary] {
+        if let data = UserDefaults.standard.data(forKey: localConversationSummariesKey) {
+            let decoder = JSONDecoder()
+            let decoded = (try? decoder.decode([CloudConversationSummary].self, from: data)) ?? []
+            if !decoded.isEmpty {
+                return decoded.sorted { $0.updatedAt > $1.updatedAt }
+            }
+        }
+        let all = loadAllConversations()
+        if all.isEmpty { return [] }
+        var rebuilt: [CloudConversationSummary] = []
+        let formatter = ISO8601DateFormatter()
+        for (id, rows) in all {
+            let last = rows.last
+            let first = rows.first
+            let lastText = (last?["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let firstText = (first?["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let title = firstText.isEmpty ? "对话摘要" : String(firstText.prefix(20))
+            let lastTime = (last?["time"] as? TimeInterval) ?? Date().timeIntervalSince1970
+            let firstTime = (first?["time"] as? TimeInterval) ?? lastTime
+            rebuilt.append(
+                CloudConversationSummary(
+                    id: id,
+                    title: title,
+                    createdAt: formatter.string(from: Date(timeIntervalSince1970: firstTime)),
+                    updatedAt: formatter.string(from: Date(timeIntervalSince1970: lastTime)),
+                    lastMessage: String(lastText.prefix(80))
+                )
+            )
+        }
+        rebuilt.sort { $0.updatedAt > $1.updatedAt }
+        saveLocalConversationSummaries(rebuilt)
+        return rebuilt
+    }
+
+    func saveLocalConversationSummaries(_ list: [CloudConversationSummary]) {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(list) {
+            UserDefaults.standard.set(data, forKey: localConversationSummariesKey)
+        }
+    }
+
+    func markConversationTitleCustom(id: String) {
+        var set = loadCustomTitleIds()
+        set.insert(id)
+        saveCustomTitleIds(set)
+    }
+
+    func isConversationTitleCustom(id: String) -> Bool {
+        let set = loadCustomTitleIds()
+        return set.contains(id)
+    }
+
+    private func loadCustomTitleIds() -> Set<String> {
+        let raw = UserDefaults.standard.array(forKey: localConversationCustomTitlesKey) as? [String] ?? []
+        return Set(raw)
+    }
+
+    private func saveCustomTitleIds(_ set: Set<String>) {
+        UserDefaults.standard.set(Array(set), forKey: localConversationCustomTitlesKey)
+    }
+
+    private func updateLocalConversationSummary(id: String, messages: [ChatMessage]) {
+        let summaryTitle: String
+        if let existing = loadLocalConversationSummaries().first(where: { $0.id == id }),
+           isConversationTitleCustom(id: id),
+           !existing.title.isEmpty {
+            summaryTitle = existing.title
+        } else {
+            summaryTitle = deriveConversationTitle(from: messages)
+        }
+        let lastMessage = messages.last?.content.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let createdAt = messages.first?.time ?? Date()
+        let updatedAt = messages.last?.time ?? Date()
+
+        var list = loadLocalConversationSummaries()
+        list.removeAll { $0.id == id }
+        list.append(CloudConversationSummary(
+            id: id,
+            title: summaryTitle,
+            createdAt: ISO8601DateFormatter().string(from: createdAt),
+            updatedAt: ISO8601DateFormatter().string(from: updatedAt),
+            lastMessage: String(lastMessage.prefix(80))
+        ))
+        list.sort { $0.updatedAt > $1.updatedAt }
+        saveLocalConversationSummaries(list)
+    }
+
+    func updateLocalConversationTitle(id: String, title: String) {
+        var list = loadLocalConversationSummaries()
+        let formatter = ISO8601DateFormatter()
+        let now = formatter.string(from: Date())
+        if let idx = list.firstIndex(where: { $0.id == id }) {
+            let existing = list[idx]
+            list[idx] = CloudConversationSummary(
+                id: existing.id,
+                title: title,
+                createdAt: existing.createdAt,
+                updatedAt: now,
+                lastMessage: existing.lastMessage
+            )
+        } else {
+            list.append(CloudConversationSummary(
+                id: id,
+                title: title,
+                createdAt: now,
+                updatedAt: now,
+                lastMessage: ""
+            ))
+        }
+        list.sort { $0.updatedAt > $1.updatedAt }
+        saveLocalConversationSummaries(list)
+        markConversationTitleCustom(id: id)
+    }
+
+    private func removeLocalConversationSummary(id: String) {
+        var list = loadLocalConversationSummaries()
+        list.removeAll { $0.id == id }
+        saveLocalConversationSummaries(list)
+        var set = loadCustomTitleIds()
+        set.remove(id)
+        saveCustomTitleIds(set)
+    }
+
+    // MARK: - Pending Sync Ops
+
+    func enqueuePendingTitleUpdate(id: String, title: String) {
+        var dict = loadPendingTitleUpdates()
+        dict[id] = title
+        savePendingTitleUpdates(dict)
+    }
+
+    func removePendingTitleUpdate(id: String) {
+        var dict = loadPendingTitleUpdates()
+        dict.removeValue(forKey: id)
+        savePendingTitleUpdates(dict)
+    }
+
+    func loadPendingTitleUpdates() -> [String: String] {
+        return UserDefaults.standard.dictionary(forKey: pendingTitleUpdatesKey) as? [String: String] ?? [:]
+    }
+
+    private func savePendingTitleUpdates(_ dict: [String: String]) {
+        UserDefaults.standard.set(dict, forKey: pendingTitleUpdatesKey)
+    }
+
+    func enqueuePendingDelete(id: String) {
+        var list = loadPendingDeletes()
+        if !list.contains(id) { list.append(id) }
+        UserDefaults.standard.set(list, forKey: pendingDeleteIdsKey)
+    }
+
+    func removePendingDelete(id: String) {
+        var list = loadPendingDeletes()
+        list.removeAll { $0 == id }
+        UserDefaults.standard.set(list, forKey: pendingDeleteIdsKey)
+    }
+
+    func loadPendingDeletes() -> [String] {
+        return UserDefaults.standard.array(forKey: pendingDeleteIdsKey) as? [String] ?? []
+    }
+
     // MARK: - Summaries
 
     func saveSummaries(_ summaries: [SummaryEntry]) {
@@ -291,5 +465,36 @@ final class LocalDataStore: ObservableObject {
     /// 加载翻译原始数据（用于内部读写）
     private func loadTranslationsRaw() -> [[String: Any]] {
         return UserDefaults.standard.array(forKey: translationsKey) as? [[String: Any]] ?? []
+    }
+
+    private func deriveConversationTitle(from messages: [ChatMessage]) -> String {
+        guard let firstUser = messages.first(where: { $0.role == .user }) else {
+            return "对话摘要"
+        }
+        var raw = firstUser.content
+        raw = raw
+            .replacingOccurrences(of: "[图片]", with: " ")
+            .replacingOccurrences(of: "[用户附了一张图]", with: " ")
+        raw = raw.replacingOccurrences(of: "\\[文件:[^\\]]+\\]", with: " ", options: .regularExpression)
+        raw = raw.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
+        if raw.isEmpty {
+            raw = "图片识别任务"
+        }
+        raw = raw.replacingOccurrences(of: "^(请|帮我|帮忙|麻烦|能否|能不能|可以|想要|请帮我|帮我一下|帮忙一下)\\s*", with: "", options: .regularExpression)
+        let noPunc = raw.replacingOccurrences(of: "[^\\p{L}\\p{N}\\s]", with: " ", options: .regularExpression)
+        let base = noPunc.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
+        var chars = Array(base.isEmpty ? raw : base)
+        if chars.count > 20 {
+            chars = Array(chars.prefix(20))
+        }
+        if chars.count < 6 {
+            let padded = "关于" + String(chars) + "对话"
+            var paddedChars = Array(padded)
+            if paddedChars.count < 6 {
+                paddedChars.append(contentsOf: Array("记录"))
+            }
+            return String(paddedChars.prefix(20))
+        }
+        return String(chars)
     }
 }

@@ -52,6 +52,11 @@ struct CloudConversationSummary: Codable, Identifiable {
     let lastMessage: String
 }
 
+struct ConversationTitleUpdateResponse: Codable {
+    let ok: Bool
+    let title: String?
+}
+
 struct CloudConversationMessageDTO: Codable {
     let id: String
     let role: String
@@ -268,6 +273,25 @@ final class APIClient {
             let date = formatter.date(from: item.time) ?? Date()
             return ChatMessage(id: item.id, role: role, content: item.content, time: date)
         }
+    }
+
+    /// 更新会话标题
+    func updateConversationTitle(conversationId: String, title: String) async throws -> String {
+        let escapedId = conversationId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? conversationId
+        let res: ConversationTitleUpdateResponse = try await request(
+            "api/conversations/\(escapedId)/title",
+            method: "PATCH",
+            body: ["title": title],
+            authorized: true
+        )
+        return res.title ?? title
+    }
+
+    /// 删除会话
+    func deleteConversation(conversationId: String) async throws {
+        let escapedId = conversationId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? conversationId
+        struct Res: Codable { let ok: Bool }
+        _ = try await request("api/conversations/\(escapedId)", method: "DELETE", authorized: true) as Res
     }
 
     func register(email: String, phone: String, password: String, displayName: String) async throws -> AuthResponse {

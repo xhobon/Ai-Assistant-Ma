@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 enum ChatRole: String, Codable {
     case user
@@ -147,4 +148,28 @@ struct SummaryEntry: Identifiable, Hashable, Codable {
         formatter.dateFormat = "MM/dd HH:mm"
         return formatter.string(from: createdAt)
     }
+}
+
+enum SyncStatus: String {
+    case idle
+    case syncing
+    case success
+    case failed
+
+    var label: String {
+        switch self {
+        case .idle: return "未同步"
+        case .syncing: return "同步中"
+        case .success: return "已同步"
+        case .failed: return "同步失败"
+        }
+    }
+}
+
+final class SyncStatusStore: ObservableObject {
+    static let shared = SyncStatusStore()
+    @Published var status: SyncStatus = .idle
+    @Published var lastError: String? = nil
+
+    private init() {}
 }
