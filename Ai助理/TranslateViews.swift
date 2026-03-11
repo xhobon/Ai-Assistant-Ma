@@ -44,7 +44,7 @@ struct AITranslateHomeView: View {
         }
         .scrollIndicators(.automatic)
         .background(AppTheme.pageBackground.ignoresSafeArea())
-        .hideNavigationBarOnMac()
+        .hideNavigationBarForIOS()
         .onTapGesture {
             hideKeyboard()
         }

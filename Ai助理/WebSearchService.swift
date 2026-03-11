@@ -1,10 +1,30 @@
 import Foundation
+import Combine
 
 struct WebSearchResult: Identifiable, Hashable, Codable {
     let id: String
     let title: String
     let snippet: String
     let url: String
+}
+
+final class WebSearchModeStore: ObservableObject {
+    static let shared = WebSearchModeStore()
+    private let key = "web_search_enabled"
+
+    @Published var isEnabled: Bool {
+        didSet {
+            guard isEnabled != oldValue else { return }
+            UserDefaults.standard.set(isEnabled, forKey: key)
+        }
+    }
+
+    private init() {
+        if UserDefaults.standard.object(forKey: key) == nil {
+            UserDefaults.standard.set(true, forKey: key)
+        }
+        isEnabled = UserDefaults.standard.bool(forKey: key)
+    }
 }
 
 final class WebSearchService {
@@ -18,7 +38,11 @@ final class WebSearchService {
     ]
 
     func shouldSearch(for query: String) -> Bool {
-        let lower = query.lowercased()
+        guard WebSearchModeStore.shared.isEnabled else { return false }
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        let lower = trimmed.lowercased()
+        if hasExplicitSearchIntent(lower) { return true }
         return triggerKeywords.contains(where: { lower.contains($0) })
     }
 
@@ -68,6 +92,15 @@ final class WebSearchService {
             }
         }
         return results
+    }
+
+    private func hasExplicitSearchIntent(_ lower: String) -> Bool {
+        let prefixes = ["search:", "web:", "/search", "搜索:", "搜索：", "联网:", "联网："]
+        if prefixes.contains(where: { lower.hasPrefix($0) }) { return true }
+        if lower.hasPrefix("搜索") || lower.hasPrefix("查") || lower.hasPrefix("联网") { return true }
+        let phrases = ["帮我搜索", "请搜索", "搜索一下", "帮我查", "查一下", "查下", "联网搜索", "上网搜索"]
+        if phrases.contains(where: { lower.contains($0) }) { return true }
+        return false
     }
 }
 

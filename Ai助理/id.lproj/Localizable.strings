@@ -1,4 +1,4 @@
-"practice_title" = "Latihan";
+"practice_title" = "Latihan Bahasa Mandarin";
 "practice_subtitle" = "Perkuat kosakata dan kalimat";
 "practice_mode_title" = "Mode belajar";
 "learning_mode_zh_id" = "Orang Tiongkok belajar Bahasa Indonesia";
@@ -167,6 +167,11 @@
 "保存" = "Simpan";
 "输入 6-20 个字符的标题" = "Masukkan judul 6-20 karakter";
 "删除" = "Hapus";
+"编辑笔记" = "Edit catatan";
+"编辑总结" = "Edit ringkasan";
+"确认删除？" = "Hapus item?";
+"删除后无法恢复。" = "Setelah dihapus tidak dapat dipulihkan.";
+"苹果支付" = "Apple Pay";
 "该操作将删除此对话及其消息，无法恢复。" = "Tindakan ini akan menghapus percakapan dan pesannya, tidak dapat dipulihkan.";
 "已复制到剪贴板" = "Disalin ke papan klip";
 "立即" = "Segera";
@@ -882,6 +887,9 @@
 "status_executing" = "Menjalankan...";
 "status_confirm_send_result" = "Konfirmasi mengirim hasil ke server";
 "command_not_allowed" = "Demi keamanan dan privasi, perintah ini tidak diizinkan. Hanya perintah baca-saja yang didukung (mis. ls, pwd, date, whoami, df).";
+"web_search_title" = "Pencarian Web";
+"web_search_subtitle" = "Ambil info terbaru dan tampilkan sumber";
+"web_sources_title" = "Sumber";
 "- 建议每天至少完成 15 分钟口语或翻译练习
 - 多复习「旅行」「职场」等高频场景的短句" = "- Disarankan menyelesaikan minimal 15 menit latihan lisan/terjemahan
 - Sering meninjau frasa frekuensi tinggi seperti \"Perjalanan\" dan \"Pekerjaan\"";
@@ -995,6 +1003,7 @@ Di satu sisi, pada tahun 2019 saya konsisten menjalankan rencana belajar, mengal
 "无法连接服务器，请检查网络与服务器地址。" = "Tidak dapat terhubung ke server, periksa jaringan dan alamat server.";
 "无法连接服务器，请检查网络或稍后重试。若持续失败，请确认后端服务已部署并正常运行。" = "Tidak dapat terhubung ke server, periksa jaringan atau coba lagi nanti. Jika terus gagal, pastikan layanan backend sudah berjalan.";
 "服务响应异常" = "Respons layanan tidak normal";
+"服务返回数据格式异常" = "Format data dari layanan tidak valid";
 "未提供应用关键词。" = "Kata kunci aplikasi tidak diberikan.";
 "出现错误" = "Terjadi kesalahan";
 "重试" = "Coba lagi";

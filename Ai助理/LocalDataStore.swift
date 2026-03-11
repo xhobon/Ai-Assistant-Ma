@@ -332,6 +332,12 @@ final class LocalDataStore: ObservableObject {
         saveNotes(list)
     }
 
+    func deleteNote(id: String) {
+        var list = loadNotes()
+        list.removeAll { $0.id == id }
+        saveNotes(list)
+    }
+
     // MARK: - Cloud Conversation Summaries (缓存)
 
     func saveCloudConversationSummaries(_ list: [CloudConversationSummary]) {
@@ -529,6 +535,22 @@ final class LocalDataStore: ObservableObject {
     func addSummary(_ summary: SummaryEntry) {
         var list = loadSummaries()
         list.insert(summary, at: 0)
+        saveSummaries(list)
+    }
+
+    func updateSummary(_ summary: SummaryEntry) {
+        var list = loadSummaries()
+        if let idx = list.firstIndex(where: { $0.id == summary.id }) {
+            list[idx] = summary
+        } else {
+            list.insert(summary, at: 0)
+        }
+        saveSummaries(list)
+    }
+
+    func deleteSummary(id: String) {
+        var list = loadSummaries()
+        list.removeAll { $0.id == id }
         saveSummaries(list)
     }
     

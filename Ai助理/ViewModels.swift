@@ -39,6 +39,7 @@ final class ChatViewModel: ObservableObject {
     private var hasLoadedConversationHistory = false
     private var syncRetryCount = 0
     private var pendingSyncTask: Task<Void, Never>?
+    private var lastWebResults: [WebSearchResult] = []
     
     init(allowLocalExecution: Bool = false) {
         self.allowLocalExecution = allowLocalExecution
@@ -167,16 +168,17 @@ final class ChatViewModel: ObservableObject {
                             voiceContinuation?.finish()
                             serverConversationId = cid
                             let (displayText, command) = allowLocalExecution ? OpenClawService.parseCommand(from: finalReply) : (finalReply, nil)
+                            let displayWithSources = appendWebSourcesIfNeeded(to: displayText, command: command)
                             await MainActor.run {
-                                self.updateAssistantMessage(id: assistantId, content: displayText)
+                                self.updateAssistantMessage(id: assistantId, content: displayWithSources)
                                 self.saveMessagesToLocal()
                                 self.statusText = L("status_ready")
                             }
                             if let cmd = command, !cmd.isEmpty {
-                                pendingCommand = (displayText, cmd, cid)
+                                pendingCommand = (displayWithSources, cmd, cid)
                                 SpeechService.shared.stopSpeaking()
                             } else if SpeechSettingsStore.shared.autoPlayVoice && !shouldStreamVoice {
-                                SpeechService.shared.speak(displayText, language: "zh-CN")
+                                SpeechService.shared.speak(displayWithSources, language: "zh-CN")
                             }
                         }
                     }
@@ -190,14 +192,15 @@ final class ChatViewModel: ObservableObject {
                     )
                     serverConversationId = cid
                     let (displayText, command) = allowLocalExecution ? OpenClawService.parseCommand(from: serverReply) : (serverReply, nil)
-                    let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: displayText, time: Date())
+                    let displayWithSources = appendWebSourcesIfNeeded(to: displayText, command: command)
+                    let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: displayWithSources, time: Date())
                     messages.append(replyMsg)
                     saveMessagesToLocal()
                     if let cmd = command, !cmd.isEmpty {
-                        pendingCommand = (displayText, cmd, cid)
+                        pendingCommand = (displayWithSources, cmd, cid)
                     } else {
                         statusText = L("status_ready")
-                        SpeechService.shared.speak(displayText, language: "zh-CN")
+                        SpeechService.shared.speak(displayWithSources, language: "zh-CN")
                     }
                 }
             } catch {
@@ -235,9 +238,14 @@ final class ChatViewModel: ObservableObject {
         if WebSearchService.shared.shouldSearch(for: message) {
             await MainActor.run { self.statusText = L("status_searching_web") }
             if let results = try? await WebSearchService.shared.search(query: message) {
+                lastWebResults = results
                 let searchContext = truncateText(WebSearchService.shared.buildContext(from: results), limit: 1200)
                 if !searchContext.isEmpty { sections.append(searchContext) }
+            } else {
+                lastWebResults = []
             }
+        } else {
+            lastWebResults = []
         }
 
         let kbEntries = KnowledgeBaseService.shared.retrieveRelevantChunks(for: message)
@@ -252,6 +260,18 @@ final class ChatViewModel: ObservableObject {
     private func truncateText(_ text: String, limit: Int) -> String {
         guard text.count > limit else { return text }
         return String(text.prefix(limit)) + "..."
+    }
+
+    private func appendWebSourcesIfNeeded(to text: String, command: String?) -> String {
+        guard command == nil else { return text }
+        guard !lastWebResults.isEmpty else { return text }
+        let sources = lastWebResults
+        lastWebResults = []
+        let lines = sources.prefix(5).map { item in
+            "• \(item.title)\n\(item.url)"
+        }
+        let title = L("web_sources_title")
+        return text + "\n\n" + title + "\n" + lines.joined(separator: "\n")
     }
 
     /// 加载历史对话列表（登录走云端，未登录走本地）
@@ -557,16 +577,17 @@ final class ChatViewModel: ObservableObject {
                                 }
                             case .done(let cid, let reply):
                                 let finalReply = reply.isEmpty ? accumulated : reply
+                                let finalWithSources = appendWebSourcesIfNeeded(to: finalReply, command: nil)
                                 voiceContinuation?.finish()
                                 serverConversationId = cid
                                 await MainActor.run {
-                                    self.updateAssistantMessage(id: assistantId, content: finalReply)
+                                    self.updateAssistantMessage(id: assistantId, content: finalWithSources)
                                     self.saveMessagesToLocal()
                                     self.inputText = ""
                                     self.statusText = self.L("status_ready")
                                 }
                                 if SpeechSettingsStore.shared.autoPlayVoice && !shouldStreamVoice {
-                                    SpeechService.shared.speak(finalReply, language: "zh-CN")
+                                    SpeechService.shared.speak(finalWithSources, language: "zh-CN")
                                 }
                             }
                         }
@@ -587,13 +608,14 @@ final class ChatViewModel: ObservableObject {
                             saveMessagesToLocal()
                         }
                         
-                        let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: reply, time: Date())
+                        let replyWithSources = appendWebSourcesIfNeeded(to: reply, command: nil)
+                        let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: replyWithSources, time: Date())
                         await MainActor.run {
                             messages.append(replyMsg)
                             saveMessagesToLocal()
                             inputText = ""
                             statusText = L("status_ready")
-                            SpeechService.shared.speak(reply, language: "zh-CN")
+                            SpeechService.shared.speak(replyWithSources, language: "zh-CN")
                         }
                     }
                 } catch {

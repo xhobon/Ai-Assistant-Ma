@@ -2,13 +2,13 @@
 
 ## 一、确保「包含 server 的仓库」已在 GitHub 上
 
-当前后端代码在目录：`Ai助理Mac/Ai助理Mac/server/`。
+当前后端代码在目录：`Ai助理/Ai助理/server/`。
 
 - **若整个项目（含 server）已在 GitHub**：跳过本节，直接做「二」。
-- **若还没推过，或 server 从未提交过**：在终端执行（在**仓库根目录**，即 `Ai助理Mac` 或 `Ai助理Mac/Ai助理Mac` 上一级）：
+- **若还没推过，或 server 从未提交过**：在终端执行（在**仓库根目录**，即 `Ai助理` 或 `Ai助理/Ai助理` 上一级）：
 
 ```bash
-cd /Users/akun/Desktop/Ai助理Mac/Ai助理Mac
+cd /Users/akun/Desktop/Ai助理/Ai助理
 git status
 git add server
 git commit -m "Add server backend for Vercel"
@@ -59,7 +59,7 @@ git push origin main
 
 ---
 
-## 五、在 Mac App 里用新地址
+## 五、在 iOS App 里用新地址
 
 把 App 请求的 API 基础地址改成上一步的域名（不要加 `/api` 或末尾斜杠）。
 

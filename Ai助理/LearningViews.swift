@@ -65,7 +65,7 @@ struct IndonesianLearningView: View {
                 AppTheme.pageBackground
                     .ignoresSafeArea(edges: .top)
             )
-            .hideNavigationBarOnMac()
+            .hideNavigationBarForIOS()
             .onAppear {
                 learningStart = Date()
                 dailyStore.refreshTasks(for: Date())
@@ -440,10 +440,9 @@ struct LearningResourceSection: View {
                                 .font(.caption.weight(selectedDifficulty == item ? .semibold : .medium))
                                 .foregroundStyle(selectedDifficulty == item ? .white : AppTheme.textPrimary)
                                 .appButtonLabelStyle(minScale: 0.7)
-                                .frame(minWidth: 44)
-                                .frame(height: 44)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
+                                .frame(minWidth: 52)
+                                .frame(height: 32)
+                                .padding(.horizontal, 6)
                                 .background(
                                     Capsule()
                                         .fill(selectedDifficulty == item ? AppTheme.accentStrong : AppTheme.surfaceMuted)
@@ -467,9 +466,8 @@ struct LearningResourceSection: View {
                                 .appButtonLabelStyle(minScale: 0.7)
                         }
                         .foregroundStyle(showFavoritesOnly ? AppTheme.accentStrong : AppTheme.textSecondary)
-                        .frame(height: 44)
+                        .frame(height: 32)
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
                         .background(
                             Capsule()
                                 .fill(showFavoritesOnly ? AppTheme.accentStrong.opacity(0.12) : AppTheme.surfaceMuted)
@@ -606,9 +604,9 @@ struct FilterRow: View {
                                 .font(.caption.weight(selected == item ? .semibold : .regular))
                                 .foregroundStyle(selected == item ? AppTheme.textPrimary : AppTheme.textSecondary)
                                 .appButtonLabelStyle(minScale: 0.7)
-                                .frame(height: 44)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
+                                .frame(minWidth: 52)
+                                .frame(height: 32)
+                                .padding(.horizontal, 6)
                                 .background(selected == item ? AppTheme.accent.opacity(0.2) : AppTheme.surface)
                                 .clipShape(Capsule())
                         }
@@ -625,9 +623,8 @@ struct FilterRow: View {
                                 .appButtonLabelStyle(minScale: 0.7)
                         }
                         .foregroundStyle(showFavoritesOnly ? AppTheme.accentStrong : AppTheme.textSecondary)
-                        .frame(height: 44)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .frame(height: 32)
+                        .padding(.horizontal, 10)
                         .background(showFavoritesOnly ? AppTheme.accentStrong.opacity(0.15) : AppTheme.surface)
                         .clipShape(Capsule())
                     }
@@ -1016,9 +1013,9 @@ struct CircleIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.caption.weight(.semibold))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(AppTheme.unifiedButtonBorder)
-                .frame(width: 44, height: 44)
+                .frame(width: 36, height: 36)
                 .background(AppTheme.surface)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(AppTheme.unifiedButtonBorder, lineWidth: 0.9))

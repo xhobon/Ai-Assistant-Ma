@@ -180,6 +180,7 @@ struct NotesWorkspaceView: View {
     @State private var notes: [NoteEntry] = []
     @State private var aiNote: AINotePayload?
     @State private var aiRawResponse: String?
+    @State private var editingNote: NoteEntry?
     private let speechTranscriber = SpeechTranscriber()
     private let tokenStore = TokenStore.shared
 
@@ -239,6 +240,10 @@ struct NotesWorkspaceView: View {
                                 onMarkDone: { markReminderDone(note: note) },
                                 onSnooze: { snoozeReminder(note: note) }
                             )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                editingNote = note
+                            }
                         }
                     }
                 }
@@ -257,6 +262,17 @@ struct NotesWorkspaceView: View {
         }
         .onAppear {
             notes = LocalDataStore.shared.loadNotes()
+        }
+        .sheet(item: $editingNote) { note in
+            NoteEditSheet(
+                note: note,
+                onSave: { updated in
+                    updateNoteEntry(updated)
+                },
+                onDelete: { deleting in
+                    deleteNoteEntry(deleting)
+                }
+            )
         }
         .onDisappear {
             if isRecording {
@@ -461,6 +477,22 @@ struct NotesWorkspaceView: View {
         notes = list
         ReminderService.shared.schedule(note: updated, at: newDate)
     }
+
+    private func updateNoteEntry(_ updated: NoteEntry) {
+        LocalDataStore.shared.updateNote(updated)
+        notes = LocalDataStore.shared.loadNotes()
+        if updated.reminderStatus == .pending, let at = updated.reminderAt {
+            ReminderService.shared.schedule(note: updated, at: at)
+        } else {
+            ReminderService.shared.cancel(note: updated)
+        }
+    }
+
+    private func deleteNoteEntry(_ note: NoteEntry) {
+        LocalDataStore.shared.deleteNote(id: note.id)
+        notes = LocalDataStore.shared.loadNotes()
+        ReminderService.shared.cancel(note: note)
+    }
 }
 
 // MARK: - 总结
@@ -474,6 +506,7 @@ struct SummaryWorkspaceView: View {
     @State private var alertMessage: String?
     @State private var summaries: [SummaryEntry] = []
     @State private var aiSummary: AISummaryPayload?
+    @State private var editingSummary: SummaryEntry?
     private let speechTranscriber = SpeechTranscriber()
     private let tokenStore = TokenStore.shared
 
@@ -530,6 +563,10 @@ struct SummaryWorkspaceView: View {
                     } else {
                         ForEach(filteredSummaries) { summary in
                             SummaryRow(summary: summary)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    editingSummary = summary
+                                }
                         }
                     }
                 }
@@ -552,6 +589,17 @@ struct SummaryWorkspaceView: View {
         .onAppear {
             summaries = LocalDataStore.shared.loadSummaries()
         }
+        .sheet(item: $editingSummary) { summary in
+            SummaryEditSheet(
+                summary: summary,
+                onSave: { updated in
+                    updateSummaryEntry(updated)
+                },
+                onDelete: { deleting in
+                    deleteSummaryEntry(deleting)
+                }
+            )
+        }
     }
 
     private var filteredSummaries: [SummaryEntry] {
@@ -564,6 +612,16 @@ struct SummaryWorkspaceView: View {
             || summary.content.localizedCaseInsensitiveContains(keyword)
             || summary.tags.contains(where: { $0.localizedCaseInsensitiveContains(keyword) })
         }
+    }
+
+    private func updateSummaryEntry(_ updated: SummaryEntry) {
+        LocalDataStore.shared.updateSummary(updated)
+        summaries = LocalDataStore.shared.loadSummaries()
+    }
+
+    private func deleteSummaryEntry(_ summary: SummaryEntry) {
+        LocalDataStore.shared.deleteSummary(id: summary.id)
+        summaries = LocalDataStore.shared.loadSummaries()
     }
 
     private func toggleSummaryRecording() {
@@ -1228,6 +1286,120 @@ private struct NoteRow: View {
     }
 }
 
+private struct NoteEditSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let note: NoteEntry
+    let onSave: (NoteEntry) -> Void
+    let onDelete: (NoteEntry) -> Void
+
+    @State private var title: String
+    @State private var summary: String
+    @State private var content: String
+    @State private var category: String
+    @State private var tagsText: String
+    @State private var reminderEnabled: Bool
+    @State private var reminderAt: Date
+    @State private var reminderText: String
+    @State private var reminderSnoozeHours: String
+    @State private var showDeleteConfirm = false
+
+    init(note: NoteEntry, onSave: @escaping (NoteEntry) -> Void, onDelete: @escaping (NoteEntry) -> Void) {
+        self.note = note
+        self.onSave = onSave
+        self.onDelete = onDelete
+        _title = State(initialValue: note.title)
+        _summary = State(initialValue: note.summary)
+        _content = State(initialValue: note.content)
+        _category = State(initialValue: note.category)
+        _tagsText = State(initialValue: note.tags.joined(separator: ", "))
+        _reminderEnabled = State(initialValue: note.reminderAt != nil)
+        _reminderAt = State(initialValue: note.reminderAt ?? Date().addingTimeInterval(3600))
+        _reminderText = State(initialValue: note.reminderText ?? "")
+        _reminderSnoozeHours = State(initialValue: String(note.reminderSnoozeHours ?? 3))
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 12) {
+                    NoteSectionCard {
+                        LabeledField(title: "标题", placeholder: L("未命名笔记"), text: $title)
+                        LabeledField(title: "分类", placeholder: "例如：工作/学习", text: $category)
+                        LabeledField(title: "标签", placeholder: "标签1, 标签2", text: $tagsText)
+                    }
+
+                    NoteSectionCard {
+                        TextEditorField(title: "摘要", placeholder: "摘要", text: $summary, minHeight: 80)
+                        TextEditorField(title: "内容", placeholder: "正文内容", text: $content, minHeight: 160)
+                    }
+
+                    NoteSectionCard {
+                        Toggle("提醒", isOn: $reminderEnabled)
+                            .toggleStyle(SwitchToggleStyle(tint: AppTheme.primary))
+                        if reminderEnabled {
+                            DatePicker("时间", selection: $reminderAt, displayedComponents: [.date, .hourAndMinute])
+                                .datePickerStyle(.compact)
+                            LabeledField(title: "提醒内容", placeholder: "例如：下午开会", text: $reminderText)
+                            LabeledField(title: "延后小时", placeholder: "3", text: $reminderSnoozeHours)
+                                .keyboardType(.numberPad)
+                        }
+                    }
+
+                    HStack(spacing: 10) {
+                        ProductivityActionButton(L("删除"), systemImage: "trash", style: .outline) {
+                            showDeleteConfirm = true
+                        }
+                        ProductivityActionButton(L("保存"), systemImage: "tray.and.arrow.down", style: .filled) {
+                            save()
+                        }
+                    }
+                }
+                .padding(16)
+            }
+            .navigationTitle(L("编辑笔记"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L("取消")) { dismiss() }
+                }
+            }
+            .alert(L("确认删除？"), isPresented: $showDeleteConfirm) {
+                Button(L("删除"), role: .destructive) {
+                    onDelete(note)
+                    dismiss()
+                }
+                Button(L("取消"), role: .cancel) {}
+            } message: {
+                Text(L("删除后无法恢复。"))
+            }
+        }
+    }
+
+    private func save() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let safeTitle = trimmedTitle.isEmpty ? L("未命名笔记") : trimmedTitle
+        let tags = tagsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        let reminderAtValue = reminderEnabled ? reminderAt : nil
+        let reminderTextValue = reminderEnabled ? reminderText.trimmingCharacters(in: .whitespacesAndNewlines) : ""
+        let snoozeHours = Int(reminderSnoozeHours.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 3
+        let updated = NoteEntry(
+            id: note.id,
+            title: safeTitle,
+            summary: summary,
+            content: content,
+            tags: tags,
+            category: category,
+            reminderAt: reminderAtValue,
+            reminderText: reminderTextValue.isEmpty ? nil : reminderTextValue,
+            reminderSnoozeHours: reminderEnabled ? snoozeHours : nil,
+            reminderStatus: reminderAtValue == nil ? .none : .pending,
+            createdAt: note.createdAt
+        )
+        onSave(updated)
+        dismiss()
+    }
+}
+
 private struct SummaryRow: View {
     let summary: SummaryEntry
 
@@ -1275,6 +1447,94 @@ private struct SummaryRow: View {
         .padding(12)
         .background(AppTheme.surfaceMuted)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct SummaryEditSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let summary: SummaryEntry
+    let onSave: (SummaryEntry) -> Void
+    let onDelete: (SummaryEntry) -> Void
+
+    @State private var title: String
+    @State private var summaryText: String
+    @State private var content: String
+    @State private var category: String
+    @State private var tagsText: String
+    @State private var showDeleteConfirm = false
+
+    init(summary: SummaryEntry, onSave: @escaping (SummaryEntry) -> Void, onDelete: @escaping (SummaryEntry) -> Void) {
+        self.summary = summary
+        self.onSave = onSave
+        self.onDelete = onDelete
+        _title = State(initialValue: summary.title)
+        _summaryText = State(initialValue: summary.summary)
+        _content = State(initialValue: summary.content)
+        _category = State(initialValue: summary.category)
+        _tagsText = State(initialValue: summary.tags.joined(separator: ", "))
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 12) {
+                    NoteSectionCard {
+                        LabeledField(title: "标题", placeholder: L("未命名总结"), text: $title)
+                        LabeledField(title: "分类", placeholder: "例如：会议/周报", text: $category)
+                        LabeledField(title: "标签", placeholder: "标签1, 标签2", text: $tagsText)
+                    }
+
+                    NoteSectionCard {
+                        TextEditorField(title: "摘要", placeholder: "摘要", text: $summaryText, minHeight: 80)
+                        TextEditorField(title: "内容", placeholder: "正文内容", text: $content, minHeight: 160)
+                    }
+
+                    HStack(spacing: 10) {
+                        ProductivityActionButton(L("删除"), systemImage: "trash", style: .outline) {
+                            showDeleteConfirm = true
+                        }
+                        ProductivityActionButton(L("保存"), systemImage: "tray.and.arrow.down", style: .filled) {
+                            save()
+                        }
+                    }
+                }
+                .padding(16)
+            }
+            .navigationTitle(L("编辑总结"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L("取消")) { dismiss() }
+                }
+            }
+            .alert(L("确认删除？"), isPresented: $showDeleteConfirm) {
+                Button(L("删除"), role: .destructive) {
+                    onDelete(summary)
+                    dismiss()
+                }
+                Button(L("取消"), role: .cancel) {}
+            } message: {
+                Text(L("删除后无法恢复。"))
+            }
+        }
+    }
+
+    private func save() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let safeTitle = trimmedTitle.isEmpty ? L("未命名总结") : trimmedTitle
+        let tags = tagsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        let updated = SummaryEntry(
+            id: summary.id,
+            title: safeTitle,
+            summary: summaryText,
+            category: category,
+            tags: tags,
+            content: content,
+            rawText: summary.rawText,
+            createdAt: summary.createdAt
+        )
+        onSave(updated)
+        dismiss()
     }
 }
 

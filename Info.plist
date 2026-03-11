@@ -4,10 +4,10 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Ai助理</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleDisplayName</key>
-	<string>AI Helper</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -35,8 +35,6 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>用于打开摄像头，让 AI 助理可以看到画面并识别</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>用于语音输入和语音识别</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>用于选择图片进行文字识别</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

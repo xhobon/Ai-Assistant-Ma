@@ -38,36 +38,7 @@ final class VoicePlaybackService: NSObject, ObservableObject {
         if SpeechSettingsStore.shared.playbackMuted { return }
         stop()
         isPlaying = true
-
-        let mode = SpeechSettingsStore.shared.voiceMode
-        if !forceOnline && mode == "system" {
-            speakSystem(text: text, languageHint: languageHint, onFinish: onFinish)
-            return
-        }
-
-        let chunks = chunkText(text)
-        currentTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                try await playChunks(chunks, languageHint: languageHint)
-                await MainActor.run {
-                    self.isPlaying = false
-                    onFinish?()
-                }
-            } catch {
-                print("Edge TTS failed (speak): \(error.localizedDescription)")
-                await MainActor.run {
-                    self.isPlaying = false
-                    if allowFallback {
-                        self.postTTSNotice(L("voice_fallback_to_system"))
-                        self.speakSystem(text: text, languageHint: languageHint, onFinish: onFinish)
-                    } else {
-                        self.postTTSNotice(L("voice_online_failed"))
-                        onFinish?()
-                    }
-                }
-            }
-        }
+        speakSystem(text: text, languageHint: languageHint, onFinish: onFinish)
     }
 
     func speakStreaming(
@@ -80,51 +51,14 @@ final class VoicePlaybackService: NSObject, ObservableObject {
         if SpeechSettingsStore.shared.playbackMuted { return }
         stop()
         isPlaying = true
-
-        let mode = SpeechSettingsStore.shared.voiceMode
-        if !forceOnline && mode == "system" {
-            streamTask = Task { [weak self] in
-                guard let self else { return }
-                var full = ""
-                for await delta in stream {
-                    full += delta
-                }
-                await MainActor.run {
-                    self.speakSystem(text: full, languageHint: languageHint, onFinish: onFinish)
-                }
-            }
-            return
-        }
-
         streamTask = Task { [weak self] in
             guard let self else { return }
             var full = ""
-            let wrapped = AsyncStream<String> { continuation in
-                Task {
-                    for await delta in stream {
-                        full += delta
-                        continuation.yield(delta)
-                    }
-                    continuation.finish()
-                }
+            for await delta in stream {
+                full += delta
             }
-            do {
-                try await playStream(wrapped, languageHint: languageHint)
-                await MainActor.run {
-                    self.isPlaying = false
-                    onFinish?()
-                }
-            } catch {
-                print("Edge TTS failed (stream): \(error.localizedDescription)")
-                await MainActor.run {
-                    if allowFallback {
-                        self.postTTSNotice(L("voice_fallback_to_system"))
-                        self.speakSystem(text: full, languageHint: languageHint, onFinish: onFinish)
-                    } else {
-                        self.postTTSNotice(L("voice_online_failed"))
-                        onFinish?()
-                    }
-                }
+            await MainActor.run {
+                self.speakSystem(text: full, languageHint: languageHint, onFinish: onFinish)
             }
         }
     }
@@ -134,15 +68,7 @@ final class VoicePlaybackService: NSObject, ObservableObject {
         stop()
         isPlaying = true
         defer { isPlaying = false }
-
-        try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
-        try AVAudioSession.sharedInstance().setActive(true, options: [])
-
-        let sample = chunkText(text).first ?? text
-        let voice = selectVoice(for: sample, languageHint: languageHint)
-        let speed = SpeechSettingsStore.shared.speechSpeed
-        let url = try await edge.synthesize(text: sample, voice: voice, speed: speed)
-        try await edge.play(url: url)
+        speakSystem(text: text, languageHint: languageHint, onFinish: nil)
     }
 
     private func playChunks(_ chunks: [String], languageHint: String?) async throws {

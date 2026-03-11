@@ -154,6 +154,20 @@ struct ProfileLoginCard: View {
     @EnvironmentObject private var tokenStore: TokenStore
     var onLogin: () -> Void
     var onOpenCenter: () -> Void
+    @State private var avatarStyle = UserDefaults.standard.integer(forKey: "profile_avatar_style")
+
+    private var avatarSymbol: String {
+        let symbols = ["person.fill", "person.crop.circle.fill", "sparkles", "star.fill", "crown.fill", "bolt.fill"]
+        return symbols[max(0, min(avatarStyle, symbols.count - 1))]
+    }
+
+    private var displayName: String {
+        let override = UserDefaults.standard.string(forKey: "profile_name_override")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !override.isEmpty { return override }
+        let cached = UserDefaults.standard.string(forKey: "profile_name_cached")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !cached.isEmpty { return cached }
+        return L("用户")
+    }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -161,13 +175,13 @@ struct ProfileLoginCard: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(AppTheme.primaryGradient.opacity(0.16))
                     .frame(width: 56, height: 56)
-                Image(systemName: "person.crop.circle.badge.sparkles")
+                Image(systemName: tokenStore.isLoggedIn ? avatarSymbol : "person.crop.circle.badge.sparkles")
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(AppTheme.primary)
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(tokenStore.isLoggedIn ? "已登录账号" : "未登录账号")
+                Text(tokenStore.isLoggedIn ? displayName : "未登录账号")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Text(tokenStore.isLoggedIn ? "当前设备已启用账号同步" : "登录后可同步收藏、翻译和学习记录")
@@ -202,6 +216,9 @@ struct ProfileLoginCard: View {
             } else {
                 onLogin()
             }
+        }
+        .onAppear {
+            avatarStyle = UserDefaults.standard.integer(forKey: "profile_avatar_style")
         }
     }
 }
@@ -420,12 +437,17 @@ struct VIPBannerCard: View {
                 Text("profile_vip_title")
                     .font(.headline.weight(.bold))
                     .foregroundStyle(AppTheme.textOnPrimary)
-                    .appLabelStyle(minScale: 0.8)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .multilineTextAlignment(.leading)
                 Text(L("profile_vip_subtitle"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textOnPrimary.opacity(0.82))
-                    .appLabelStyle(minScale: 0.8)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .multilineTextAlignment(.leading)
             }
+            .layoutPriority(1)
 
             Spacer()
 
@@ -435,7 +457,7 @@ struct VIPBannerCard: View {
                 style: .outline,
                 action: onUnlock
             )
-            .frame(minWidth: 102)
+            .frame(minWidth: 124)
         }
         .padding(16)
         .background(
@@ -530,11 +552,15 @@ struct MemberBenefitsCard: View {
                             Text(L(benefit.title))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
-                                .appLabelStyle(minScale: 0.8)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
+                                .multilineTextAlignment(.leading)
                             Text(L(benefit.subtitle))
                                 .font(.caption2)
                                 .foregroundStyle(AppTheme.textSecondary)
-                                .appLabelStyle(minScale: 0.8)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
+                                .multilineTextAlignment(.leading)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -618,6 +644,10 @@ struct MemberPlanCard: View {
                             Text(L(plan.title))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
+                                .multilineTextAlignment(.center)
+                                .frame(height: 36)
 
                             Text("¥\(plan.price)")
                                 .font(.title3.weight(.bold))
@@ -738,6 +768,10 @@ struct ProfileQuickActionRow: View {
                         Text(L(action.title))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textPrimary)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
+                            .multilineTextAlignment(.center)
+                            .frame(height: 30)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -837,31 +871,30 @@ struct ProfileMenuItem: Identifiable, Hashable {
 
 struct MemberRechargeView: View {
     @State private var selectedPlanId: String = "life"
-    @State private var selectedPaymentId: String = "wechat"
+    @State private var selectedPaymentId: String = "apple_pay"
 
     private let benefits: [MemberBenefit] = [
-        MemberBenefit(id: "reply", title: "无限制回复", subtitle: "高峰时段优先响应", systemImage: "sparkles", tint: .orange),
-        MemberBenefit(id: "translate", title: "无限制翻译", subtitle: "多语种实时互译", systemImage: "globe", tint: .blue),
-        MemberBenefit(id: "study", title: "解锁专业学习", subtitle: "提升学习与创作效率", systemImage: "graduationcap.fill", tint: .purple),
-        MemberBenefit(id: "assistant", title: "私人助理", subtitle: "专属高效解决方案", systemImage: "person.fill.badge.plus", tint: .teal)
+        MemberBenefit(id: "reply", title: L("无限制回复"), subtitle: L("高峰时段优先响应"), systemImage: "sparkles", tint: .orange),
+        MemberBenefit(id: "translate", title: L("无限制翻译"), subtitle: L("多语种实时互译"), systemImage: "globe", tint: .blue),
+        MemberBenefit(id: "study", title: L("解锁专业学习"), subtitle: L("提升学习与创作效率"), systemImage: "graduationcap.fill", tint: .purple),
+        MemberBenefit(id: "assistant", title: L("私人助理"), subtitle: L("专属高效解决方案"), systemImage: "person.fill.badge.plus", tint: .teal)
     ]
 
     private let plans: [MemberPlan] = [
-        MemberPlan(id: "life", title: "终身会员", price: "188", originalPrice: "398", badge: "最多人买"),
-        MemberPlan(id: "year", title: "年度会员", price: "108", originalPrice: "342", badge: nil),
-        MemberPlan(id: "quarter", title: "季度会员", price: "88", originalPrice: "168", badge: nil)
+        MemberPlan(id: "life", title: L("终身会员"), price: "188", originalPrice: "398", badge: L("最多人买")),
+        MemberPlan(id: "year", title: L("年度会员"), price: "108", originalPrice: "342", badge: nil),
+        MemberPlan(id: "quarter", title: L("季度会员"), price: "88", originalPrice: "168", badge: nil)
     ]
 
     private let paymentOptions: [PaymentOption] = [
-        PaymentOption(id: "wechat", title: "微信支付", systemImage: "message.fill"),
-        PaymentOption(id: "alipay", title: "支付宝支付", systemImage: "a.circle.fill")
+        PaymentOption(id: "apple_pay", title: L("苹果支付"), systemImage: "applelogo")
     ]
 
     var body: some View {
         AppPageScaffold(maxWidth: 960, spacing: 18) {
             MemberBenefitsCard(benefits: benefits)
 
-            ProfileSectionHeader(title: "充值会员", subtitle: "推荐永久会员方案")
+            ProfileSectionHeader(title: L("充值会员"), subtitle: L("推荐永久会员方案"))
             MemberPlanCard(plans: plans, selectedPlanId: $selectedPlanId) {
             }
             PaymentOptionCard(options: paymentOptions, selectedId: $selectedPaymentId)
@@ -1026,6 +1059,7 @@ struct AppSettingsView: View {
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
     @ObservedObject private var tokenStore = TokenStore.shared
     @ObservedObject private var memoryMode = MemoryModeStore.shared
+    @ObservedObject private var webSearchMode = WebSearchModeStore.shared
     @EnvironmentObject private var languageStore: AppLanguageStore
     @State private var showClearConfirm = false
     @State private var toastMessage: String?
@@ -1213,6 +1247,13 @@ struct AppSettingsView: View {
                     title: "Memory Mode",
                     subtitle: memoryMode.isEnabled ? "已开启" : "已关闭",
                     isOn: $memoryMode.isEnabled
+                )
+
+                SettingsInlineToggleRow(
+                    systemImage: webSearchMode.isEnabled ? "globe" : "globe.asia.australia",
+                    title: "web_search_title",
+                    subtitle: "web_search_subtitle",
+                    isOn: $webSearchMode.isEnabled
                 )
 
                 SettingsRow(
@@ -1438,7 +1479,7 @@ struct AssistantMemoryView: View {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .stroke(AppTheme.border, lineWidth: 1)
                     )
-                Picker("类型", selection: $newCategory) {
+                Picker(L("类型"), selection: $newCategory) {
                     Text(L("偏好")).tag("preference")
                     Text(L("习惯")).tag("habit")
                     Text(L("长期目标")).tag("goal")
@@ -1478,10 +1519,10 @@ struct AssistantMemoryView: View {
 
     private func categoryLabel(_ c: String) -> String {
         switch c {
-        case "preference": return "偏好"
-        case "habit": return "习惯"
-        case "goal": return "长期目标"
-        default: return "偏好"
+        case "preference": return L("偏好")
+        case "habit": return L("习惯")
+        case "goal": return L("长期目标")
+        default: return L("偏好")
         }
     }
 
@@ -2065,7 +2106,6 @@ struct AuthView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
-                .padding(.vertical, 13)
                 .background(AppTheme.primaryGradient)
                 .foregroundStyle(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -2105,6 +2145,7 @@ struct AuthView: View {
                     if isGoogleSigningIn {
                         ProgressView()
                             .controlSize(.small)
+                            .tint(.white)
                     } else {
                         Image(systemName: "globe")
                     }
@@ -2114,8 +2155,6 @@ struct AuthView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
-                .padding(.vertical, 13)
-                .padding(.horizontal, 12)
                 .background(AppTheme.surface)
                 .foregroundStyle(AppTheme.textPrimary)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -2208,6 +2247,7 @@ struct AuthView: View {
                 }
                 await MainActor.run {
                     TokenStore.shared.token = auth.token
+                    UserDefaults.standard.set(auth.user.displayName, forKey: "profile_name_cached")
                     statusText = L("登录成功")
                     dismiss()
                 }
@@ -2233,6 +2273,7 @@ struct AuthView: View {
                 let auth = try await APIClient.shared.loginWithGoogle()
                 await MainActor.run {
                     TokenStore.shared.token = auth.token
+                    UserDefaults.standard.set(auth.user.displayName, forKey: "profile_name_cached")
                     statusText = L("Google 登录成功")
                     dismiss()
                 }
@@ -2267,6 +2308,7 @@ struct AuthView: View {
                 )
                 await MainActor.run {
                     TokenStore.shared.token = auth.token
+                    UserDefaults.standard.set(auth.user.displayName, forKey: "profile_name_cached")
                     statusText = L("Apple 登录成功")
                     dismiss()
                 }
@@ -2459,8 +2501,8 @@ struct ShareGiftView: View {
     private let inviteURL = "https://ai-assistant.example.com/invite"
 
     var body: some View {
-        SettingsPage(title: "分享有礼") {
-            SettingsCard(title: "邀请好友，双方各得奖励", subtitle: "每成功邀请 1 位好友注册并登录，您与好友均可获得 3 天会员体验。多邀多得，上不封顶。") {
+        SettingsPage(title: L("分享有礼")) {
+            SettingsCard(title: L("邀请好友，双方各得奖励"), subtitle: L("每成功邀请 1 位好友注册并登录，您与好友均可获得 3 天会员体验。多邀多得，上不封顶。")) {
                 VStack(spacing: 16) {
                     Image(systemName: "gift.fill")
                         .font(.system(size: 56))
@@ -2468,10 +2510,10 @@ struct ShareGiftView: View {
                     Button {
                         ClipboardService.copy(inviteURL)
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            toastMessage = "邀请链接已复制"
+                            toastMessage = L("邀请链接已复制")
                         }
                     } label: {
-                        Label("分享邀请链接", systemImage: "square.and.arrow.up")
+                        Label(L("分享邀请链接"), systemImage: "square.and.arrow.up")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -2493,15 +2535,15 @@ struct AccountSecurityView: View {
     @ObservedObject private var tokenStore = TokenStore.shared
 
     var body: some View {
-        SettingsPage(title: "账户与安全") {
+        SettingsPage(title: L("账户与安全")) {
             SettingsCard(
-                title: "登录状态",
-                subtitle: "登录后可同步数据，并启用云端长期记忆。"
+                title: L("登录状态"),
+                subtitle: L("登录后可同步数据，并启用云端长期记忆。")
             ) {
                 SettingsRow(
                     systemImage: tokenStore.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
-                    title: tokenStore.isLoggedIn ? "已登录" : "未登录",
-                    subtitle: tokenStore.isLoggedIn ? "当前设备已授权访问你的云端数据" : "登录后可跨设备同步聊天、翻译与学习记录",
+                    title: tokenStore.isLoggedIn ? L("已登录") : L("未登录"),
+                    subtitle: tokenStore.isLoggedIn ? L("当前设备已授权访问你的云端数据") : L("登录后可跨设备同步聊天、翻译与学习记录"),
                     tint: tokenStore.isLoggedIn ? AppTheme.primary : AppTheme.textPrimary,
                     showChevron: false,
                     action: nil
@@ -2509,12 +2551,12 @@ struct AccountSecurityView: View {
             }
 
             SettingsCard(
-                title: "安全建议",
-                subtitle: "以下建议可提升账号与数据安全。"
+                title: L("安全建议"),
+                subtitle: L("以下建议可提升账号与数据安全。")
             ) {
-                SecurityTipRow(systemImage: "checkmark.shield", text: "不要在公共设备上长期保持登录状态。")
-                SecurityTipRow(systemImage: "person.crop.circle.badge.exclamationmark", text: "账号异常时请立即联系客服处理。")
-                SecurityTipRow(systemImage: "externaldrive.badge.icloud", text: "登录后可获得更完整的数据同步能力。")
+                SecurityTipRow(systemImage: "checkmark.shield", text: L("不要在公共设备上长期保持登录状态。"))
+                SecurityTipRow(systemImage: "person.crop.circle.badge.exclamationmark", text: L("账号异常时请立即联系客服处理。"))
+                SecurityTipRow(systemImage: "externaldrive.badge.icloud", text: L("登录后可获得更完整的数据同步能力。"))
             }
         }
     }
@@ -2524,20 +2566,20 @@ struct AccountSecurityView: View {
 
 struct MemberExplainView: View {
     var body: some View {
-        SettingsPage(title: "会员说明") {
-            SettingsCard(title: "会员规则", subtitle: "权益、续费与退款说明") {
+        SettingsPage(title: L("会员说明")) {
+            SettingsCard(title: L("会员规则"), subtitle: L("权益、续费与退款说明")) {
                 VStack(alignment: .leading, spacing: 16) {
-                    sectionTitle("会员权益")
+                    sectionTitle(L("会员权益"))
                     Text(L("• 无限制 AI 对话与翻译\n• 专业学习内容与场景解锁\n• 优先响应与专属助理能力\n• 更多权益持续更新"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
 
-                    sectionTitle("自动续费规则")
+                    sectionTitle(L("自动续费规则"))
                     Text(L("订阅周期内可随时在系统设置中关闭自动续费。到期前 24 小时内扣款；若取消续费，到期后将恢复为免费版，已解锁内容在当期内仍可使用。"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
 
-                    sectionTitle("退款说明")
+                    sectionTitle(L("退款说明"))
                     Text(L("虚拟会员服务一经开通，如无特殊故障，原则上不支持退款。如有异议请联系客服。"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
@@ -2565,16 +2607,16 @@ struct FAQView: View {
     @State private var expandedId: String?
 
     private let items: [FAQItem] = [
-        FAQItem(id: "1", question: "如何收藏词汇或句子？", answer: "在学习页中，点击词汇或句子旁的星标即可加入收藏；再次点击可取消。收藏内容会在「我的」—「我的收藏」中显示。"),
-        FAQItem(id: "2", question: "翻译历史会同步吗？", answer: "当前版本翻译记录仅保存在本机。登录后，我们将在后续版本支持跨设备同步。"),
-        FAQItem(id: "3", question: "如何关闭自动续费？", answer: "iOS：设置 — Apple ID — 订阅 — 选择本应用 — 取消订阅。取消后当前周期内仍可继续使用会员权益。"),
-        FAQItem(id: "4", question: "忘记密码怎么办？", answer: "在登录页点击「忘记密码」，按提示通过注册邮箱或手机号找回。若无法找回，请联系在线客服。"),
-        FAQItem(id: "5", question: "如何联系客服？", answer: "请进入「我的」—「服务与支持」—「在线客服」，查看工作时间与联系方式。")
+        FAQItem(id: "1", question: L("如何收藏词汇或句子？"), answer: L("在学习页中，点击词汇或句子旁的星标即可加入收藏；再次点击可取消。收藏内容会在「我的」—「我的收藏」中显示。")),
+        FAQItem(id: "2", question: L("翻译历史会同步吗？"), answer: L("当前版本翻译记录仅保存在本机。登录后，我们将在后续版本支持跨设备同步。")),
+        FAQItem(id: "3", question: L("如何关闭自动续费？"), answer: L("iOS：设置 — Apple ID — 订阅 — 选择本应用 — 取消订阅。取消后当前周期内仍可继续使用会员权益。")),
+        FAQItem(id: "4", question: L("忘记密码怎么办？"), answer: L("在登录页点击「忘记密码」，按提示通过注册邮箱或手机号找回。若无法找回，请联系在线客服。")),
+        FAQItem(id: "5", question: L("如何联系客服？"), answer: L("请进入「我的」—「服务与支持」—「在线客服」，查看工作时间与联系方式。"))
     ]
 
     var body: some View {
-        SettingsPage(title: "常见问题") {
-            SettingsCard(title: "快速帮助", subtitle: "点开问题查看答案。若仍未解决，可在「在线客服」联系我们。") {
+        SettingsPage(title: L("常见问题")) {
+            SettingsCard(title: L("快速帮助"), subtitle: L("点开问题查看答案。若仍未解决，可在「在线客服」联系我们。")) {
                 VStack(spacing: 10) {
                     ForEach(items) { item in
                         FAQRow(question: item.question, answer: item.answer, isExpanded: expandedId == item.id) {
@@ -2667,7 +2709,7 @@ private struct SettingsLinkRow: View {
                     .foregroundStyle(AppTheme.primary)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(L(title))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(AppTheme.textPrimary)
                 Text(L(subtitle))
@@ -2700,8 +2742,8 @@ struct AboutView: View {
     }
 
     var body: some View {
-        SettingsPage(title: "关于我们") {
-            SettingsCard(title: "AI 助理", subtitle: "智能对话、多语翻译与情景学习，帮助你更高效地沟通与成长。") {
+        SettingsPage(title: L("关于我们")) {
+            SettingsCard(title: L("AI 助理"), subtitle: L("智能对话、多语翻译与情景学习，帮助你更高效地沟通与成长。")) {
                 HStack(spacing: 14) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -2726,9 +2768,9 @@ struct AboutView: View {
                 }
             }
 
-            SettingsCard(title: "文档与规则", subtitle: "应用协议、服务条款与会员说明。") {
+            SettingsCard(title: L("文档与规则"), subtitle: L("应用协议、服务条款与会员说明。")) {
                 NavigationLink {
-                    DocView(title: "用户协议", content: DocContent.userAgreement)
+                    DocView(title: L("用户协议"), content: DocContent.userAgreement)
                 } label: {
                     SettingsLinkRow(
                         systemImage: "person.text.rectangle",
@@ -2739,7 +2781,7 @@ struct AboutView: View {
                 .buttonStyle(.plain)
 
                 NavigationLink {
-                    DocView(title: "服务条款", content: DocContent.termsOfService)
+                    DocView(title: L("服务条款"), content: DocContent.termsOfService)
                 } label: {
                     SettingsLinkRow(
                         systemImage: "doc.text",
@@ -2792,7 +2834,7 @@ struct DocView: View {
                 .buttonStyle(.plain)
             )
         ) {
-            SettingsCard(title: "内容", subtitle: "可长按/选择文本，或使用右上角复制按钮。") {
+            SettingsCard(title: L("内容"), subtitle: L("可长按/选择文本，或使用右上角复制按钮。")) {
                 Text(content)
                     .font(.caption)
                     .foregroundStyle(AppTheme.textPrimary)
@@ -2809,18 +2851,18 @@ struct SupportView: View {
     @State private var showFAQ = false
 
     var body: some View {
-        SettingsPage(title: "在线客服") {
-            SettingsCard(title: "联系我们", subtitle: "我们会尽快回复你。建议先查看常见问题，通常能更快解决。") {
+        SettingsPage(title: L("在线客服")) {
+            SettingsCard(title: L("联系我们"), subtitle: L("我们会尽快回复你。建议先查看常见问题，通常能更快解决。")) {
                 SettingsRow(
                     systemImage: "clock",
-                    title: "服务时间",
-                    subtitle: "工作日 9:00 — 18:00",
+                    title: L("服务时间"),
+                    subtitle: L("工作日 9:00 — 18:00"),
                     showChevron: false,
                     action: nil
                 )
                 SettingsRow(
                     systemImage: "envelope",
-                    title: "客服邮箱",
+                    title: L("客服邮箱"),
                     subtitle: "support@ai-assistant.example.com",
                     showChevron: true
                 ) {
@@ -2830,8 +2872,8 @@ struct SupportView: View {
                 }
                 SettingsRow(
                     systemImage: "questionmark.circle",
-                    title: "常见问题",
-                    subtitle: "点开查看常见问题与解决方法",
+                    title: L("常见问题"),
+                    subtitle: L("点开查看常见问题与解决方法"),
                     showChevron: true
                 ) {
                     showFAQ = true

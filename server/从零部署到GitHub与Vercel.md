@@ -9,15 +9,15 @@
 1. 打开浏览器，访问：**https://github.com/new**
 2. 登录你的 GitHub 账号（用户名例如：kun577522）。
 3. 填写：
-   - **Repository name**：填 `Ai-Assistant-Mac`（必须和这里一致，后面命令会用到）。
-   - **Description**：可选，例如「AI 助理 Mac 端与后端」。
+   - **Repository name**：填 `Ai-Assistant-iOS`（必须和这里一致，后面命令会用到）。
+   - **Description**：可选，例如「AI 助理 iOS 端与后端」。
    - **Public** 或 **Private**：任选一个。
    - ⚠️ **不要**勾选「Add a README file」。
    - ⚠️ **不要**勾选「Add .gitignore」。
    - ⚠️ **不要**选择 License。
 4. 点击绿色的 **Create repository**。
 5. 创建完成后，页面上会显示仓库地址，例如：  
-   `https://github.com/kun577522/Ai-Assistant-Mac`  
+   `https://github.com/kun577522/Ai-Assistant-iOS`  
    先不用管页面上的「push an existing repository」命令，按下面第二步在终端做。
 
 ---
@@ -27,7 +27,7 @@
 1. 打开 **终端**（Terminal）。
 2. 进入项目目录（复制整行执行）：
    ```bash
-   cd /Users/akun/Desktop/Ai助理Mac/Ai助理Mac
+   cd /Users/akun/Desktop/Ai助理/Ai助理
    ```
 3. 查看状态：
    ```bash
@@ -48,7 +48,7 @@
 
 **3.1 添加远程（只做一次）**
 ```bash
-git remote add origin https://github.com/kun577522/Ai-Assistant-Mac.git
+git remote add origin https://github.com/kun577522/Ai-Assistant-iOS.git
 ```
 - 若提示 `remote origin already exists`，先执行：  
   `git remote remove origin`  
@@ -76,7 +76,7 @@ git push -u origin main
 
 1. 浏览器打开：**https://github.com/settings/tokens**
 2. 点击 **Generate new token** → 选 **Generate new token (classic)**。
-3. **Note** 随便填，例如：`Ai-Assistant-Mac-push`。
+3. **Note** 随便填，例如：`Ai-Assistant-iOS-push`。
 4. **Expiration** 选 90 days 或 No expiration（按你习惯）。
 5. 在 **Select scopes** 里勾选 **repo**（会顺带勾选下面子项）。
 6. 拉到最下面点 **Generate token**。
@@ -91,7 +91,7 @@ git push -u origin main
 
 1. 打开 **https://vercel.com**，登录（建议用 GitHub 登录，方便看到仓库）。
 2. 点击右上角 **Add New...** → **Project**。
-3. 在 **Import Git Repository** 里找到 **kun577522/Ai-Assistant-Mac**，点击 **Import**。
+3. 在 **Import Git Repository** 里找到 **kun577522/Ai-Assistant-iOS**，点击 **Import**。
 4. 进入配置页后：
    - **Project Name**：可保持默认或改成 `ai-assistant-api`。
    - 找到 **Root Directory**，点击 **Edit**，在输入框里填：**`server`**，确认。
@@ -132,7 +132,7 @@ git push -u origin main
 
 ---
 
-## 第八步：在 Mac App 里使用该地址
+## 第八步：在 iOS App 里使用该地址
 
 把 App 请求的 **API 基础地址** 改成第七步里用的那个域名（不要加 `/api` 或末尾斜杠）。
 
@@ -142,7 +142,7 @@ git push -u origin main
 private static let builtInProductionURL = "https://ai-assistant-api-xxx.vercel.app"
 ```
 
-保存后重新运行 Mac App，对话和翻译就会走你刚部署的后端。
+保存后重新运行 iOS App，对话和翻译就会走你刚部署的后端。
 
 ---
 
@@ -152,7 +152,7 @@ private static let builtInProductionURL = "https://ai-assistant-api-xxx.vercel.a
 A: Password 处必须填 **Personal Access Token**，不能填 GitHub 登录密码。按第四步重新生成 token 再试。
 
 **Q: 提示 remote origin already exists**  
-A: 执行 `git remote remove origin`，再执行 `git remote add origin https://github.com/kun577522/Ai-Assistant-Mac.git`，然后 `git push -u origin main`。
+A: 执行 `git remote remove origin`，再执行 `git remote add origin https://github.com/kun577522/Ai-Assistant-iOS.git`，然后 `git push -u origin main`。
 
 **Q: Vercel 部署后访问域名显示 404**  
 A: 检查是否把 **Root Directory** 设成了 **server**，且 **Framework Preset** 是 **Other**。若选的是 Next.js 或根目录没选 server，会 404。

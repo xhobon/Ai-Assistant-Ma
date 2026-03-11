@@ -117,7 +117,7 @@ struct AIAssistantHomeView: View {
             }
             .scrollIndicators(.automatic)
             .background(AppTheme.pageBackground.ignoresSafeArea())
-            .hideNavigationBarOnMac()
+            .hideNavigationBarForIOS()
         }
     }
 

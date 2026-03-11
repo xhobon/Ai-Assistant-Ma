@@ -481,7 +481,7 @@ struct ContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .hideNavigationBarOnMac()
+        .hideNavigationBarForIOS()
         .id("detail-\(selectedItem.rawValue)-\(detailResetSeed)")
         .navigationBarTitleDisplayMode(.inline)
     }

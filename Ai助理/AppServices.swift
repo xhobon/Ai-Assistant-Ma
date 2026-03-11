@@ -312,7 +312,23 @@ final class APIClient {
             throw APIClientError.serverError(message)
         }
 
-        return try JSONDecoder().decode(T.self, from: data)
+        // 避免服务返回非 JSON 时直接抛出“格式不正确”的系统错误
+        let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type")?.lowercased() ?? ""
+        let looksLikeJSON = data.first == UInt8(ascii: "{") || data.first == UInt8(ascii: "[")
+        if !contentType.contains("application/json") && !looksLikeJSON {
+            let preview = String(data: data.prefix(200), encoding: .utf8) ?? ""
+            throw APIClientError.serverError(preview.isEmpty ? L("服务返回数据格式异常") : preview)
+        }
+
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            let preview = String(data: data.prefix(200), encoding: .utf8) ?? ""
+            if !preview.isEmpty {
+                throw APIClientError.serverError(preview)
+            }
+            throw APIClientError.serverError(L("服务返回数据格式异常"))
+        }
     }
 
     func health() async throws -> HealthResponse {

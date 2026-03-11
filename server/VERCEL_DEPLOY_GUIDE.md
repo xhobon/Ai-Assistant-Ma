@@ -52,4 +52,4 @@ npx vercel --prod
 
 1. 在 Vercel **Deployments** 中确认部署成功。
 2. 访问 `https://你的域名/health`，应返回 `{"status":"ok",...}`。
-3. 在 Mac App 中把 API 基础地址设为 `https://你的域名`（不要带末尾 `/api`），即可使用 Groq 智能体对话与翻译。
+3. 在 iOS App 中把 API 基础地址设为 `https://你的域名`（不要带末尾 `/api`），即可使用 Groq 智能体对话与翻译。

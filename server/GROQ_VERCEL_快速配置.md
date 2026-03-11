@@ -18,7 +18,7 @@
 - 访问：`https://nextjs-boilerplate-pi-one-a27xruobcp.vercel.app/health`
 - 应返回：`{"status":"ok","time":"..."}`
 
-Mac App 已配置默认请求该地址，部署成功且填好 `GROQ_API_KEY` 后，对话与翻译会走 Groq 智能体。
+iOS App 已配置默认请求该地址，部署成功且填好 `GROQ_API_KEY` 后，对话与翻译会走 Groq 智能体。
 
 ---
 

@@ -2730,7 +2730,7 @@ struct AppPageScaffold<Content: View>: View {
             }
             .scrollIndicators(.automatic)
         }
-        .hideNavigationBarOnMac()
+        .hideNavigationBarForIOS()
     }
 }
 
@@ -2745,7 +2745,7 @@ extension View {
 // MARK: - 导航栏修饰符
 extension View {
     @ViewBuilder
-    func hideNavigationBarOnMac() -> some View {
+    func hideNavigationBarForIOS() -> some View {
         self
     }
     

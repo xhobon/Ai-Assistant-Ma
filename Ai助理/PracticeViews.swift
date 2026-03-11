@@ -242,6 +242,11 @@ struct PracticeModeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text(languageStore.localized("practice_type_title"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+                .appLabelStyle(minScale: 0.8)
+
             HStack {
                 if difficulties.indices.contains(0) {
                     difficultyButton(for: difficulties[0])
@@ -257,10 +262,6 @@ struct PracticeModeCard: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(languageStore.localized("practice_type_title"))
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .appLabelStyle(minScale: 0.8)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(Array(PracticeQuestionType.allCases.enumerated()), id: \.element) { index, type in
@@ -500,27 +501,16 @@ struct PracticeChallengeCard: View {
                     .foregroundStyle(AppTheme.textSecondary)
                     .appLabelStyle(minScale: 0.8)
                 HStack(spacing: 8) {
-                    ForEach(timeOptions, id: \.self) { option in
-                        Button {
-                            timeLimit = option
-                        } label: {
-                            Text(languageStore.localizedFormat("practice_challenge_seconds", option))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(timeLimit == option ? .white : AppTheme.textPrimary)
-                                .appButtonLabelStyle(minScale: 0.7)
-                                .frame(height: 44)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(
-                                    Capsule().fill(timeLimit == option ? AppTheme.accentStrong : AppTheme.surfaceMuted)
-                                )
-                                .overlay(
-                                    Capsule().stroke(timeLimit == option ? AppTheme.accentStrong : AppTheme.border, lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .opacity(isEnabled ? 1 : 0.5)
-                        .disabled(!isEnabled)
+                    if timeOptions.indices.contains(0) {
+                        timeButton(for: timeOptions[0])
+                    }
+                    Spacer(minLength: 8)
+                    if timeOptions.indices.contains(1) {
+                        timeButton(for: timeOptions[1])
+                    }
+                    Spacer(minLength: 8)
+                    if timeOptions.indices.contains(2) {
+                        timeButton(for: timeOptions[2])
                     }
                 }
             }
@@ -591,6 +581,30 @@ struct PracticeChallengeCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
         .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+
+    @ViewBuilder
+    private func timeButton(for option: Int) -> some View {
+        Button {
+            timeLimit = option
+        } label: {
+            Text(languageStore.localizedFormat("practice_challenge_seconds", option))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(timeLimit == option ? .white : AppTheme.textPrimary)
+                .appButtonLabelStyle(minScale: 0.7)
+                .frame(minWidth: 52)
+                .frame(height: 32)
+                .padding(.horizontal, 6)
+                .background(
+                    Capsule().fill(timeLimit == option ? AppTheme.accentStrong : AppTheme.surfaceMuted)
+                )
+                .overlay(
+                    Capsule().stroke(timeLimit == option ? AppTheme.accentStrong : AppTheme.border, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .opacity(isEnabled ? 1 : 0.5)
+        .disabled(!isEnabled)
     }
 }
 
