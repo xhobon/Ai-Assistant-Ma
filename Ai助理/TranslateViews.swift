@@ -46,11 +46,11 @@ struct AITranslateHomeView: View {
         .onTapGesture {
             hideKeyboard()
         }
-        .alert("提示", isPresented: Binding(
+        .alert(L("提示"), isPresented: Binding(
             get: { viewModel.alertMessage != nil },
             set: { if !$0 { viewModel.alertMessage = nil } }
         )) {
-            Button("确定", role: .cancel) {}
+            Button(L("确定"), role: .cancel) {}
         } message: {
             Text(viewModel.alertMessage ?? "")
         }
@@ -79,11 +79,11 @@ struct TranslatePageCompactHeader: View {
                 Image(systemName: "globe")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(AppTheme.primary)
-                Text("AI翻译")
+                Text(L("AI翻译"))
                     .font(.title2.weight(.bold))
                     .foregroundStyle(AppTheme.textPrimary)
             }
-            Text("输入文本或使用语音开始 · 支持实时语音与历史同步")
+            Text(L("输入文本或使用语音开始 · 支持实时语音与历史同步"))
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.textSecondary)
         }
@@ -224,13 +224,13 @@ struct TranslationInputCard: View {
     var body: some View {
         VStack(spacing: 14) {
             TranslationInputHeader(
-                sourceLang: viewModel.sourceLang.name,
-                targetLang: viewModel.targetLang.name,
+                sourceLang: viewModel.sourceLang.displayName,
+                targetLang: viewModel.targetLang.displayName,
                 onSwap: viewModel.swapLanguages
             )
 
             TranslationInputField(
-                title: viewModel.sourceLang.name,
+                title: viewModel.sourceLang.displayName,
                 placeholder: "输入文本或使用语音",
                 text: $viewModel.sourceText,
                 tint: AppTheme.textPrimary,
@@ -239,7 +239,7 @@ struct TranslationInputCard: View {
             )
 
             TranslationInputField(
-                title: viewModel.targetLang.name,
+                title: viewModel.targetLang.displayName,
                 placeholder: "Masukkan teks",
                 text: .constant(viewModel.translatedText),
                 tint: AppTheme.brandBlue,
@@ -274,7 +274,7 @@ struct TranslationInputHeader: View {
             Button(action: onSwap) {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.triangle.2.circlepath")
-                    Text("切换")
+                    Text(L("切换"))
                 }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.accentStrong)
@@ -344,19 +344,19 @@ struct TranslationResultCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("翻译结果")
+                Text(L("翻译结果"))
                     .font(.headline)
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
                 if !viewModel.translatedText.isEmpty {
-                    Text("可播放")
+                    Text(L("可播放"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
             }
 
             ResultRow(
-                title: viewModel.sourceLang.name,
+                title: viewModel.sourceLang.displayName,
                 text: viewModel.sourceText.isEmpty ? "你好" : viewModel.sourceText,
                 tint: AppTheme.textPrimary,
                 onPlay: viewModel.playResult
@@ -365,7 +365,7 @@ struct TranslationResultCard: View {
             Divider().opacity(0.2)
 
             ResultRow(
-                title: viewModel.targetLang.name,
+                title: viewModel.targetLang.displayName,
                 text: viewModel.translatedText.isEmpty ? "Halo" : viewModel.translatedText,
                 tint: AppTheme.brandBlue,
                 onPlay: viewModel.playResult
@@ -449,11 +449,11 @@ struct TranslationActionBar: View {
             HStack(spacing: 12) {
                 Button(action: { viewModel.swapLanguages() }) {
                     HStack(spacing: 6) {
-                        Text(viewModel.sourceLang.name)
+                        Text(viewModel.sourceLang.displayName)
                             .font(.subheadline.weight(.semibold))
                         Image(systemName: "arrow.left.arrow.right")
                             .font(.caption.weight(.semibold))
-                        Text(viewModel.targetLang.name)
+                        Text(viewModel.targetLang.displayName)
                             .font(.subheadline.weight(.semibold))
                     }
                     .foregroundStyle(AppTheme.unifiedButtonBorder)
@@ -553,17 +553,17 @@ struct TranslationHistorySection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("翻译历史")
+                Text(L("翻译历史"))
                     .font(.headline)
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
-                Text("最近 10 条")
+                Text(L("最近 10 条"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
             }
 
             if history.isEmpty {
-                Text("暂无翻译记录")
+                Text(L("暂无翻译记录"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
                     .padding(.vertical, 8)
@@ -797,7 +797,7 @@ struct RealTimeTranslationView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .navigationTitle("实时语音翻译")
+        .navigationTitle(L("实时语音翻译"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
@@ -809,14 +809,14 @@ struct RealTimeTranslationView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                 }
-                .accessibilityLabel("返回")
+                .accessibilityLabel(L("返回"))
             }
         }
-        .alert("提示", isPresented: Binding(
+        .alert(L("提示"), isPresented: Binding(
             get: { viewModel.alertMessage != nil },
             set: { if !$0 { viewModel.alertMessage = nil } }
         )) {
-            Button("确定", role: .cancel) {}
+            Button(L("确定"), role: .cancel) {}
         } message: {
             Text(viewModel.alertMessage ?? "")
         }
@@ -840,7 +840,7 @@ private struct RealTimeLiveBanner: View {
                 Text(isRecording ? "正在监听语音输入" : "等待语音输入")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text("当前主讲语言：\(sourceLanguage)")
+                    Text(Lf("当前主讲语言：%@", sourceLanguage))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -913,7 +913,7 @@ struct RealTimeWaveformPanel: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("语音波形监测")
+                Text(L("语音波形监测"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer(minLength: 0)
@@ -1345,9 +1345,9 @@ struct DualTranslationInputCard: View {
         Group {
             // 左侧：中文输入框（可编辑）；回车或 Cmd+Enter 触发翻译
             TranslationInputBox(
-                title: viewModel.sourceLang.name,
+                title: viewModel.sourceLang.displayName,
                 text: $viewModel.sourceText,
-                placeholder: "输入或点麦克风说\(viewModel.sourceLang.name)/\(viewModel.targetLang.name)，自动识别并翻译",
+                placeholder: String(format: L("translate_input_placeholder"), viewModel.sourceLang.displayName, viewModel.targetLang.displayName),
                 isExpanded: $leftExpanded,
                 isListening: viewModel.isListening && viewModel.listeningSide == .left,
                 isLoadingPlaceholder: viewModel.isTranslating
@@ -1369,9 +1369,9 @@ struct DualTranslationInputCard: View {
             
             // 右侧：印尼文输入框（可编辑）；回车或 Cmd+Enter 触发翻译
             TranslationInputBox(
-                title: viewModel.targetLang.name,
+                title: viewModel.targetLang.displayName,
                 text: $viewModel.translatedText,
-                placeholder: "输入或点麦克风说\(viewModel.targetLang.name)/\(viewModel.sourceLang.name)，自动识别并翻译",
+                placeholder: String(format: L("translate_input_placeholder"), viewModel.targetLang.displayName, viewModel.sourceLang.displayName),
                 isExpanded: $rightExpanded,
                 isListening: viewModel.isListening && viewModel.listeningSide == .right,
                 isLoadingPlaceholder: viewModel.isTranslating
@@ -1453,7 +1453,7 @@ struct TranslationInputBox: View {
                 if text.isEmpty {
                     if isLoadingPlaceholder {
                         HStack(spacing: 6) {
-                            Text("翻译中")
+                            Text(L("翻译中"))
                                 .font(.subheadline)
                                 .foregroundStyle(AppTheme.textSecondary)
                             AnimatedDots()
@@ -1490,12 +1490,12 @@ struct TranslationInputBox: View {
                 }
                 .disabled(text.isEmpty)
                 .opacity(text.isEmpty ? 0.6 : 1)
-                .accessibilityLabel("语音播放")
+                .accessibilityLabel(L("语音播放"))
                 
                 UnifiedAppIconButton(systemImage: "photo.on.rectangle") {
                     showImagePicker = true
                 }
-                .accessibilityLabel("上传图片")
+                .accessibilityLabel(L("上传图片"))
                 
                 Spacer(minLength: 0)
 
@@ -1590,11 +1590,11 @@ struct ModernTranslationActionBar: View {
             HStack(spacing: 12) {
                 Button(action: { viewModel.swapLanguages() }) {
                     HStack(spacing: 6) {
-                        Text(viewModel.sourceLang.name)
+                        Text(viewModel.sourceLang.displayName)
                             .font(.subheadline.weight(.semibold))
                         Image(systemName: "arrow.left.arrow.right")
                             .font(.caption.weight(.semibold))
-                        Text(viewModel.targetLang.name)
+                        Text(viewModel.targetLang.displayName)
                             .font(.subheadline.weight(.semibold))
                     }
                     .foregroundStyle(AppTheme.textPrimary)
@@ -1619,7 +1619,7 @@ struct ModernTranslationActionBar: View {
                     viewModel.translatedText = ""
                 }) {
                     HStack(spacing: 4) {
-                        Text("清空内容")
+                        Text(L("清空内容"))
                             .font(.subheadline.weight(.semibold))
                     }
                     .foregroundStyle(AppTheme.textPrimary)
@@ -1651,7 +1651,7 @@ struct ModernTranslationResultCard: View {
         if !viewModel.translatedText.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("翻译结果")
+                    Text(L("翻译结果"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer(minLength: 0)
@@ -1720,7 +1720,7 @@ struct AllTranslationRecordsView: View {
             }
         }
         .background(AppTheme.pageBackground.ignoresSafeArea())
-        .navigationTitle("翻译记录")
+        .navigationTitle(L("翻译记录"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
     }
@@ -1737,7 +1737,7 @@ struct TranslationRecordRowWithActions: View {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text(item.sourceLang.name)
+                        Text(item.sourceLang.displayName)
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(AppTheme.textOnPrimary)
                             .padding(.horizontal, 6)
@@ -1747,7 +1747,7 @@ struct TranslationRecordRowWithActions: View {
                         Image(systemName: "arrow.right")
                             .font(.caption2)
                             .foregroundStyle(AppTheme.textTertiary)
-                        Text(item.targetLang.name)
+                        Text(item.targetLang.displayName)
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(AppTheme.textOnPrimary)
                             .padding(.horizontal, 6)
@@ -1861,11 +1861,11 @@ struct ModernTranslationHistorySection: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("翻译记录")
+                Text(L("翻译记录"))
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer(minLength: 0)
-                Text("最近 10 条")
+                Text(L("最近 10 条"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -1903,7 +1903,7 @@ struct ModernTranslationHistoryItem: View {
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: ModernDesignSystem.Spacing.xs) {
-                            Text(item.sourceLang.name)
+                            Text(item.sourceLang.displayName)
                                 .font(.caption2.weight(.medium))
                                 .foregroundStyle(AppTheme.textOnPrimary)
                                 .padding(.horizontal, 6)
@@ -1913,7 +1913,7 @@ struct ModernTranslationHistoryItem: View {
                             Image(systemName: "arrow.right")
                                 .font(.caption2)
                                 .foregroundStyle(AppTheme.textTertiary)
-                            Text(item.targetLang.name)
+                            Text(item.targetLang.displayName)
                                 .font(.caption2.weight(.medium))
                                 .foregroundStyle(AppTheme.textOnPrimary)
                                 .padding(.horizontal, 6)

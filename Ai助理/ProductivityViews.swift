@@ -41,7 +41,7 @@ struct WritingStudioView: View {
                 VStack(spacing: 12) {
                     TextEditorField(title: "生成草稿", placeholder: "点击下方生成按钮后显示草稿", text: $draft, minHeight: 180)
                     HStack(spacing: 12) {
-                        ProductivityActionButton("生成草稿", systemImage: "sparkles", style: .filled) {
+                        ProductivityActionButton(L("生成草稿"), systemImage: "sparkles", style: .filled) {
                             draft = WritingGenerator.generate(
                                 topic: topic,
                                 keywords: keywords,
@@ -50,7 +50,7 @@ struct WritingStudioView: View {
                                 length: length
                             )
                         }
-                        ProductivityActionButton("保存草稿", systemImage: "tray.and.arrow.down", style: .outline) {
+                        ProductivityActionButton(L("保存草稿"), systemImage: "tray.and.arrow.down", style: .outline) {
                             guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                             drafts.insert(
                                 WritingDraft(
@@ -64,7 +64,7 @@ struct WritingStudioView: View {
                                 at: 0
                             )
                         }
-                        ProductivityActionButton("复制", systemImage: "doc.on.doc", style: .ghost) {
+                        ProductivityActionButton(L("复制"), systemImage: "doc.on.doc", style: .ghost) {
                             ClipboardService.copy(draft)
                         }
                     }
@@ -118,7 +118,7 @@ struct PPTStudioView: View {
                     LabeledField(title: "主题", placeholder: "例如：AI 助理产品路演", text: $topic)
                     LabeledField(title: "受众", placeholder: "例如：管理层/客户/团队成员", text: $audience)
                     HStack {
-                        Text("页数")
+                        Text(L("页数"))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textSecondary)
                         Spacer(minLength: 0)
@@ -137,7 +137,7 @@ struct PPTStudioView: View {
                     HStack {
                         SectionTitle("大纲预览")
                         Spacer(minLength: 0)
-                        Button("复制大纲") {
+                        Button(L("复制大纲")) {
                             ClipboardService.copy(outlines.map(\.text).joined(separator: "\n"))
                         }
                         .font(.caption)
@@ -150,7 +150,7 @@ struct PPTStudioView: View {
                             SlideOutlineRow(outline: outline)
                         }
                     }
-                    ProductivityActionButton("生成大纲", systemImage: "wand.and.stars", style: .filled) {
+                    ProductivityActionButton(L("生成大纲"), systemImage: "wand.and.stars", style: .filled) {
                         outlines = PPTGenerator.generate(
                             topic: topic,
                             audience: audience,
@@ -214,7 +214,7 @@ struct NotesWorkspaceView: View {
                     if aiNote != nil {
                         Divider().padding(.vertical, 2)
                         AINoteEditor(note: $aiNote)
-                        ProductivityActionButton("保存笔记", systemImage: "tray.and.arrow.down", style: .outline) {
+                        ProductivityActionButton(L("保存笔记"), systemImage: "tray.and.arrow.down", style: .outline) {
                             saveNoteToLocalAndCloud()
                         }
                         .frame(maxWidth: .infinity)
@@ -239,11 +239,11 @@ struct NotesWorkspaceView: View {
                 }
             }
         }
-        .alert("提示", isPresented: Binding(
+        .alert(L("提示"), isPresented: Binding(
             get: { alertMessage != nil },
             set: { if !$0 { alertMessage = nil } }
         )) {
-            Button("确定", role: .cancel) {}
+            Button(L("确定"), role: .cancel) {}
         } message: {
             Text(alertMessage ?? "")
         }
@@ -507,7 +507,7 @@ struct SummaryWorkspaceView: View {
                     if aiSummary != nil {
                         Divider().padding(.vertical, 2)
                         AISummaryEditor(summary: $aiSummary)
-                        ProductivityActionButton("保存", systemImage: "tray.and.arrow.down", style: .outline) {
+                        ProductivityActionButton(L("保存"), systemImage: "tray.and.arrow.down", style: .outline) {
                             saveSummaryToLocalAndCloud()
                         }
                         .frame(maxWidth: .infinity)
@@ -528,11 +528,11 @@ struct SummaryWorkspaceView: View {
                 }
             }
         }
-        .alert("提示", isPresented: Binding(
+        .alert(L("提示"), isPresented: Binding(
             get: { alertMessage != nil },
             set: { if !$0 { alertMessage = nil } }
         )) {
-            Button("确定", role: .cancel) {}
+            Button(L("确定"), role: .cancel) {}
         } message: {
             Text(alertMessage ?? "")
         }
@@ -1096,7 +1096,7 @@ private struct DraftRow: View {
                 Text(draft.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text("风格：\(draft.style) · 语气：\(draft.tone) · 篇幅：\(draft.length)")
+            Text(Lf("风格：%@ · 语气：%@ · 篇幅：%@", draft.style, draft.tone, draft.length))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
                 Text(draft.content)
@@ -1187,16 +1187,16 @@ private struct NoteRow: View {
                     Image(systemName: "clock")
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textTertiary)
-                    Text("提醒：\(formatReminderDate(at))")
+            Text(Lf("提醒：%@", formatReminderDate(at)))
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textSecondary)
                     Spacer(minLength: 0)
-                    Button("未完成") {
+                    Button(L("未完成")) {
                         onSnooze()
                     }
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(AppTheme.accentStrong)
-                    Button("已完成") {
+                    Button(L("已完成")) {
                         onMarkDone()
                     }
                     .font(.caption2.weight(.semibold))

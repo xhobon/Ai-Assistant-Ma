@@ -993,6 +993,8 @@ final class SpeechService: NSObject, ObservableObject {
     func speak(_ text: String, language: String) {
         guard !text.isEmpty else { return }
         if SpeechSettingsStore.shared.playbackMuted { return }
+        // 播放开始必须停止所有录音，避免冲突
+        AudioSessionCoordinator.shared.stopAllRecordings()
         let detectedLang = detectLanguageCode(for: text) ?? language
         // 停止当前播放
         stopSpeaking()
@@ -1007,6 +1009,8 @@ final class SpeechService: NSObject, ObservableObject {
     func speakOnline(_ text: String, language: String) {
         guard !text.isEmpty else { return }
         if SpeechSettingsStore.shared.playbackMuted { return }
+        // 播放开始必须停止所有录音，避免冲突
+        AudioSessionCoordinator.shared.stopAllRecordings()
         let detectedLang = detectLanguageCode(for: text) ?? language
         stopSpeaking()
         beginPlaybackGuard(with: text)
@@ -1019,6 +1023,8 @@ final class SpeechService: NSObject, ObservableObject {
     /// 流式朗读（边生成边播放）
     func speakStreaming(_ stream: AsyncStream<String>, language: String? = nil, onFinish: (() -> Void)? = nil) {
         if SpeechSettingsStore.shared.playbackMuted { return }
+        // 播放开始必须停止所有录音，避免冲突
+        AudioSessionCoordinator.shared.stopAllRecordings()
         stopSpeaking()
         isPlaying = true
         let wrapped = AsyncStream<String> { [weak self] continuation in
@@ -1107,6 +1113,53 @@ final class SpeechService: NSObject, ObservableObject {
 
     private func detectLanguageCode(for text: String) -> String? {
         return LanguageDetector.detect(from: text)?.localeIdentifier ?? "en-US"
+    }
+}
+
+/// 全局音频会话协调：确保录音/播放互斥
+final class AudioSessionCoordinator {
+    static let shared = AudioSessionCoordinator()
+
+    private let queue = DispatchQueue(label: "aiassistant.audio.session.coordinator")
+    private var recordingStops: [UUID: () -> Void] = [:]
+
+    private init() {}
+
+    func beginRecording(id: UUID, stop: @escaping () -> Void) {
+        queue.sync {
+            recordingStops[id] = stop
+        }
+        stopOtherRecordings(except: id)
+    }
+
+    func endRecording(id: UUID) {
+        queue.sync {
+            recordingStops.removeValue(forKey: id)
+        }
+    }
+
+    func stopAllRecordings() {
+        let stops: [() -> Void] = queue.sync {
+            let values = Array(recordingStops.values)
+            recordingStops.removeAll()
+            return values
+        }
+        DispatchQueue.main.async {
+            stops.forEach { $0() }
+        }
+    }
+
+    private func stopOtherRecordings(except id: UUID) {
+        let stops: [() -> Void] = queue.sync {
+            let other = recordingStops.filter { $0.key != id }
+            let keep = recordingStops[id]
+            recordingStops = [:]
+            if let keep { recordingStops[id] = keep }
+            return other.map(\.value)
+        }
+        DispatchQueue.main.async {
+            stops.forEach { $0() }
+        }
     }
 }
 
@@ -1338,6 +1391,7 @@ final class SpeechTranscriber: NSObject {
     private var recognizer: SFSpeechRecognizer?
     /// 是否已安装 tap，避免在未安装时 removeTap 或重复操作
     private var hasInstalledTap = false
+    private let recordingId = UUID()
 
     func requestAuthorization() async -> Bool {
         await withCheckedContinuation { continuation in
@@ -1354,6 +1408,11 @@ final class SpeechTranscriber: NSObject {
 
     /// 必须在主线程调用；AVAudioEngine 及其 inputNode 仅能在主线程访问
     private func startTranscribingOnMainThread(locale: Locale, onResult: @escaping (String, Bool) -> Void) throws {
+        // 录音开始前必须停止所有播放，避免冲突
+        SpeechService.shared.stopSpeaking()
+        AudioSessionCoordinator.shared.beginRecording(id: recordingId) { [weak self] in
+            self?.stopTranscribing()
+        }
         stopTranscribing()
 
         audioEngine.stop()
@@ -1414,6 +1473,14 @@ final class SpeechTranscriber: NSObject {
         task?.cancel()
         request = nil
         task = nil
+        AudioSessionCoordinator.shared.endRecording(id: recordingId)
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            #if DEBUG
+            print("[SpeechTranscriber] Failed to deactivate audio session: \(error.localizedDescription)")
+            #endif
+        }
     }
 }
 

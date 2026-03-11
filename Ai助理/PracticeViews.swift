@@ -9,13 +9,17 @@ struct PracticeHomeView: View {
     @EnvironmentObject private var languageStore: AppLanguageStore
     @StateObject private var statsStore = LearningStatsStore.shared
     @StateObject private var wrongStore = WrongBookStore.shared
+    @StateObject private var learningModel = LearningViewModel()
     @AppStorage("learning_mode") private var storedMode: String = LearningMode.zhToId.rawValue
     @State private var selectedCount: Int = 10
     @State private var selectedTypes: Set<PracticeQuestionType> = Set(PracticeQuestionType.allCases)
     @State private var showSession = false
     @State private var sessionSource: PracticeSource = .all
+    @State private var selectedDifficulty: LearningDifficulty = .all
+    @State private var showFavoritesOnly = false
 
     private let questionCounts = [5, 10, 20]
+    private let difficulties = LearningDifficulty.allCases
 
     var body: some View {
         NavigationStack {
@@ -32,6 +36,16 @@ struct PracticeHomeView: View {
                         selectedCount: $selectedCount,
                         questionCounts: questionCounts,
                         selectedTypes: $selectedTypes
+                    )
+                    .padding(.horizontal, 14)
+
+                    PracticeCategorySection(
+                        categories: learningModel.categories,
+                        selectedCategoryId: $learningModel.selectedCategoryId,
+                        difficulties: difficulties,
+                        selectedDifficulty: $selectedDifficulty,
+                        showFavoritesOnly: $showFavoritesOnly,
+                        mode: LearningMode(rawValue: storedMode) ?? .zhToId
                     )
                     .padding(.horizontal, 14)
 
@@ -67,10 +81,47 @@ struct PracticeHomeView: View {
                     mode: LearningMode(rawValue: storedMode) ?? .zhToId,
                     questionCount: selectedCount,
                     types: Array(selectedTypes),
-                    source: sessionSource
+                    source: sessionSource,
+                    sourceItems: filteredItems,
+                    allItems: allItems
                 )
             }
         }
+    }
+
+    private var allItems: [VocabItem] {
+        learningModel.categories.flatMap { $0.items }
+    }
+
+    private var filteredItems: [VocabItem] {
+        let base: [VocabItem]
+        if let selectedId = learningModel.selectedCategoryId,
+           let category = learningModel.categories.first(where: { $0.id == selectedId }) {
+            base = category.items
+        } else {
+            base = allItems
+        }
+
+        let difficultyFiltered = selectedDifficulty == .all
+            ? base
+            : base.filter { difficultyForItem($0) == selectedDifficulty }
+
+        if showFavoritesOnly {
+            return difficultyFiltered.filter { learningModel.favoriteIds.contains($0.id) }
+        }
+
+        return difficultyFiltered
+    }
+
+    private func difficultyForItem(_ item: VocabItem) -> LearningDifficulty {
+        let digits = item.id.compactMap { Int(String($0)) }
+        let value = digits.first ?? 1
+        if value <= 2 {
+            return .beginner
+        } else if value <= 4 {
+            return .intermediate
+        }
+        return .advanced
     }
 }
 
@@ -152,10 +203,11 @@ struct PracticeModeCard: View {
                 Text(languageStore.localized("practice_type_title"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 8)], spacing: 8) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
                     ForEach(PracticeQuestionType.allCases, id: \.self) { type in
-                        PracticeTypeChip(
+                        PracticeTypePill(
                             title: label(for: type),
+                            systemImage: icon(for: type),
                             isSelected: selectedTypes.contains(type)
                         ) {
                             if selectedTypes.contains(type) {
@@ -178,11 +230,28 @@ struct PracticeModeCard: View {
     private func label(for type: PracticeQuestionType) -> String {
         switch type {
         case .multipleChoice: return languageStore.localized("practice_type_choice")
+        case .trueFalse: return languageStore.localized("practice_type_true_false")
         case .matching: return languageStore.localized("practice_type_match")
         case .fillBlank: return languageStore.localized("practice_type_blank")
+        case .wordBuild: return languageStore.localized("practice_type_word_build")
         case .translation: return languageStore.localized("practice_type_translate")
         case .listening: return languageStore.localized("practice_type_listening")
         case .sentenceOrder: return languageStore.localized("practice_type_order")
+        case .dictation: return languageStore.localized("practice_type_dictation")
+        }
+    }
+
+    private func icon(for type: PracticeQuestionType) -> String {
+        switch type {
+        case .multipleChoice: return "list.bullet.rectangle"
+        case .trueFalse: return "checkmark.circle"
+        case .matching: return "arrow.left.arrow.right"
+        case .fillBlank: return "rectangle.and.pencil.and.ellipsis"
+        case .wordBuild: return "square.grid.3x3"
+        case .translation: return "character.bubble"
+        case .listening: return "ear"
+        case .sentenceOrder: return "arrow.up.arrow.down"
+        case .dictation: return "mic.fill"
         }
     }
 }
@@ -199,9 +268,9 @@ struct PracticeStatsCard: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             HStack(spacing: 8) {
-                PracticeStatBlock(title: languageStore.localized("practice_stats_sessions"), value: "\(practiceSessions)", color: AppTheme.accentStrong)
-                PracticeStatBlock(title: languageStore.localized("practice_stats_accuracy"), value: accuracyText, color: AppTheme.brandBlue)
-                PracticeStatBlock(title: languageStore.localized("practice_stats_minutes"), value: "\(learningMinutes)", color: AppTheme.accentWarm)
+                ProgressStatCard(title: languageStore.localized("practice_stats_sessions"), value: "\(practiceSessions)", color: AppTheme.accentStrong, icon: "checkmark.seal.fill")
+                ProgressStatCard(title: languageStore.localized("practice_stats_accuracy"), value: accuracyText, color: AppTheme.brandBlue, icon: "chart.bar.fill")
+                ProgressStatCard(title: languageStore.localized("practice_stats_minutes"), value: "\(learningMinutes)", color: AppTheme.accentWarm, icon: "clock.fill")
             }
         }
         .padding(12)
@@ -214,27 +283,6 @@ struct PracticeStatsCard: View {
     private var accuracyText: String {
         let percent = Int(accuracy * 100)
         return "\(percent)%"
-    }
-}
-
-struct PracticeStatBlock: View {
-    let title: String
-    let value: String
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.textPrimary)
-            Text(title)
-                .font(.system(size: 10))
-                .foregroundStyle(AppTheme.textTertiary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(color.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -277,24 +325,29 @@ struct WrongBookEntryCard: View {
     }
 }
 
-struct PracticeTypeChip: View {
+struct PracticeTypePill: View {
     let title: String
+    let systemImage: String
     let isSelected: Bool
     var onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(isSelected ? .white : AppTheme.textPrimary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule().fill(isSelected ? AppTheme.accentStrong : AppTheme.surfaceMuted)
-                )
-                .overlay(
-                    Capsule().stroke(isSelected ? AppTheme.accentStrong : AppTheme.border, lineWidth: 1)
-                )
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.caption)
+                Text(title)
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(isSelected ? .white : AppTheme.textPrimary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule().fill(isSelected ? AppTheme.accentStrong : AppTheme.surfaceMuted)
+            )
+            .overlay(
+                Capsule().stroke(isSelected ? AppTheme.accentStrong : AppTheme.border, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -311,6 +364,8 @@ struct PracticeSessionView: View {
     let questionCount: Int
     let types: [PracticeQuestionType]
     let source: PracticeSource
+    let sourceItems: [VocabItem]
+    let allItems: [VocabItem]
 
     @State private var questions: [PracticeQuestion] = []
     @State private var currentIndex: Int = 0
@@ -320,8 +375,12 @@ struct PracticeSessionView: View {
     @State private var matchSelections: [String: String] = [:]
     @State private var fillBlankText = ""
     @State private var translationText = ""
+    @State private var dictationText = ""
+    @State private var trueFalseSelection: Bool? = nil
     @State private var orderedWords: [String] = []
     @State private var availableWords: [String] = []
+    @State private var buildSelection: [String] = []
+    @State private var buildOptions: [String] = []
     @State private var results: [PracticeResultItem] = []
     @State private var startTime = Date()
     @State private var showSummary = false
@@ -399,10 +458,14 @@ struct PracticeSessionView: View {
                 return languageStore.localizedFormat("practice_prompt_to_zh", sourceText)
             }
             return languageStore.localizedFormat("practice_prompt_to_id", sourceText)
+        case .trueFalse:
+            return languageStore.localized("practice_true_false_title")
         case .matching:
             return languageStore.localized("practice_matching_title")
         case .fillBlank:
             return languageStore.localized("practice_fill_blank_title")
+        case .wordBuild:
+            return languageStore.localized("practice_word_build_title")
         case .translation(let sourceText, _, let targetLanguage):
             if targetLanguage == "zh" {
                 return languageStore.localizedFormat("practice_translate_to_zh", sourceText)
@@ -412,6 +475,8 @@ struct PracticeSessionView: View {
             return languageStore.localized("practice_listening_title")
         case .sentenceOrder:
             return languageStore.localized("practice_sentence_order_title")
+        case .dictation:
+            return languageStore.localized("practice_dictation_title")
         }
     }
 
@@ -423,6 +488,44 @@ struct PracticeSessionView: View {
                 ForEach(options, id: \.self) { option in
                     PracticeOptionButton(title: option, isSelected: selectedOption == option) {
                         selectedOption = option
+                    }
+                }
+                if answered {
+                    PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
+                }
+            }
+        case .trueFalse(let sourceText, let candidateText, _, _, _):
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(languageStore.localized("practice_true_false_source"))
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textTertiary)
+                    Text(sourceText)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text(languageStore.localized("practice_true_false_candidate"))
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textTertiary)
+                    Text(candidateText)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+                HStack(spacing: 10) {
+                    PracticeBinaryButton(
+                        title: languageStore.localized("practice_true_false_true"),
+                        systemImage: "checkmark.circle.fill",
+                        tint: AppTheme.success,
+                        isSelected: trueFalseSelection == true
+                    ) {
+                        trueFalseSelection = true
+                    }
+                    PracticeBinaryButton(
+                        title: languageStore.localized("practice_true_false_false"),
+                        systemImage: "xmark.circle.fill",
+                        tint: AppTheme.error,
+                        isSelected: trueFalseSelection == false
+                    ) {
+                        trueFalseSelection = false
                     }
                 }
                 if answered {
@@ -470,6 +573,53 @@ struct PracticeSessionView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 if answered {
                     PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
+                }
+            }
+        case .wordBuild(let prompt, let tokens, _, let separator, _):
+            VStack(alignment: .leading, spacing: 10) {
+                Text(prompt)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(languageStore.localized("practice_word_build_hint"))
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 8)], spacing: 8) {
+                    ForEach(buildOptions, id: \.self) { token in
+                        PracticeWordChip(title: token, style: .secondary) {
+                            buildOptions.removeAll { $0 == token }
+                            buildSelection.append(token)
+                        }
+                    }
+                }
+                Divider()
+                HStack(spacing: 6) {
+                    ForEach(buildSelection.indices, id: \.self) { index in
+                        let token = buildSelection[index]
+                        Button {
+                            buildSelection.remove(at: index)
+                            buildOptions.append(token)
+                        } label: {
+                            Text(token)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(AppTheme.accentWarm.opacity(0.18))
+                                .clipShape(Capsule())
+                                .overlay(Capsule().stroke(AppTheme.border, lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if answered {
+                    PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
+                }
+            }
+            .onAppear {
+                if buildOptions.isEmpty {
+                    buildOptions = tokens
+                    buildSelection = []
                 }
             }
         case .translation:
@@ -536,6 +686,28 @@ struct PracticeSessionView: View {
                     availableWords = words
                     orderedWords = []
                 }
+            }
+        case .dictation(let audioText, _, _, let audioLanguage):
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    UnifiedAppButton(title: languageStore.localized("practice_dictation_play"), systemImage: "speaker.wave.2", style: .outline) {
+                        SpeechService.shared.speak(audioText, language: audioLanguage)
+                    }
+                    Text(languageStore.localized("practice_dictation_hint"))
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                TextField(languageStore.localized("practice_dictation_placeholder"), text: $dictationText)
+                    .textFieldStyle(.plain)
+                    .padding(10)
+                    .background(AppTheme.surfaceMuted)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                if answered {
+                    PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
+                }
+            }
+            .onAppear {
+                SpeechService.shared.speak(audioText, language: audioLanguage)
             }
         }
     }

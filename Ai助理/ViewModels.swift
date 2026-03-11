@@ -14,7 +14,7 @@ final class ChatViewModel: ObservableObject {
     @Published var isListening = false
     @Published var isVideoCalling = false
     @Published var isPhotoMode = false
-    @Published var statusText = "AI 已就绪"
+    @Published var statusText = AppLanguageStore.shared.localized("status_ready")
     @Published var isSending = false
     @Published var alertMessage: String?
     @Published var conversationHistory: [CloudConversationSummary] = []
@@ -33,7 +33,7 @@ final class ChatViewModel: ObservableObject {
     private var voiceStopWorkItem: DispatchWorkItem?
     private var lastVoiceText: String?
     private var isStoppingVoice = false
-    private var pendingImageData: Data? = nil
+    @Published private(set) var pendingImageData: Data? = nil
     private var cancellables = Set<AnyCancellable>()
     private var hasHydratedFromCloud = false
     private var hasLoadedConversationHistory = false
@@ -105,10 +105,11 @@ final class ChatViewModel: ObservableObject {
         let imageData = pendingImageData
         pendingImageData = nil
         inputText = ""
-        statusText = "思考中..."
+        statusText = L("status_thinking")
         isSending = true
 
         Task {
+            var voiceContinuation: AsyncStream<String>.Continuation?
             do {
                 var effectiveMessage = trimmed
                 if let imageData {
@@ -132,7 +133,6 @@ final class ChatViewModel: ObservableObject {
                 let promptContext = await buildPromptContext(for: effectiveMessage.isEmpty ? trimmed : effectiveMessage)
                 let userContext = promptContext.isEmpty ? nil : promptContext
                 let canStream = !effectiveMessage.isEmpty && SpeechSettingsStore.shared.voiceStreamingEnabled
-                var voiceContinuation: AsyncStream<String>.Continuation?
                 if canStream {
                     let assistantId = UUID().uuidString
                     messages.append(ChatMessage(id: assistantId, role: .assistant, content: "", time: Date()))
@@ -159,7 +159,7 @@ final class ChatViewModel: ObservableObject {
                             voiceContinuation?.yield(delta)
                             await MainActor.run {
                                 self.updateAssistantMessage(id: assistantId, content: accumulated)
-                                self.statusText = "AI 回复中..."
+                                self.statusText = L("status_replying")
                             }
                         case .done(let cid, let reply):
                             let finalReply = reply.isEmpty ? accumulated : reply
@@ -169,7 +169,7 @@ final class ChatViewModel: ObservableObject {
                             await MainActor.run {
                                 self.updateAssistantMessage(id: assistantId, content: displayText)
                                 self.saveMessagesToLocal()
-                                self.statusText = "AI 已就绪"
+                                self.statusText = L("status_ready")
                             }
                             if let cmd = command, !cmd.isEmpty {
                                 pendingCommand = (displayText, cmd, cid)
@@ -195,14 +195,14 @@ final class ChatViewModel: ObservableObject {
                     if let cmd = command, !cmd.isEmpty {
                         pendingCommand = (displayText, cmd, cid)
                     } else {
-                        statusText = "AI 已就绪"
+                        statusText = L("status_ready")
                         SpeechService.shared.speak(displayText, language: "zh-CN")
                     }
                 }
             } catch {
                 voiceContinuation?.finish()
                 alertMessage = userFacingMessage(for: error)
-                statusText = "AI 未就绪"
+                statusText = L("status_unavailable")
                 SpeechService.shared.stopSpeaking()
             }
             isSending = false
@@ -212,6 +212,10 @@ final class ChatViewModel: ObservableObject {
     private func updateAssistantMessage(id: String, content: String) {
         guard let idx = messages.firstIndex(where: { $0.id == id }) else { return }
         messages[idx].content = content
+    }
+
+    private func L(_ key: String) -> String {
+        AppLanguageStore.shared.localized(key)
     }
 
     private func buildPromptContext(for message: String) async -> String {
@@ -228,7 +232,7 @@ final class ChatViewModel: ObservableObject {
         }
 
         if WebSearchService.shared.shouldSearch(for: message) {
-            await MainActor.run { self.statusText = "Searching the web..." }
+            await MainActor.run { self.statusText = L("status_searching_web") }
             if let results = try? await WebSearchService.shared.search(query: message) {
                 let searchContext = truncateText(WebSearchService.shared.buildContext(from: results), limit: 1200)
                 if !searchContext.isEmpty { sections.append(searchContext) }
@@ -373,7 +377,7 @@ final class ChatViewModel: ObservableObject {
     
     /// 切换到历史会话继续对话
     func switchToConversation(_ summary: CloudConversationSummary) async {
-        statusText = "加载会话中..."
+        statusText = L("status_loading_conversation")
         do {
             if TokenStore.shared.isLoggedIn {
                 let cloudMessages = try await APIClient.shared.getConversationMessages(conversationId: summary.id)
@@ -386,16 +390,16 @@ final class ChatViewModel: ObservableObject {
             localConversationId = summary.id
             LocalDataStore.shared.saveCurrentConversationId(summary.id)
             saveMessagesToLocal()
-            statusText = "AI 已就绪"
+            statusText = L("status_ready")
         } catch {
             alertMessage = userFacingMessage(for: error)
-            statusText = "AI 未就绪"
+            statusText = L("status_unavailable")
         }
     }
 
     /// 通过会话 ID 切换到历史会话（侧边栏快捷入口使用）
     func switchToConversation(id: String) async {
-        statusText = "加载会话中..."
+        statusText = L("status_loading_conversation")
         do {
             if TokenStore.shared.isLoggedIn {
                 let cloudMessages = try await APIClient.shared.getConversationMessages(conversationId: id)
@@ -408,10 +412,10 @@ final class ChatViewModel: ObservableObject {
             localConversationId = id
             LocalDataStore.shared.saveCurrentConversationId(id)
             saveMessagesToLocal()
-            statusText = "AI 已就绪"
+            statusText = L("status_ready")
         } catch {
             alertMessage = userFacingMessage(for: error)
-            statusText = "AI 未就绪"
+            statusText = L("status_unavailable")
         }
     }
 
@@ -422,16 +426,16 @@ final class ChatViewModel: ObservableObject {
         let cid = pending.conversationId
         pendingCommand = nil
         if !OpenClawService.isCommandAllowed(command) {
-            alertMessage = "出于安全与隐私保护，该命令未被允许执行。仅支持只读类命令（如 ls、pwd、date、whoami、df）。"
-            statusText = "AI 已就绪"
+            alertMessage = L("command_not_allowed")
+            statusText = L("status_ready")
             return
         }
-        statusText = "执行中..."
+        statusText = L("status_executing")
         Task {
             let output = await OpenClawService.shared.runLocalCommand(command)
             await MainActor.run {
                 pendingSendResult = (output, cid)
-                statusText = "请确认是否将结果发送至服务器"
+                statusText = L("status_confirm_send_result")
             }
         }
     }
@@ -442,7 +446,7 @@ final class ChatViewModel: ObservableObject {
         let output = pending.output
         let cid = pending.conversationId
         pendingSendResult = nil
-        statusText = "思考中..."
+        statusText = L("status_thinking")
         Task {
             do {
                 let followUp = "（你上一条回复中请求执行的命令已执行，结果如下）\n```\n\(output)\n```\n请根据结果用中文继续回答。"
@@ -458,11 +462,11 @@ final class ChatViewModel: ObservableObject {
                 let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: displayText, time: Date())
                 messages.append(replyMsg)
                 saveMessagesToLocal()
-                statusText = "AI 已就绪"
+                statusText = L("status_ready")
                 SpeechService.shared.speak(displayText, language: "zh-CN")
             } catch {
                 alertMessage = userFacingMessage(for: error)
-                statusText = "AI 已就绪"
+                statusText = L("status_ready")
             }
         }
     }
@@ -470,27 +474,23 @@ final class ChatViewModel: ObservableObject {
     /// 用户取消发送执行结果
     func cancelSendResult() {
         pendingSendResult = nil
-        statusText = "AI 已就绪"
+        statusText = L("status_ready")
     }
 
     /// 用户取消执行本机命令
     func cancelCommandExecution() {
         pendingCommand = nil
-        statusText = "AI 已就绪"
+        statusText = L("status_ready")
     }
     
     /// 处理粘贴的图片
     func handlePastedImage(_ imageData: Data) {
         guard UIImage(data: imageData) != nil else {
-            alertMessage = "图片格式不支持"
+            alertMessage = L("image_format_unsupported")
             return
         }
         pendingImageData = imageData
-        // 如果输入框为空，自动发送；否则等待用户输入文字后一起发送
-        if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            inputText = "请识别这张图片"
-            sendMessage()
-        }
+        statusText = L("status_ready")
     }
     
     /// 处理文件上传
@@ -506,25 +506,21 @@ final class ChatViewModel: ObservableObject {
         if isImage {
             // 图片文件，使用图片处理逻辑
             pendingImageData = data
-            if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                inputText = "请识别这张图片：\(fileName)"
-            } else {
-                inputText += " [文件: \(fileName)]"
-            }
-            sendMessage()
+            statusText = L("status_ready")
         } else if isPDF || isText {
             // PDF或文本文件，发送给AI分析
-            statusText = "正在上传文件..."
+            statusText = L("status_uploading")
             isSending = true
             
             Task {
+                var voiceContinuation: AsyncStream<String>.Continuation?
                 do {
-                    let message = inputText.isEmpty ? "请分析这个文件：\(fileName)" : inputText
+                    let message = inputText.isEmpty ? String(format: L("file_request_with_name"), fileName) : inputText
                     let promptContext = await buildPromptContext(for: message)
                     let userContext = promptContext.isEmpty ? nil : promptContext
                     let shouldStream = SpeechSettingsStore.shared.voiceStreamingEnabled
-                    let userMessageContent = inputText.isEmpty ? "[文件: \(fileName)]" : inputText + " [文件: \(fileName)]"
-                    var voiceContinuation: AsyncStream<String>.Continuation?
+                    let fileTag = String(format: L("file_tag_format"), fileName)
+                    let userMessageContent = inputText.isEmpty ? fileTag : inputText + " " + fileTag
 
                     if shouldStream {
                         let userMessage = ChatMessage(id: UUID().uuidString, role: .user, content: userMessageContent, time: Date())
@@ -556,7 +552,7 @@ final class ChatViewModel: ObservableObject {
                                 voiceContinuation?.yield(delta)
                                 await MainActor.run {
                                     self.updateAssistantMessage(id: assistantId, content: accumulated)
-                                    self.statusText = "AI 回复中..."
+                                    self.statusText = self.L("status_replying")
                                 }
                             case .done(let cid, let reply):
                                 let finalReply = reply.isEmpty ? accumulated : reply
@@ -566,7 +562,7 @@ final class ChatViewModel: ObservableObject {
                                     self.updateAssistantMessage(id: assistantId, content: finalReply)
                                     self.saveMessagesToLocal()
                                     self.inputText = ""
-                                    self.statusText = "AI 已就绪"
+                                    self.statusText = self.L("status_ready")
                                 }
                                 if SpeechSettingsStore.shared.autoPlayVoice && !shouldStreamVoice {
                                     SpeechService.shared.speak(finalReply, language: "zh-CN")
@@ -595,7 +591,7 @@ final class ChatViewModel: ObservableObject {
                             messages.append(replyMsg)
                             saveMessagesToLocal()
                             inputText = ""
-                            statusText = "AI 已就绪"
+                            statusText = L("status_ready")
                             SpeechService.shared.speak(reply, language: "zh-CN")
                         }
                     }
@@ -603,7 +599,7 @@ final class ChatViewModel: ObservableObject {
                     voiceContinuation?.finish()
                     await MainActor.run {
                         alertMessage = userFacingMessage(for: error)
-                        statusText = "AI 未就绪"
+                        statusText = L("status_unavailable")
                     }
                     SpeechService.shared.stopSpeaking()
                 }
@@ -612,7 +608,7 @@ final class ChatViewModel: ObservableObject {
                 }
             }
         } else {
-            alertMessage = "不支持的文件类型：\(fileExtension)。支持的类型：图片、PDF、文本文件"
+            alertMessage = String(format: L("file_format_unsupported_detail"), fileExtension)
         }
     }
 
@@ -624,7 +620,7 @@ final class ChatViewModel: ObservableObject {
         localConversationId = UUID().uuidString
         LocalDataStore.shared.saveCurrentConversationId(localConversationId)
         
-        statusText = "AI 已就绪"
+        statusText = L("status_ready")
     }
     
     /// 保存消息到本地
@@ -656,7 +652,7 @@ final class ChatViewModel: ObservableObject {
             messages = cloudMessages
             saveMessagesToLocal()
             hasHydratedFromCloud = true
-            statusText = "AI 已就绪"
+            statusText = L("status_ready")
             setSyncStatus(.success)
         } catch {
             // 同步失败不打断本地可用性，保持静默回退
@@ -760,7 +756,7 @@ final class ChatViewModel: ObservableObject {
         Task {
             let granted = await speechRecognizer.requestAuthorization()
             guard granted else {
-                await MainActor.run { alertMessage = "未获得语音识别权限" }
+                await MainActor.run { alertMessage = L("speech_permission_denied") }
                 return
             }
             var startError: Error?
@@ -770,7 +766,7 @@ final class ChatViewModel: ObservableObject {
                     isStoppingVoice = false
                     voiceStopWorkItem?.cancel()
                     isListening = true
-                    statusText = "语音监听中"
+                    statusText = L("status_listening")
                     try speechRecognizer.start { [weak self] text, isFinal in
                         Task { @MainActor in
                             guard let self else { return }
@@ -816,7 +812,7 @@ final class ChatViewModel: ObservableObject {
             // 即使不发送消息，也要清空输入框
             inputText = ""
         }
-        statusText = "AI 已就绪"
+        statusText = L("status_ready")
         isStoppingVoice = false
     }
 
@@ -843,58 +839,50 @@ final class ChatViewModel: ObservableObject {
         if let url = URL(string: "facetime://") {
             UIApplication.shared.open(url)
             isVideoCalling = true
-            statusText = "已打开系统通话"
+            statusText = L("status_call_opened")
         } else {
-            alertMessage = "无法打开系统通话"
+            alertMessage = L("status_call_failed")
         }
     }
 
     func togglePhotoMode() {
         isPhotoMode.toggle()
-        statusText = isPhotoMode ? "请选择图片进行识别" : "AI 已就绪"
+        statusText = isPhotoMode ? L("status_pick_image") : L("status_ready")
     }
 
     func handleImageData(_ data: Data) {
         guard UIImage(data: data) != nil else {
-            alertMessage = "图片格式不支持"
+            alertMessage = L("image_format_unsupported")
             return
         }
-        statusText = "图片识别中..."
-        Task {
-            do {
-                let text = try await VisionService.shared.recognizeText(from: data)
-                if text.isEmpty {
-                    statusText = "未识别到文字"
-                } else {
-                    inputText = text
-                    statusText = "已识别图片文字"
-                }
-            } catch {
-                alertMessage = "识别失败：\(error.localizedDescription)"
-                statusText = "AI 已就绪"
-            }
-        }
+        pendingImageData = data
+        statusText = L("status_ready")
+    }
+
+    func clearPendingImage() {
+        pendingImageData = nil
+        statusText = L("status_ready")
     }
 
     /// 视觉对话：识别图片文字后自动发送
     func handleImageDataAndSend(_ data: Data) async {
         guard UIImage(data: data) != nil else {
-            alertMessage = "图片格式不支持"
+            alertMessage = L("image_format_unsupported")
             return
         }
-        statusText = "图片识别中..."
+        statusText = L("status_ocr")
         do {
             let text = try await VisionService.shared.recognizeText(from: data)
             if text.isEmpty {
-                statusText = "未识别到文字"
+                statusText = L("status_ocr_empty")
                 return
             }
             inputText = text
-            statusText = "已识别图片文字"
+            statusText = L("status_ocr_done")
             sendMessage()
         } catch {
-            alertMessage = "识别失败：\(error.localizedDescription)"
-            statusText = "AI 已就绪"
+            alertMessage = L("status_ocr_failed") + "：\(error.localizedDescription)"
+            statusText = L("status_ready")
         }
     }
 }
@@ -1137,7 +1125,7 @@ final class TranslateViewModel: ObservableObject {
         Task {
             let granted = await speechTranscriber.requestAuthorization()
             guard granted else {
-                await MainActor.run { alertMessage = "未获得语音识别权限" }
+                await MainActor.run { alertMessage = L("speech_permission_denied") }
                 return
             }
             var startError: Error?
@@ -1320,7 +1308,7 @@ final class RealTimeTranslateViewModel: ObservableObject {
         Task {
             let granted = await speechTranscriber.requestAuthorization()
             guard granted else {
-                await MainActor.run { alertMessage = "未获得语音识别权限" }
+                await MainActor.run { alertMessage = L("speech_permission_denied") }
                 return
             }
             var startError: Error?

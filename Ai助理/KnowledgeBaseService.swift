@@ -102,7 +102,8 @@ final class KnowledgeBaseService {
             if let text = try? String(contentsOf: url, encoding: .utf8) {
                 return text
             }
-            throw NSError(domain: "KnowledgeBase", code: 1, userInfo: [NSLocalizedDescriptionKey: "不支持的文件类型：\(fileType)"])
+            let message = String(format: L("不支持的文件类型：%@"), fileType)
+            throw NSError(domain: "KnowledgeBase", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
         }
     }
 
@@ -132,7 +133,7 @@ final class KnowledgeBaseService {
         if let text = String(data: data, encoding: .utf8), !text.isEmpty {
             return text
         }
-        throw NSError(domain: "KnowledgeBase", code: 2, userInfo: [NSLocalizedDescriptionKey: "无法解析 DOCX 文本"])
+        throw NSError(domain: "KnowledgeBase", code: 2, userInfo: [NSLocalizedDescriptionKey: L("无法解析 DOCX 文本")])
     }
 
     // MARK: - Chunking & Embedding

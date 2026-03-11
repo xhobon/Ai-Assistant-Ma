@@ -33,26 +33,11 @@ struct IndonesianLearningView: View {
                     ))
                         .padding(.horizontal, horizontalPadding)
 
-                    LearningOverviewRow(viewModel: viewModel)
-                        .padding(.horizontal, horizontalPadding)
-
                     LearningStatsSummaryCard(
                         practiceSessions: statsStore.practiceSessions,
                         accuracy: statsStore.accuracy,
                         learningMinutes: statsStore.learningMinutes,
                         streakDays: dailyStore.currentStreakDays()
-                    )
-                    .padding(.horizontal, horizontalPadding)
-
-                    DailyTaskCard(tasks: dailyStore.todayTasks) { task in
-                        dailyStore.toggleTask(task.type)
-                    }
-                    .padding(.horizontal, horizontalPadding)
-
-                    LearningProgressDetailCard(
-                        vocabCount: viewModel.masteredCount,
-                        lessonCount: viewModel.completedLessonsCount,
-                        level: viewModel.learningLevel
                     )
                     .padding(.horizontal, horizontalPadding)
 

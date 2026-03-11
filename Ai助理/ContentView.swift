@@ -54,7 +54,7 @@ struct SidebarLogoView: View {
                     .foregroundStyle(AppTheme.textOnPrimary)
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text("AI 全能助理")
+                Text(L("AI 全能助理"))
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Text("Workspace")
@@ -187,7 +187,7 @@ struct ContentView: View {
                 .frame(width: 30, height: 30)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("打开侧边栏")
+        .accessibilityLabel(L("打开侧边栏"))
     }
 
     private var sidebarContent: some View {
@@ -240,7 +240,7 @@ struct ContentView: View {
             Image(systemName: "magnifyingglass")
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.textTertiary)
-            TextField("搜索历史对话", text: $sidebarSearchText)
+            TextField(L("搜索历史对话"), text: $sidebarSearchText)
                 .font(.subheadline)
                 .textFieldStyle(.plain)
                 .foregroundStyle(AppTheme.inputText)
@@ -280,7 +280,7 @@ struct ContentView: View {
                     .foregroundStyle(AppTheme.textPrimary)
                     .frame(width: 22, height: 22)
                     .background(AppTheme.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                Text("发起新对话")
+                Text(L("发起新对话"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer(minLength: 0)
@@ -295,12 +295,12 @@ struct ContentView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("发起新对话")
+        .accessibilityLabel(L("发起新对话"))
     }
 
     private var sidebarHistorySection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("历史对话")
+            Text(L("历史对话"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.textSecondary)
                 .padding(.horizontal, 12)
@@ -309,12 +309,12 @@ struct ContentView: View {
                 .padding(.horizontal, 12)
             
             if isSidebarHistoryLoading {
-                Text("加载中...")
+                Text(L("加载中..."))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textTertiary)
                     .padding(.horizontal, 12)
             } else if filteredSidebarHistory.isEmpty {
-                Text(sidebarSearchText.isEmpty ? "暂无历史对话" : "未找到匹配结果")
+                Text(sidebarSearchText.isEmpty ? L("暂无历史对话") : L("未找到匹配结果"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textTertiary)
                     .padding(.horizontal, 12)
@@ -356,12 +356,12 @@ struct ContentView: View {
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
-                            Button("重命名") {
+                            Button(L("重命名")) {
                                 selectedSidebarItem = item
                                 sidebarRenameText = item.title
                                 showSidebarRenameDialog = true
                             }
-                            Button("删除对话", role: .destructive) {
+                            Button(L("删除对话"), role: .destructive) {
                                 selectedSidebarItem = item
                                 showSidebarDeleteConfirm = true
                             }
@@ -521,31 +521,31 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(AppTheme.pageBackground.ignoresSafeArea())
         .toast(message: $copyToastMessage)
-        .alert("重命名对话", isPresented: $showSidebarRenameDialog) {
-            TextField("对话标题", text: $sidebarRenameText)
-            Button("取消", role: .cancel) { selectedSidebarItem = nil }
-            Button("保存") {
+        .alert(L("重命名对话"), isPresented: $showSidebarRenameDialog) {
+            TextField(L("对话标题"), text: $sidebarRenameText)
+            Button(L("取消"), role: .cancel) { selectedSidebarItem = nil }
+            Button(L("保存")) {
                 guard let item = selectedSidebarItem else { return }
                 let title = normalizeTitle(sidebarRenameText)
                 Task { await renameSidebarConversation(id: item.id, title: title) }
                 selectedSidebarItem = nil
             }
         } message: {
-            Text("输入 6-20 个字符的标题")
+            Text(L("输入 6-20 个字符的标题"))
         }
-        .alert("删除对话", isPresented: $showSidebarDeleteConfirm) {
-            Button("取消", role: .cancel) { selectedSidebarItem = nil }
-            Button("删除", role: .destructive) {
+        .alert(L("删除对话"), isPresented: $showSidebarDeleteConfirm) {
+            Button(L("取消"), role: .cancel) { selectedSidebarItem = nil }
+            Button(L("删除"), role: .destructive) {
                 guard let item = selectedSidebarItem else { return }
                 Task { await deleteSidebarConversation(id: item.id) }
                 selectedSidebarItem = nil
             }
         } message: {
-            Text("该操作将删除此对话及其消息，无法恢复。")
+            Text(L("该操作将删除此对话及其消息，无法恢复。"))
         }
         .onReceive(NotificationCenter.default.publisher(for: .globalCopySucceeded)) { _ in
             withAnimation(.easeInOut(duration: 0.2)) {
-                copyToastMessage = "已复制到剪贴板"
+                copyToastMessage = L("已复制到剪贴板")
             }
         }
         .onChange(of: tokenStore.token) { _, _ in

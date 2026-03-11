@@ -10,7 +10,7 @@ enum ChatRole: String, Codable {
 struct ChatMessage: Identifiable, Hashable {
     let id: String
     let role: ChatRole
-    let content: String
+    var content: String
     let time: Date
 }
 
@@ -28,6 +28,8 @@ struct LanguageOption: Identifiable, Hashable {
     let code: String
     let name: String
     let speechCode: String
+
+    var displayName: String { L(name) }
 
     static let chinese = LanguageOption(id: "zh", code: "zh", name: "中文", speechCode: "zh-CN")
     static let indonesian = LanguageOption(id: "id", code: "id", name: "印尼文", speechCode: "id-ID")
@@ -74,11 +76,14 @@ enum LearningMode: String, CaseIterable, Identifiable, Codable {
 
 enum PracticeQuestionType: String, CaseIterable, Identifiable, Codable {
     case multipleChoice
+    case trueFalse
     case matching
     case fillBlank
+    case wordBuild
     case translation
     case listening
     case sentenceOrder
+    case dictation
 
     var id: String { rawValue }
 }
@@ -90,11 +95,14 @@ struct PracticeMatchPair: Hashable, Codable {
 
 enum PracticeQuestionPayload: Hashable {
     case multipleChoice(sourceText: String, options: [String], answer: String, targetLanguage: String)
+    case trueFalse(sourceText: String, candidateText: String, correctText: String, answer: Bool, targetLanguage: String)
     case matching(left: [String], right: [String], pairs: [PracticeMatchPair])
     case fillBlank(prompt: String, answer: String)
+    case wordBuild(prompt: String, tokens: [String], answer: String, separator: String, targetLanguage: String)
     case translation(sourceText: String, answer: String, targetLanguage: String)
     case listening(audioText: String, options: [String], answer: String, targetLanguage: String, audioLanguage: String)
     case sentenceOrder(words: [String], answer: String, language: String)
+    case dictation(audioText: String, answer: String, targetLanguage: String, audioLanguage: String)
 }
 
 struct PracticeQuestion: Identifiable, Hashable {
@@ -298,10 +306,10 @@ enum SyncStatus: String {
 
     var label: String {
         switch self {
-        case .idle: return "未同步"
-        case .syncing: return "同步中"
-        case .success: return "已同步"
-        case .failed: return "同步失败"
+        case .idle: return L("未同步")
+        case .syncing: return L("同步中")
+        case .success: return L("已同步")
+        case .failed: return L("同步失败")
         }
     }
 }

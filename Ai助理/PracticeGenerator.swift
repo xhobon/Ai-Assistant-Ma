@@ -54,16 +54,22 @@ struct PracticeGenerator {
         switch type {
         case .multipleChoice:
             return makeMultipleChoice(item: item, mode: mode, allItems: allItems)
+        case .trueFalse:
+            return makeTrueFalse(item: item, mode: mode, allItems: allItems)
         case .matching:
             return makeMatching(item: item, mode: mode, allItems: allItems)
         case .fillBlank:
             return makeFillBlank(item: item, mode: mode)
+        case .wordBuild:
+            return makeWordBuild(item: item, mode: mode)
         case .translation:
             return makeTranslation(item: item, mode: mode)
         case .listening:
             return makeListening(item: item, mode: mode, allItems: allItems)
         case .sentenceOrder:
             return makeSentenceOrder(item: item, mode: mode)
+        case .dictation:
+            return makeDictation(item: item, mode: mode)
         }
     }
 
@@ -126,6 +132,42 @@ struct PracticeGenerator {
         )
     }
 
+    private static func makeTrueFalse(item: VocabItem, mode: LearningMode, allItems: [VocabItem]) -> PracticeQuestion? {
+        let source: String
+        let correct: String
+        let targetLanguage: String
+        let distractorPool: [String]
+
+        switch mode {
+        case .zhToId:
+            source = item.textZh
+            correct = item.textId
+            targetLanguage = "id"
+            distractorPool = allItems.map { $0.textId }
+        case .idToZh:
+            source = item.textId
+            correct = item.textZh
+            targetLanguage = "zh"
+            distractorPool = allItems.map { $0.textZh }
+        }
+
+        let shouldUseCorrect = Bool.random()
+        let candidate: String
+        if shouldUseCorrect {
+            candidate = correct
+        } else {
+            candidate = distractorPool.shuffled().first(where: { $0 != correct }) ?? correct
+        }
+
+        return PracticeQuestion(
+            id: UUID().uuidString,
+            type: .trueFalse,
+            mode: mode,
+            itemId: item.id,
+            payload: .trueFalse(sourceText: source, candidateText: candidate, correctText: correct, answer: shouldUseCorrect, targetLanguage: targetLanguage)
+        )
+    }
+
     private static func makeFillBlank(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
         let sentence = item.textId
         let words = sentence.split(separator: " ")
@@ -158,6 +200,34 @@ struct PracticeGenerator {
             mode: mode,
             itemId: item.id,
             payload: .fillBlank(prompt: prompt, answer: answer)
+        )
+    }
+
+    private static func makeWordBuild(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
+        let prompt: String
+        let answer: String
+        let targetLanguage: String
+
+        switch mode {
+        case .zhToId:
+            prompt = item.textZh
+            answer = item.textId
+            targetLanguage = "id"
+        case .idToZh:
+            prompt = item.textId
+            answer = item.textZh
+            targetLanguage = "zh"
+        }
+
+        let (tokens, separator) = tokenizeForBuild(answer: answer, targetLanguage: targetLanguage)
+        guard tokens.count >= 2 else { return nil }
+
+        return PracticeQuestion(
+            id: UUID().uuidString,
+            type: .wordBuild,
+            mode: mode,
+            itemId: item.id,
+            payload: .wordBuild(prompt: prompt, tokens: tokens.shuffled(), answer: answer, separator: separator, targetLanguage: targetLanguage)
         )
     }
 
@@ -230,6 +300,34 @@ struct PracticeGenerator {
         )
     }
 
+    private static func makeDictation(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
+        let audioText: String
+        let answer: String
+        let targetLanguage: String
+        let audioLanguage: String
+
+        switch mode {
+        case .zhToId:
+            audioText = item.exampleId
+            answer = item.exampleId
+            targetLanguage = "id"
+            audioLanguage = "id-ID"
+        case .idToZh:
+            audioText = item.exampleZh
+            answer = item.exampleZh
+            targetLanguage = "zh"
+            audioLanguage = "zh-CN"
+        }
+
+        return PracticeQuestion(
+            id: UUID().uuidString,
+            type: .dictation,
+            mode: mode,
+            itemId: item.id,
+            payload: .dictation(audioText: audioText, answer: answer, targetLanguage: targetLanguage, audioLanguage: audioLanguage)
+        )
+    }
+
     private static func buildOptions(correct: String, from pool: [String], count: Int) -> [String] {
         var options: Set<String> = [correct]
         let shuffled = pool.shuffled()
@@ -243,5 +341,21 @@ struct PracticeGenerator {
             options.insert(correct)
         }
         return Array(options).shuffled()
+    }
+
+    private static func tokenizeForBuild(answer: String, targetLanguage: String) -> ([String], String) {
+        if targetLanguage == "zh" {
+            let tokens = answer.map { String($0) }.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            return (tokens, "")
+        }
+
+        let trimmed = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        let words = trimmed.split(separator: " ").map(String.init)
+        if words.count >= 2 {
+            return (words, " ")
+        }
+
+        let letters = trimmed.map { String($0) }.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        return (letters, "")
     }
 }
