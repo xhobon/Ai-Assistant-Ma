@@ -29,6 +29,7 @@ struct PracticeHomeView: View {
     private let timeOptions = [15, 30, 45]
 
     var body: some View {
+        let _ = languageStore.current
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 12) {
@@ -73,25 +74,28 @@ struct PracticeHomeView: View {
                         showSession = true
                     }
                     .padding(.horizontal, 14)
-
-                    UnifiedAppButton(
-                        title: languageStore.localized("practice_start"),
-                        systemImage: "play.fill",
-                        style: .primary
-                    ) {
-                        sessionSource = .all
-                        showSession = true
-                    }
-                    .padding(.horizontal, 14)
                 }
                 .padding(.top, 8)
-                .padding(.bottom, 32)
+                .padding(.bottom, 16)
                 .frame(maxWidth: 980, alignment: .top)
                 .frame(maxWidth: .infinity)
             }
             .background(AppTheme.pageBackground.ignoresSafeArea(edges: .top))
             .navigationTitle(languageStore.localized("practice_title"))
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                PracticeStartBar(
+                    wrongBookCount: wrongStore.items.count,
+                    onStart: {
+                        sessionSource = .all
+                        showSession = true
+                    },
+                    onWrongBook: {
+                        sessionSource = .wrongBook
+                        showSession = true
+                    }
+                )
+            }
             .navigationDestination(isPresented: $showSession) {
                 PracticeSessionView(
                     mode: LearningMode(rawValue: storedMode) ?? .zhToId,
@@ -178,6 +182,62 @@ struct PracticeHeaderCard: View {
     }
 }
 
+struct PracticeStartBar: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
+    let wrongBookCount: Int
+    let onStart: () -> Void
+    let onWrongBook: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                UnifiedAppButton(
+                    title: languageStore.localized("wrong_book_action"),
+                    systemImage: "book.closed",
+                    style: .outline
+                ) {
+                    onWrongBook()
+                }
+                .frame(width: 120)
+                .disabled(wrongBookCount == 0)
+                .opacity(wrongBookCount == 0 ? 0.6 : 1)
+
+                UnifiedAppButton(
+                    title: languageStore.localized("practice_start"),
+                    systemImage: "play.fill",
+                    style: .primary
+                ) {
+                    onStart()
+                }
+                .frame(maxWidth: .infinity)
+            }
+
+            if wrongBookCount > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.accentWarm)
+                    Text(languageStore.localizedFormat("wrong_book_subtitle", wrongBookCount))
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .background(AppTheme.surface)
+        .overlay(
+            Rectangle()
+                .fill(AppTheme.border)
+                .frame(height: 1),
+            alignment: .top
+        )
+        .shadow(color: AppTheme.softShadow, radius: 6, x: 0, y: -2)
+    }
+}
+
 struct PracticeModeCard: View {
     @EnvironmentObject private var languageStore: AppLanguageStore
     @Binding var selectedMode: LearningMode
@@ -223,18 +283,25 @@ struct PracticeModeCard: View {
                 Text(languageStore.localized("practice_type_title"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
-                    ForEach(PracticeQuestionType.allCases, id: \.self) { type in
-                        PracticeTypePill(
-                            title: label(for: type),
-                            systemImage: icon(for: type),
-                            isSelected: selectedTypes.contains(type)
-                        ) {
-                            if selectedTypes.contains(type) {
-                                selectedTypes.remove(type)
-                            } else {
-                                selectedTypes.insert(type)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(PracticeQuestionType.allCases.enumerated()), id: \.element) { index, type in
+                            let tint = tintForIndex(index)
+                            Button {
+                                if selectedTypes.contains(type) {
+                                    selectedTypes.remove(type)
+                                } else {
+                                    selectedTypes.insert(type)
+                                }
+                            } label: {
+                                PracticeTypeCard(
+                                    title: label(for: type),
+                                    systemImage: icon(for: type),
+                                    tint: tint,
+                                    isSelected: selectedTypes.contains(type)
+                                )
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -275,6 +342,18 @@ struct PracticeModeCard: View {
         case .dictation: return "mic.fill"
         case .shadowing: return "waveform"
         }
+    }
+
+    private func tintForIndex(_ index: Int) -> Color {
+        let tints: [Color] = [
+            AppTheme.accentStrong,
+            AppTheme.accentWarm,
+            AppTheme.brandBlue,
+            .purple,
+            .green,
+            Color(red: 0.35, green: 0.34, blue: 0.84)
+        ]
+        return tints[index % tints.count]
     }
 }
 
@@ -593,6 +672,40 @@ struct PracticeTypePill: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct PracticeTypeCard: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(tint.opacity(0.18))
+                    .frame(width: 36, height: 36)
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(tint)
+            }
+
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+        }
+        .frame(width: 84)
+        .padding(.vertical, 8)
+        .background(isSelected ? tint.opacity(0.12) : AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(tint.opacity(isSelected ? 0.5 : 0.2), lineWidth: 1)
+        )
     }
 }
 

@@ -3,9 +3,11 @@ import UIKit
 import PhotosUI
 
 struct AITranslateHomeView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @StateObject private var viewModel = TranslateViewModel()
 
     var body: some View {
+        let _ = languageStore.current
         ScrollView {
             LazyVStack(spacing: 8) {
                 // 快速入口：语音翻译 + 翻译记录

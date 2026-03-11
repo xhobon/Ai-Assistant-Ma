@@ -16,6 +16,7 @@ struct IndonesianLearningView: View {
     private let sectionSpacing: CGFloat = 12
 
     var body: some View {
+        let _ = languageStore.current
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: sectionSpacing) {

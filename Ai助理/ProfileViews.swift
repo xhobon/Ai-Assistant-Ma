@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ProfileCenterView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @StateObject private var tokenStore = TokenStore.shared
     @State private var showAuthSheet = false
     @State private var authMode: AuthMode = .login
@@ -44,6 +45,7 @@ struct ProfileCenterView: View {
     ]
 
     var body: some View {
+        let _ = languageStore.current
         NavigationStack {
             AppPageScaffold(maxWidth: 960, spacing: 18) {
                 ProfileLoginCard {
@@ -1024,6 +1026,7 @@ struct AppSettingsView: View {
     @State private var showKnowledgeBase = false
 
     var body: some View {
+        let _ = languageStore.current
         SettingsPage(title: "设置") {
             let L = languageStore.localized
             SettingsCard(

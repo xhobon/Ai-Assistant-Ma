@@ -5,6 +5,7 @@ import UIKit
 import Photos
 
 struct AIAssistantHomeView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     private let services: [AssistantService] = [
         AssistantService(id: "s1", title: "AI智能助理", subtitle: "帮您分析电商数据", tags: ["准确", "专业"], action: "分析", icon: "sparkles"),
         AssistantService(id: "s2", title: "法律顾问", subtitle: "帮您解决任何法律问题", tags: ["专业", "经验丰富"], action: "咨询", icon: "person.text.rectangle"),
@@ -39,6 +40,7 @@ struct AIAssistantHomeView: View {
     }
 
     var body: some View {
+        let _ = languageStore.current
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -705,6 +707,7 @@ struct AIAssistantChatView: View {
     ]
 
     var body: some View {
+        let _ = languageStore.current
         let L = languageStore.localized
         VStack(spacing: 0) {
             VStack(spacing: 0) {

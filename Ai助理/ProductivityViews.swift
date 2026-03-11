@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - 写作
 struct WritingStudioView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @State private var topic = ""
     @State private var keywords = ""
     @State private var style = "通用"
@@ -16,6 +17,7 @@ struct WritingStudioView: View {
     private let presets = ["新品发布文案", "周报总结", "活动邀请函", "招聘海报文案"]
 
     var body: some View {
+        let _ = languageStore.current
         AppPageScaffold(maxWidth: 960) {
             ProductivityHeader(
                 title: "写作工作台",
@@ -95,6 +97,7 @@ struct WritingStudioView: View {
 
 // MARK: - PPT
 struct PPTStudioView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @State private var topic = ""
     @State private var audience = ""
     @State private var slideCount = 10
@@ -105,6 +108,7 @@ struct PPTStudioView: View {
     private let templates = ["产品路演", "季度复盘", "市场调研", "培训课件"]
 
     var body: some View {
+        let _ = languageStore.current
         AppPageScaffold(maxWidth: 960) {
             ProductivityHeader(
                 title: "PPT 生成器",
@@ -166,6 +170,7 @@ struct PPTStudioView: View {
 
 // MARK: - 笔记
 struct NotesWorkspaceView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     var contentOnly: Bool = false
     @State private var content = ""
     @State private var searchText = ""
@@ -460,6 +465,7 @@ struct NotesWorkspaceView: View {
 
 // MARK: - 总结
 struct SummaryWorkspaceView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     var contentOnly: Bool = false
     @State private var sourceText = ""
     @State private var searchText = ""
@@ -472,6 +478,7 @@ struct SummaryWorkspaceView: View {
     private let tokenStore = TokenStore.shared
 
     var body: some View {
+        let _ = languageStore.current
         if contentOnly {
             summaryContent
         } else {
@@ -686,6 +693,7 @@ enum NotesSummaryMode: String, CaseIterable, Identifiable {
 }
 
 struct NotesSummaryWorkspaceView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @State private var mode: NotesSummaryMode
     private let tokenStore = TokenStore.shared
     private let syncedNotesKey = "notes_synced_ids_v1"
@@ -696,6 +704,7 @@ struct NotesSummaryWorkspaceView: View {
     }
 
     var body: some View {
+        let _ = languageStore.current
         AppPageScaffold(maxWidth: 960) {
             VStack(spacing: 12) {
                 Picker("模式", selection: $mode) {
