@@ -1018,13 +1018,6 @@ struct AppSettingsView: View {
     @State private var showFAQ = false
     @State private var showSupport = false
 
-    private var speedLabel: String {
-        let r = speechSettings.speechRate
-        if r < 0.42 { return "较慢" }
-        if r > 0.54 { return "较快" }
-        return "正常"
-    }
-
     var body: some View {
         SettingsPage(title: "设置") {
             SettingsCard(
@@ -1071,74 +1064,56 @@ struct AppSettingsView: View {
                     )
                 )
 
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("语速")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(AppTheme.textPrimary)
-                            Text(speedLabel)
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        Spacer()
-                        UnifiedAppButton(
-                            title: "试听",
-                            systemImage: "play.circle.fill",
-                            style: .primary
-                        ) {
-                            SpeechService.shared.speak("这是一个示例播报，用来预览当前语音设置。", language: "zh-CN")
-                        }
-                        .frame(width: 96)
-                    }
-                    Slider(
-                        value: Binding(
-                            get: { Double(speechSettings.speechRate) },
-                            set: { speechSettings.speechRate = Float($0) }
-                        ),
-                        in: 0.3...0.6,
-                        step: 0.02
+                SettingsSegmentedRow(
+                    systemImage: "waveform",
+                    title: "语音模式",
+                    subtitle: "神经网络更自然，系统语音更稳定",
+                    options: [
+                        (label: "Neural Voice", value: "neural"),
+                        (label: "System Voice", value: "system")
+                    ],
+                    selection: Binding(
+                        get: { speechSettings.voiceMode },
+                        set: { speechSettings.voiceMode = $0 }
                     )
-                    .tint(AppTheme.primary)
-                }
-                .padding(12)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(AppTheme.border, lineWidth: 1)
                 )
 
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("语音质量")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(AppTheme.textPrimary)
-                            Text("在线更自然；离线由系统语音决定。")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        Spacer()
-                        Picker("语音质量", selection: Binding(
-                            get: { speechSettings.voiceQuality },
-                            set: { speechSettings.voiceQuality = $0 }
-                        )) {
-                            Text("在线（更自然）").tag("online")
-                            Text("优质").tag("premium")
-                            Text("增强").tag("enhanced")
-                            Text("默认").tag("default")
-                        }
-                        .pickerStyle(.menu)
-                    }
-                }
-                .padding(12)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(AppTheme.border, lineWidth: 1)
+                SettingsSegmentedRow(
+                    systemImage: "person.fill",
+                    title: "语音性别",
+                    subtitle: "选择更偏好的声音",
+                    options: [
+                        (label: "女性", value: "female"),
+                        (label: "男性", value: "male")
+                    ],
+                    selection: Binding(
+                        get: { speechSettings.voiceGender },
+                        set: { speechSettings.voiceGender = $0 }
+                    )
                 )
+
+                SettingsSegmentedRow(
+                    systemImage: "speedometer",
+                    title: "语速",
+                    subtitle: "慢速适合学习，快速适合浏览",
+                    options: [
+                        (label: "慢", value: "slow"),
+                        (label: "正常", value: "normal"),
+                        (label: "快", value: "fast")
+                    ],
+                    selection: Binding(
+                        get: { speechSettings.speechSpeed },
+                        set: { speechSettings.speechSpeed = $0 }
+                    )
+                )
+
+                UnifiedAppButton(
+                    title: "试听",
+                    systemImage: "play.circle.fill",
+                    style: .primary
+                ) {
+                    SpeechService.shared.speak("这是一个示例播报，用来预览当前语音设置。", language: "zh-CN")
+                }
             }
 
             SettingsCard(

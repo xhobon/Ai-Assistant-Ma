@@ -155,6 +155,9 @@ final class SpeechSettingsStore: ObservableObject {
     static let shared = SpeechSettingsStore()
     private let rateKey = "speech_rate"
     private let voiceQualityKey = "speech_voice_quality"
+    private let voiceModeKey = "speech_voice_mode"
+    private let voiceGenderKey = "speech_voice_gender"
+    private let speechSpeedKey = "speech_speed"
     private let playbackMutedKey = "playback_muted"
 
     /// 是否静音（不播放 AI 回复等 TTS）
@@ -169,7 +172,9 @@ final class SpeechSettingsStore: ObservableObject {
     /// 语速 0.3（慢）～ 0.6（快），默认 0.48
     var speechRate: Float {
         get {
-            guard UserDefaults.standard.object(forKey: rateKey) != nil else { return 0.48 }
+            guard UserDefaults.standard.object(forKey: rateKey) != nil else {
+                return mapSpeedToRate(speechSpeed)
+            }
             return UserDefaults.standard.float(forKey: rateKey)
         }
         set {
@@ -178,16 +183,47 @@ final class SpeechSettingsStore: ObservableObject {
         }
     }
 
-    /// 语音质量：default / enhanced / premium / online（在线神经网络语音）
-    var voiceQuality: String {
-        // 默认使用在线神经网络语音，更接近真人
-        get {
-            let stored = UserDefaults.standard.string(forKey: voiceQualityKey) ?? "online"
-            return stored == "default" ? "online" : stored
+    /// 语音模式：neural / system
+    var voiceMode: String {
+        get { UserDefaults.standard.string(forKey: voiceModeKey) ?? "neural" }
+        set {
+            UserDefaults.standard.set(newValue, forKey: voiceModeKey)
+            objectWillChange.send()
         }
+    }
+
+    /// 语音性别：female / male
+    var voiceGender: String {
+        get { UserDefaults.standard.string(forKey: voiceGenderKey) ?? "female" }
+        set {
+            UserDefaults.standard.set(newValue, forKey: voiceGenderKey)
+            objectWillChange.send()
+        }
+    }
+
+    /// 语速：slow / normal / fast
+    var speechSpeed: String {
+        get { UserDefaults.standard.string(forKey: speechSpeedKey) ?? "normal" }
+        set {
+            UserDefaults.standard.set(newValue, forKey: speechSpeedKey)
+            objectWillChange.send()
+        }
+    }
+
+    /// 兼容旧字段（保留）
+    var voiceQuality: String {
+        get { UserDefaults.standard.string(forKey: voiceQualityKey) ?? "online" }
         set {
             UserDefaults.standard.set(newValue, forKey: voiceQualityKey)
             objectWillChange.send()
+        }
+    }
+
+    private func mapSpeedToRate(_ speed: String) -> Float {
+        switch speed {
+        case "slow": return 0.42
+        case "fast": return 0.56
+        default: return 0.48
         }
     }
 }
@@ -764,12 +800,7 @@ final class SpeechService: NSObject, ObservableObject {
     static let shared = SpeechService()
     @Published var isPlaying = false
     private let synthesizer = AVSpeechSynthesizer()
-    private var onlinePlayer: AVPlayer?
-    private var onlinePlayerItem: AVPlayerItem?
-    private var onlinePlayerObserver: NSObjectProtocol?
-    private var currentTempURL: URL?
-    private var lastOnlineText: String?
-    private var lastOnlineLang: String?
+    private let edgeService = EdgeTTSService.shared
     /// 语音回放保护：用于过滤“应用自己播报”被麦克风回采的文本
     private var playbackGuardText: String = ""
     private var playbackGuardUntil: Date = .distantPast
@@ -783,98 +814,49 @@ final class SpeechService: NSObject, ObservableObject {
     func speak(_ text: String, language: String) {
         guard !text.isEmpty else { return }
         if SpeechSettingsStore.shared.playbackMuted { return }
+        let detectedLang = detectLanguageCode(for: text) ?? language
         // 停止当前播放
         stopSpeaking()
         beginPlaybackGuard(with: text)
         isPlaying = true
-        if SpeechSettingsStore.shared.voiceQuality == "online" {
-            playOnlineTTS(text: text, language: language)
+        if SpeechSettingsStore.shared.voiceMode == "neural" {
+            Task { [weak self] in
+                guard let self else { return }
+                do {
+                    try await edgeService.play(text: text) { [weak self] in
+                        self?.isPlaying = false
+                    }
+                } catch {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.speakLocal(text: text, language: detectedLang)
+                    }
+                }
+            }
             return
         }
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = preferredVoice(for: language)
-        utterance.rate = SpeechSettingsStore.shared.speechRate
-        utterance.pitchMultiplier = 1.0
-        utterance.volume = 1.0
-        utterance.preUtteranceDelay = 0.08
-        utterance.postUtteranceDelay = 0.05
-        synthesizer.speak(utterance)
+        speakLocal(text: text, language: detectedLang)
     }
 
     /// 强制在线 TTS（用于对话页：更像真人，且与本机语音无关）
     func speakOnline(_ text: String, language: String) {
         guard !text.isEmpty else { return }
         if SpeechSettingsStore.shared.playbackMuted { return }
+        let detectedLang = detectLanguageCode(for: text) ?? language
         stopSpeaking()
         beginPlaybackGuard(with: text)
         isPlaying = true
-        playOnlineTTS(text: text, language: language)
-    }
-
-    /// 在线 TTS（Edge 免费语音，更自然）
-    private func playOnlineTTS(text: String, language: String) {
-        let base = ServerConfigStore.shared.baseURLString
-        let urlString = base.hasSuffix("/") ? base + "api/tts" : base + "/api/tts"
-        guard let url = URL(string: urlString) else { speakLocal(text: text, language: language); return }
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        var body: [String: Any] = ["text": text, "lang": language]
-        let preset = preferredOnlineVoice(for: language)
-        body["voice"] = preset.voice
-        if let style = preset.style, !style.isEmpty {
-            body["style"] = style
-        }
-        if let rate = preset.rate {
-            body["rate"] = rate
-        }
-        if let pitch = preset.pitch {
-            body["pitch"] = pitch
-        }
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
+        Task { [weak self] in
             guard let self else { return }
-            let statusOK = (response as? HTTPURLResponse)?.statusCode == 200
-            let hasData = data != nil && !data!.isEmpty
-            if error != nil || !statusOK || !hasData {
-                DispatchQueue.main.async { self.speakLocal(text: text, language: language) }
-                return
-            }
-            let textCopy = text
-            let dataCopy = data!
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                lastOnlineText = textCopy
-                lastOnlineLang = language
-                let tempDir = FileManager.default.temporaryDirectory
-                let fileURL = tempDir.appendingPathComponent(UUID().uuidString + ".webm")
-                do {
-                    try dataCopy.write(to: fileURL)
-                    currentTempURL = fileURL
-                    playWithAVPlayer(url: fileURL) { [weak self] in
-                        self?.removeTempTTSFile()
-                    }
-                } catch {
-                    lastOnlineText = nil
-                    lastOnlineLang = nil
-                    speakLocal(text: textCopy, language: language)
+            do {
+                try await edgeService.play(text: text) { [weak self] in
+                    self?.isPlaying = false
+                }
+            } catch {
+                DispatchQueue.main.async { [weak self] in
+                    self?.speakLocal(text: text, language: detectedLang)
                 }
             }
-        }.resume()
-    }
-
-    private func preferredOnlineVoice(for language: String) -> (voice: String, style: String?, rate: Int?, pitch: Int?) {
-        let lang = language.lowercased()
-        if lang.hasPrefix("zh") {
-            return (voice: "zh-CN-XiaoxiaoNeural", style: "chat", rate: -5, pitch: 0)
         }
-        if lang.hasPrefix("id") {
-            return (voice: "id-ID-GadisNeural", style: nil, rate: -4, pitch: 0)
-        }
-        if lang.hasPrefix("en") {
-            return (voice: "en-US-JennyNeural", style: "chat", rate: -5, pitch: 0)
-        }
-        return (voice: "zh-CN-XiaoxiaoNeural", style: "chat", rate: -5, pitch: 0)
     }
 
     private func speakLocal(text: String, language: String) {
@@ -885,62 +867,10 @@ final class SpeechService: NSObject, ObservableObject {
         synthesizer.speak(utterance)
     }
 
-    private func playWithAVPlayer(url: URL, onFinish: @escaping () -> Void) {
-        let item = AVPlayerItem(url: url)
-        onlinePlayerItem = item
-        let player = AVPlayer(playerItem: item)
-        onlinePlayer = player
-
-        onlinePlayerObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
-            self?.cleanupOnlinePlayer()
-            onFinish()
-        }
-        item.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
-        player.play()
-    }
-
-    private func cleanupOnlinePlayer() {
-        if let item = onlinePlayerItem {
-            item.removeObserver(self, forKeyPath: "status", context: nil)
-        }
-        onlinePlayerItem = nil
-        onlinePlayer?.pause()
-        onlinePlayer = nil
-        if let ob = onlinePlayerObserver {
-            NotificationCenter.default.removeObserver(ob)
-            onlinePlayerObserver = nil
-        }
-        removeTempTTSFile()
-        lastOnlineText = nil
-        lastOnlineLang = nil
-        isPlaying = false
-    }
-
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "status", let item = object as? AVPlayerItem, item === onlinePlayerItem, item.status == .failed {
-            let text = lastOnlineText
-            let lang = lastOnlineLang ?? "zh-CN"
-            DispatchQueue.main.async { [weak self] in
-                self?.cleanupOnlinePlayer()
-                if let t = text, !t.isEmpty { self?.speakLocal(text: t, language: lang) }
-            }
-        }
-    }
-
-    private func removeTempTTSFile() {
-        if let url = currentTempURL {
-            try? FileManager.default.removeItem(at: url)
-            currentTempURL = nil
-        }
-    }
-
     /// 立即停止朗读（用户打断或开始说话时调用）
     func stopSpeaking() {
         synthesizer.stopSpeaking(at: .immediate)
-        // 确保停止在线播放
-        onlinePlayer?.pause()
-        onlinePlayer?.replaceCurrentItem(with: nil)
-        cleanupOnlinePlayer()
+        edgeService.stop()
         // 保留短暂保护窗口，避免刚停止时仍被回采
         playbackGuardUntil = Date().addingTimeInterval(1.2)
         isPlaying = false
@@ -984,6 +914,23 @@ final class SpeechService: NSObject, ObservableObject {
         if let premium = voices.first(where: { $0.quality == .premium }) { return premium }
         if let enhanced = voices.first(where: { $0.quality == .enhanced }) { return enhanced }
         return AVSpeechSynthesisVoice(language: language)
+    }
+
+    private func detectLanguageCode(for text: String) -> String? {
+        if text.range(of: "\\p{Han}", options: .regularExpression) != nil {
+            return "zh-CN"
+        }
+        let lower = text.lowercased()
+        let tokens = lower.split { !$0.isLetter }
+        let keywords: Set<String> = [
+            "yang","dan","tidak","apa","saya","kamu","anda","ini","itu","dengan","untuk",
+            "karena","bagaimana","terima","kasih","tolong","bisa","akan","sudah","belum","juga",
+            "mohon","sebagai","pada","dari","ke","di","adalah"
+        ]
+        if tokens.contains(where: { keywords.contains(String($0)) }) {
+            return "id-ID"
+        }
+        return "en-US"
     }
 }
 

@@ -159,6 +159,53 @@ struct SettingsInlineToggleRow: View {
     }
 }
 
+struct SettingsSegmentedRow: View {
+    let systemImage: String
+    let title: String
+    var subtitle: String? = nil
+    let options: [(label: String, value: String)]
+    @Binding var selection: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(AppTheme.primary.opacity(0.12))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: systemImage)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.primary)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    if let subtitle, !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            Picker(title, selection: $selection) {
+                ForEach(options, id: \.value) { option in
+                    Text(option.label).tag(option.value)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(12)
+        .background(AppTheme.surfaceMuted.opacity(0.65))
+        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+}
+
 // MARK: - Toast
 
 struct ToastView: View {
