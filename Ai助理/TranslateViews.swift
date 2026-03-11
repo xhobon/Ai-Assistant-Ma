@@ -664,10 +664,6 @@ struct RealTimeTranslationView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 6) {
-                RealTimeCompactHeader(isRecording: isRecording, onClose: { dismiss() })
-                    .padding(.horizontal, 14)
-                    .padding(.top, 0)
-
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 12) {
@@ -798,6 +794,7 @@ struct RealTimeTranslationView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .navigationTitle("实时语音翻译")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .alert("提示", isPresented: Binding(
             get: { viewModel.alertMessage != nil },
@@ -807,69 +804,6 @@ struct RealTimeTranslationView: View {
         } message: {
             Text(viewModel.alertMessage ?? "")
         }
-        .navigationBarBackButtonHidden(true)
-        .hideNavigationBarOnMac()
-    }
-}
-
-struct RealTimeHeader: View {
-    let isRecording: Bool
-    var onClose: () -> Void
-
-    var body: some View {
-        UnifiedHeroHeader(
-            systemImage: "chevron.left",
-            title: "实时语音翻译",
-            subtitle: "双语对话实时输出",
-            badgeText: isRecording ? "录音中" : "待机",
-            headline: "轻触下方按钮开始对话",
-            subheadline: "系统将自动识别语言并实时生成文本",
-            leadingAction: onClose
-        )
-    }
-}
-
-// 实时翻译页紧凑页头（二级页面用）
-struct RealTimeCompactHeader: View {
-    let isRecording: Bool
-    var onClose: () -> Void
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Button(action: onClose) {
-                Image(systemName: "chevron.left")
-                    .font(.body.weight(.bold))
-                    .foregroundStyle(AppTheme.textOnPrimary)
-                    .frame(width: 34, height: 34)
-                    .background(AppTheme.primaryGradient)
-                    .clipShape(Circle())
-                    .shadow(color: AppTheme.primary.opacity(0.24), radius: 8, x: 0, y: 4)
-            }
-            .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("双语对话实时输出")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-            Spacer(minLength: 10)
-            Text(isRecording ? "录音中" : "待机")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(isRecording ? AppTheme.accentWarm : AppTheme.textSecondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(AppTheme.surfaceMuted)
-                .clipShape(Capsule())
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(AppTheme.surface.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(AppTheme.border, lineWidth: 1)
-        )
-        .shadow(color: AppTheme.softShadow, radius: 6, x: 0, y: 2)
     }
 }
 

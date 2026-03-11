@@ -204,7 +204,6 @@ struct ProfileLoginCard: View {
 
 struct AccountProfileCenterView: View {
     @ObservedObject private var tokenStore = TokenStore.shared
-    @Environment(\.dismiss) private var dismiss
     @State private var profile: UserDTO?
     @State private var loading = false
     @State private var message: String?
@@ -326,22 +325,6 @@ struct AccountProfileCenterView: View {
         } message: {
             Text(message ?? "")
         }
-        #if os(iOS)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                        Text("返回")
-                    }
-                    .foregroundStyle(AppTheme.textPrimary)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        #endif
     }
 
     private func loadProfile() async {
@@ -1512,7 +1495,6 @@ struct AuthView: View {
             VStack(spacing: 0) {
                 ScrollView {
                     VStack(spacing: 18) {
-                        AuthHeaderCard(mode: mode)
                         modeSwitchSection
                         formSection
                         statusSection
@@ -1525,10 +1507,8 @@ struct AuthView: View {
             }
             .background(AppTheme.pageBackground.ignoresSafeArea())
             #if os(iOS)
-            .navigationTitle("账户")
-            #endif
-            #if os(iOS)
-            .toolbar { backToolbarItem }
+            .navigationTitle(mode == .login ? "登录" : "注册")
+            .navigationBarTitleDisplayMode(.inline)
             #endif
         }
         .alert("提示", isPresented: Binding(
@@ -1538,24 +1518,6 @@ struct AuthView: View {
             Button("确定", role: .cancel) {}
         } message: {
             Text(message ?? "")
-        }
-    }
-
-    @ToolbarContentBuilder
-    private var backToolbarItem: some ToolbarContent {
-        ToolbarItem(placement: .cancellationAction) {
-            Button {
-                dismiss()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("返回")
-                        .font(.subheadline.weight(.semibold))
-                }
-                .foregroundStyle(AppTheme.textPrimary)
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -1837,40 +1799,6 @@ struct AuthView: View {
                 isGoogleSigningIn = false
             }
         }
-    }
-}
-
-struct AuthHeaderCard: View {
-    let mode: AuthMode
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(AppTheme.primaryGradient.opacity(0.16))
-                    .frame(width: 56, height: 56)
-                Image(systemName: mode == .login ? "person.crop.circle.badge.checkmark" : "person.crop.circle.badge.plus")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(AppTheme.primary)
-            }
-            VStack(alignment: .leading, spacing: 5) {
-                Text(mode == .login ? "欢迎回来" : "创建新账号")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text(mode == .login ? "登录后即可同步您的数据" : "注册后即可使用完整功能与数据同步")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(16)
-        .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(AppTheme.borderStrong.opacity(0.6), lineWidth: 1)
-        )
-        .shadow(color: AppTheme.softShadow, radius: 8, x: 0, y: 3)
     }
 }
 
