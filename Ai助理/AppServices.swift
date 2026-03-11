@@ -176,7 +176,10 @@ final class SpeechSettingsStore: ObservableObject {
     /// 语音质量：default / enhanced / premium / online（在线神经网络语音）
     var voiceQuality: String {
         // 默认使用在线神经网络语音，更接近真人
-        get { UserDefaults.standard.string(forKey: voiceQualityKey) ?? "online" }
+        get {
+            let stored = UserDefaults.standard.string(forKey: voiceQualityKey) ?? "online"
+            return stored == "default" ? "online" : stored
+        }
         set {
             UserDefaults.standard.set(newValue, forKey: voiceQualityKey)
             objectWillChange.send()
@@ -792,7 +795,18 @@ final class SpeechService: NSObject, ObservableObject {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = ["text": text, "lang": language]
+        var body: [String: Any] = ["text": text, "lang": language]
+        let preset = preferredOnlineVoice(for: language)
+        body["voice"] = preset.voice
+        if let style = preset.style, !style.isEmpty {
+            body["style"] = style
+        }
+        if let rate = preset.rate {
+            body["rate"] = rate
+        }
+        if let pitch = preset.pitch {
+            body["pitch"] = pitch
+        }
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
         URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
             guard let self else { return }
@@ -823,6 +837,20 @@ final class SpeechService: NSObject, ObservableObject {
                 }
             }
         }.resume()
+    }
+
+    private func preferredOnlineVoice(for language: String) -> (voice: String, style: String?, rate: Int?, pitch: Int?) {
+        let lang = language.lowercased()
+        if lang.hasPrefix("zh") {
+            return (voice: "zh-CN-XiaoxiaoNeural", style: "chat", rate: -5, pitch: 0)
+        }
+        if lang.hasPrefix("id") {
+            return (voice: "id-ID-GadisNeural", style: nil, rate: -4, pitch: 0)
+        }
+        if lang.hasPrefix("en") {
+            return (voice: "en-US-JennyNeural", style: "chat", rate: -5, pitch: 0)
+        }
+        return (voice: "zh-CN-XiaoxiaoNeural", style: "chat", rate: -5, pitch: 0)
     }
 
     private func speakLocal(text: String, language: String) {
