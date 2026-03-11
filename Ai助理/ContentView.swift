@@ -8,7 +8,8 @@ enum SidebarItem: Int, CaseIterable {
     case notesSummary = 3   // 记录（笔记/总结合并）
     case translate = 4      // 翻译
     case learning = 5       // 学习
-    case profile = 6        // 设置
+    case practice = 6       // 练习
+    case profile = 7        // 设置
 
     var title: String {
         switch self {
@@ -18,6 +19,7 @@ enum SidebarItem: Int, CaseIterable {
         case .notesSummary: return "记录"
         case .translate: return "翻译"
         case .learning: return "学习"
+        case .practice: return "练习"
         case .profile: return "设置"
         }
     }
@@ -30,6 +32,7 @@ enum SidebarItem: Int, CaseIterable {
         case .notesSummary: return "note.text"
         case .translate: return "character.bubble"
         case .learning: return "book.fill"
+        case .practice: return "bolt.fill"
         case .profile: return "gearshape"
         }
     }
@@ -130,6 +133,7 @@ struct ContentView: View {
         case .notesSummary: return "记录"
         case .translate: return "AI翻译"
         case .learning: return "印尼语学习"
+        case .practice: return "练习"
         case .profile: return "设置"
         }
     }
@@ -423,6 +427,8 @@ struct ContentView: View {
                     AITranslateHomeView()
                 case .learning:
                     IndonesianLearningView()
+                case .practice:
+                    PracticeHomeView()
                 case .profile:
                     ProfileCenterView()
                 }

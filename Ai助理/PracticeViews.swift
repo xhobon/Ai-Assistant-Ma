@@ -328,6 +328,7 @@ struct PracticeSessionView: View {
     @State private var results: [PracticeResultItem] = []
     @State private var startTime = Date()
     @State private var showSummary = false
+    @State private var answerDetail = ""
 
     var body: some View {
         ScrollView {
@@ -454,7 +455,7 @@ struct PracticeSessionView: View {
                     }
                 }
                 if answered {
-                    PracticeAnswerStateView(isCorrect: isCorrect, detail: matchingDetail(pairs: pairs))
+                    PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
                 }
             }
         case .fillBlank(let prompt, _):
@@ -468,7 +469,7 @@ struct PracticeSessionView: View {
                     .background(AppTheme.surfaceMuted)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 if answered {
-                    PracticeAnswerStateView(isCorrect: isCorrect, detail: fillBlankText)
+                    PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
                 }
             }
         case .translation:
@@ -479,7 +480,7 @@ struct PracticeSessionView: View {
                     .background(AppTheme.surfaceMuted)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 if answered {
-                    PracticeAnswerStateView(isCorrect: isCorrect, detail: translationText)
+                    PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
                 }
             }
         case .listening(let audioText, let options, _, _, let audioLanguage):
@@ -536,27 +537,35 @@ struct PracticeSessionView: View {
     private func submitCurrent() {
         let question = questions[currentIndex]
         var correct = false
+        var detail = ""
 
         switch question.payload {
         case .multipleChoice(_, _, let answer, _):
             correct = normalized(selectedOption) == normalized(answer)
+            detail = answer
         case .matching(_, _, let pairs):
             correct = pairs.allSatisfy { pair in
                 normalized(matchSelections[pair.left]) == normalized(pair.right)
             }
+            detail = matchingDetail(pairs: pairs)
         case .fillBlank(_, let answer):
             correct = normalized(fillBlankText) == normalized(answer)
+            detail = answer
         case .translation(_, let answer, _):
             correct = normalized(translationText) == normalized(answer)
+            detail = answer
         case .listening(_, _, let answer, _, _):
             correct = normalized(selectedOption) == normalized(answer)
+            detail = answer
         case .sentenceOrder(_, let answer, _):
             let combined = orderedWords.joined(separator: " ")
             correct = normalized(combined) == normalized(answer)
+            detail = answer
         }
 
         isCorrect = correct
         answered = true
+        answerDetail = detail
         results.append(PracticeResultItem(question: question, isCorrect: correct))
         if !correct {
             wrongStore.addWrong(itemId: question.itemId, mode: question.mode, type: question.type)
@@ -592,6 +601,7 @@ struct PracticeSessionView: View {
         translationText = ""
         orderedWords = []
         availableWords = []
+        answerDetail = ""
     }
 
     private func loadQuestions() {

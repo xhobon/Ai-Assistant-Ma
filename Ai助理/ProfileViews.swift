@@ -1012,6 +1012,7 @@ struct TaskRow: View {
 struct AppSettingsView: View {
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
     @ObservedObject private var tokenStore = TokenStore.shared
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @State private var showClearConfirm = false
     @State private var toastMessage: String?
     @State private var showAccountSecurity = false
@@ -1114,6 +1115,26 @@ struct AppSettingsView: View {
                 ) {
                     SpeechService.shared.speak("这是一个示例播报，用来预览当前语音设置。", language: "zh-CN")
                 }
+            }
+
+            SettingsCard(
+                title: "Language",
+                subtitle: "设置应用显示语言。"
+            ) {
+                SettingsSegmentedRow(
+                    systemImage: "globe",
+                    title: "Language",
+                    subtitle: "中文 / Bahasa Indonesia / English",
+                    options: [
+                        (label: "中文", value: "zh"),
+                        (label: "Bahasa Indonesia", value: "id"),
+                        (label: "English", value: "en")
+                    ],
+                    selection: Binding(
+                        get: { languageStore.current.rawValue },
+                        set: { languageStore.setLanguage(code: $0) }
+                    )
+                )
             }
 
             SettingsCard(

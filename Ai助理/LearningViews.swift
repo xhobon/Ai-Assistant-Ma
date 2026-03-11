@@ -27,7 +27,10 @@ struct IndonesianLearningView: View {
                     )
                     .padding(.horizontal, horizontalPadding)
 
-                    LearningModeCard(selectedMode: $viewModel.mode)
+                    LearningModeCard(selectedMode: Binding(
+                        get: { viewModel.mode },
+                        set: { viewModel.setMode($0) }
+                    ))
                         .padding(.horizontal, horizontalPadding)
 
                     LearningOverviewRow(viewModel: viewModel)
@@ -421,6 +424,7 @@ struct LearningOverviewRow: View {
 }
 
 struct LearningResourceSection: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     let categories: [VocabCategory]
     @Binding var selectedCategoryId: String?
     let difficulties: [String]
@@ -431,10 +435,10 @@ struct LearningResourceSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("学习主题")
+                Text(languageStore.localized("learning_category_title"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text("按主题浏览高频词汇与场景 · 共 \(categories.count) 类")
+                Text(languageStore.localizedFormat("learning_category_subtitle", categories.count))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -561,6 +565,7 @@ struct LearningResourceCard: View {
 }
 
 struct SearchBar: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @Binding var text: String
 
     var body: some View {
@@ -568,7 +573,7 @@ struct SearchBar: View {
             Image(systemName: "magnifyingglass")
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.textTertiary)
-            TextField("搜索词汇/短句/例句", text: $text)
+            TextField(languageStore.localized("learning_search_placeholder"), text: $text)
                 .font(.subheadline)
                 .textFieldStyle(.plain)
                 .foregroundStyle(AppTheme.inputText)
@@ -766,23 +771,25 @@ struct PlanRow: View {
 }
 
 struct VocabularyListSection: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     let items: [VocabItem]
     @ObservedObject var viewModel: LearningViewModel
     let difficultyProvider: (VocabItem) -> String
+    let mode: LearningMode
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("短句练习")
+                    Text(languageStore.localized("learning_vocab_section_title"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("双语对照 · 语音播放/复制/收藏")
+                    Text(languageStore.localized("learning_vocab_section_subtitle"))
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
                 Spacer(minLength: 0)
-                Text("\(items.count) 条")
+                Text(languageStore.localizedFormat("learning_vocab_count", items.count))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textTertiary)
             }
@@ -806,7 +813,8 @@ struct VocabularyListSection: View {
                         VocabularyCard(
                             item: item,
                             viewModel: viewModel,
-                            difficulty: difficultyProvider(item)
+                            difficulty: difficultyProvider(item),
+                            mode: mode
                         )
                     }
                 }
@@ -824,6 +832,7 @@ struct VocabularyCard: View {
     let item: VocabItem
     @ObservedObject var viewModel: LearningViewModel
     let difficulty: String
+    let mode: LearningMode
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -838,22 +847,27 @@ struct VocabularyCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(item.textZh)
+                    Text(primaryText)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text(item.textId)
+                    Text(secondaryText)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(AppTheme.accentWarm)
+                    if let pinyin = pinyinText, !pinyin.isEmpty {
+                        Text(pinyin)
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
                 }
 
                 Spacer(minLength: 0)
 
                 HStack(spacing: 6) {
                     CircleIconButton(systemImage: "speaker.wave.2") {
-                        SpeechService.shared.speak(item.textId, language: "id-ID")
+                        SpeechService.shared.speak(targetSpeechText, language: targetSpeechLang)
                     }
                     CircleIconButton(systemImage: "doc.on.doc") {
-                        ClipboardService.copy(item.textId)
+                        ClipboardService.copy(primaryText)
                     }
                     CircleIconButton(systemImage: viewModel.isFavorite(item) ? "heart.fill" : "heart") {
                         viewModel.toggleFavorite(item)
@@ -875,6 +889,7 @@ struct VocabularyCard: View {
                     title: "中文例句",
                     text: item.exampleZh,
                     language: "zh-CN",
+                    pinyin: mode == .idToZh ? PinyinService.shared.pinyin(for: item.exampleZh) : nil,
                     onCopy: { ClipboardService.copy(item.exampleZh) }
                 )
                 ExampleSentenceRow(
@@ -895,7 +910,28 @@ struct VocabularyCard: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(AppTheme.border, lineWidth: 1)
         )
-        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+            .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+
+    private var primaryText: String {
+        mode == .zhToId ? item.textZh : item.textId
+    }
+
+    private var secondaryText: String {
+        mode == .zhToId ? item.textId : item.textZh
+    }
+
+    private var pinyinText: String? {
+        guard mode == .idToZh else { return nil }
+        return PinyinService.shared.pinyin(for: item.textZh)
+    }
+
+    private var targetSpeechText: String {
+        secondaryText
+    }
+
+    private var targetSpeechLang: String {
+        mode == .zhToId ? "id-ID" : "zh-CN"
     }
 }
 
@@ -903,6 +939,7 @@ struct ExampleSentenceRow: View {
     let title: String
     let text: String
     let language: String
+    var pinyin: String? = nil
     var onCopy: (() -> Void)? = nil
 
     var body: some View {
@@ -914,6 +951,11 @@ struct ExampleSentenceRow: View {
                 Text(text)
                     .font(.caption)
                     .foregroundStyle(AppTheme.textPrimary)
+                if let pinyin, !pinyin.isEmpty {
+                    Text(pinyin)
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
             }
 
             Spacer()
