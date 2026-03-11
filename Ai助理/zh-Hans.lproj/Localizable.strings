@@ -22,6 +22,11 @@
 "practice_challenge_seconds" = "%d 秒";
 "practice_challenge_combo" = "连击模式";
 "practice_challenge_combo_subtitle" = "连续答对可累积分数";
+"practice_challenge_bonus" = "答对加时";
+"practice_challenge_bonus_subtitle" = "每题额外增加秒数";
+"practice_powerup_title" = "道具";
+"practice_powerup_time" = "加时 +5s · %d";
+"practice_combo" = "连击";
 "practice_stats_title" = "练习统计";
 "practice_stats_sessions" = "练习次数";
 "practice_stats_accuracy" = "正确率";
@@ -67,6 +72,7 @@
 "practice_shadowing_feedback_good" = "不错";
 "practice_shadowing_feedback_ok" = "继续加油";
 "practice_shadowing_feedback_retry" = "再听一遍";
+"practice_shadowing_align_title" = "对齐";
 "practice_timeout" = "超时";
 "practice_speech_permission_denied" = "未获得语音识别权限";
 "practice_speech_failed" = "语音识别失败：%@";
