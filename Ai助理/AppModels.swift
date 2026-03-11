@@ -31,8 +31,9 @@ struct LanguageOption: Identifiable, Hashable {
 
     static let chinese = LanguageOption(id: "zh", code: "zh", name: "中文", speechCode: "zh-CN")
     static let indonesian = LanguageOption(id: "id", code: "id", name: "印尼文", speechCode: "id-ID")
+    static let english = LanguageOption(id: "en", code: "en", name: "English", speechCode: "en-US")
 
-    static let all: [LanguageOption] = [.chinese, .indonesian]
+    static let all: [LanguageOption] = [.chinese, .indonesian, .english]
 }
 
 struct VocabCategory: Identifiable, Hashable, Codable {
@@ -48,6 +49,77 @@ struct VocabItem: Identifiable, Hashable, Codable {
     let textId: String
     let exampleZh: String
     let exampleId: String
+}
+
+enum LearningMode: String, CaseIterable, Identifiable, Codable {
+    case zhToId
+    case idToZh
+
+    var id: String { rawValue }
+
+    var sourceLanguage: LanguageOption {
+        switch self {
+        case .zhToId: return .chinese
+        case .idToZh: return .indonesian
+        }
+    }
+
+    var targetLanguage: LanguageOption {
+        switch self {
+        case .zhToId: return .indonesian
+        case .idToZh: return .chinese
+        }
+    }
+}
+
+enum PracticeQuestionType: String, CaseIterable, Identifiable, Codable {
+    case multipleChoice
+    case matching
+    case fillBlank
+    case translation
+    case listening
+    case sentenceOrder
+
+    var id: String { rawValue }
+}
+
+struct PracticeMatchPair: Hashable, Codable {
+    let left: String
+    let right: String
+}
+
+enum PracticeQuestionPayload: Hashable {
+    case multipleChoice(sourceText: String, options: [String], answer: String, targetLanguage: String)
+    case matching(left: [String], right: [String], pairs: [PracticeMatchPair])
+    case fillBlank(prompt: String, answer: String)
+    case translation(sourceText: String, answer: String, targetLanguage: String)
+    case listening(audioText: String, options: [String], answer: String, targetLanguage: String, audioLanguage: String)
+    case sentenceOrder(words: [String], answer: String, language: String)
+}
+
+struct PracticeQuestion: Identifiable, Hashable {
+    let id: String
+    let type: PracticeQuestionType
+    let mode: LearningMode
+    let itemId: String
+    let payload: PracticeQuestionPayload
+}
+
+struct DailyTaskItem: Identifiable, Hashable, Codable {
+    let id: String
+    let title: String
+    let subtitle: String
+    let targetCount: Int
+    let type: String
+    var isCompleted: Bool
+}
+
+enum LearningLevel: String, CaseIterable, Identifiable {
+    case beginner
+    case intermediate
+    case advanced
+
+    var id: String { rawValue }
 }
 
 struct LearningStat: Identifiable, Hashable {

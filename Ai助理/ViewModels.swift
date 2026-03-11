@@ -26,7 +26,7 @@ final class ChatViewModel: ObservableObject {
     /// 命令已执行，等待用户确认后再将结果发送至服务器（保护隐私）
     @Published var pendingSendResult: (output: String, conversationId: String?)?
 
-    private let speechTranscriber = SpeechTranscriber()
+    private let speechRecognizer = SpeechRecognitionService()
     private let maxContextCount = 12
     private var serverConversationId: String?
     private var localConversationId: String
@@ -605,7 +605,7 @@ final class ChatViewModel: ObservableObject {
     private func startListening() {
         SpeechService.shared.stopSpeaking()
         Task {
-            let granted = await speechTranscriber.requestAuthorization()
+            let granted = await speechRecognizer.requestAuthorization()
             guard granted else {
                 await MainActor.run { alertMessage = "未获得语音识别权限" }
                 return
@@ -618,7 +618,7 @@ final class ChatViewModel: ObservableObject {
                     voiceStopWorkItem?.cancel()
                     isListening = true
                     statusText = "语音监听中"
-                    try speechTranscriber.startTranscribing(locale: Locale(identifier: "zh-CN")) { [weak self] text, isFinal in
+                    try speechRecognizer.start { [weak self] text, isFinal in
                         Task { @MainActor in
                             guard let self else { return }
                             if !text.isEmpty {
@@ -651,7 +651,7 @@ final class ChatViewModel: ObservableObject {
         if isStoppingVoice { return }
         isStoppingVoice = true
         voiceStopWorkItem?.cancel()
-        speechTranscriber.stopTranscribing()
+        speechRecognizer.stop()
         isListening = false
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty, trimmed != lastVoiceText {
@@ -1268,12 +1268,18 @@ final class LearningViewModel: ObservableObject {
     @Published var categories: [VocabCategory] = []
     @Published var selectedCategoryId: String?
     @Published var favoriteIds: Set<String> = []
+    @Published var mode: LearningMode = .zhToId
     private let favoritesKey = "favorite_vocab_ids"
     private let activeDaysKey = "learning_active_days"
+    private let modeKey = "learning_mode"
 
     init() {
         categories = SampleData.vocabCategories
         selectedCategoryId = categories.first?.id
+        if let saved = UserDefaults.standard.string(forKey: modeKey),
+           let storedMode = LearningMode(rawValue: saved) {
+            mode = storedMode
+        }
         loadFavorites()
         NotificationCenter.default.addObserver(forName: .clearLocalData, object: nil, queue: .main) { [weak self] _ in
             let viewModel = self
@@ -1291,6 +1297,22 @@ final class LearningViewModel: ObservableObject {
     /// 已标记为收藏/掌握的数量
     var masteredCount: Int {
         favoriteIds.count
+    }
+
+    /// 完成的课程数量（每个分类至少掌握 5 个词）
+    var completedLessonsCount: Int {
+        categories.filter { category in
+            let mastered = category.items.filter { favoriteIds.contains($0.id) }.count
+            let threshold = min(5, max(1, category.items.count))
+            return mastered >= threshold
+        }.count
+    }
+
+    var learningLevel: LearningLevel {
+        let count = masteredCount
+        if count >= 160 { return .advanced }
+        if count >= 60 { return .intermediate }
+        return .beginner
     }
 
     /// 有学习记录的天数（本地记忆，按自然日去重）
@@ -1319,11 +1341,18 @@ final class LearningViewModel: ObservableObject {
         return category.items
     }
 
+    func setMode(_ newMode: LearningMode) {
+        guard mode != newMode else { return }
+        mode = newMode
+        UserDefaults.standard.set(newMode.rawValue, forKey: modeKey)
+    }
+
     func toggleFavorite(_ item: VocabItem) {
         if favoriteIds.contains(item.id) {
             favoriteIds.remove(item.id)
         } else {
             favoriteIds.insert(item.id)
+            DailyTaskStore.shared.recordLearnedWord()
         }
         saveFavorites()
     }

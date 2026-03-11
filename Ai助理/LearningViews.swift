@@ -1,10 +1,14 @@
 import SwiftUI
 
 struct IndonesianLearningView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @StateObject private var viewModel = LearningViewModel()
+    @StateObject private var statsStore = LearningStatsStore.shared
+    @StateObject private var dailyStore = DailyTaskStore.shared
     @State private var searchText = ""
     @State private var selectedDifficulty = "全部"
     @State private var showFavoritesOnly = false
+    @State private var learningStart: Date? = nil
 
     private let difficulties = ["全部", "入门", "进阶", "高级"]
 
@@ -23,22 +27,47 @@ struct IndonesianLearningView: View {
                     )
                     .padding(.horizontal, horizontalPadding)
 
+                    LearningModeCard(selectedMode: $viewModel.mode)
+                        .padding(.horizontal, horizontalPadding)
+
                     LearningOverviewRow(viewModel: viewModel)
                         .padding(.horizontal, horizontalPadding)
+
+                    LearningStatsSummaryCard(
+                        practiceSessions: statsStore.practiceSessions,
+                        accuracy: statsStore.accuracy,
+                        learningMinutes: statsStore.learningMinutes,
+                        streakDays: dailyStore.currentStreakDays()
+                    )
+                    .padding(.horizontal, horizontalPadding)
+
+                    DailyTaskCard(tasks: dailyStore.todayTasks) { task in
+                        dailyStore.toggleTask(task.type)
+                    }
+                    .padding(.horizontal, horizontalPadding)
+
+                    LearningProgressDetailCard(
+                        vocabCount: viewModel.masteredCount,
+                        lessonCount: viewModel.completedLessonsCount,
+                        level: viewModel.learningLevel
+                    )
+                    .padding(.horizontal, horizontalPadding)
 
                     LearningResourceSection(
                         categories: viewModel.categories,
                         selectedCategoryId: $viewModel.selectedCategoryId,
                         difficulties: difficulties,
                         selectedDifficulty: $selectedDifficulty,
-                        showFavoritesOnly: $showFavoritesOnly
+                        showFavoritesOnly: $showFavoritesOnly,
+                        mode: viewModel.mode
                     )
                     .padding(.horizontal, horizontalPadding)
 
                     VocabularyListSection(
                         items: filteredItems,
                         viewModel: viewModel,
-                        difficultyProvider: difficultyForItem
+                        difficultyProvider: difficultyForItem,
+                        mode: viewModel.mode
                     )
                     .padding(.horizontal, horizontalPadding)
                 }
@@ -53,6 +82,16 @@ struct IndonesianLearningView: View {
                     .ignoresSafeArea(edges: .top)
             )
             .hideNavigationBarOnMac()
+            .onAppear {
+                learningStart = Date()
+                dailyStore.refreshTasks(for: Date())
+            }
+            .onDisappear {
+                if let start = learningStart {
+                    statsStore.addLearningDuration(Date().timeIntervalSince(start))
+                }
+                learningStart = nil
+            }
         }
     }
 
@@ -65,6 +104,8 @@ struct IndonesianLearningView: View {
                 || $0.textId.localizedCaseInsensitiveContains(searchText)
                 || $0.exampleZh.localizedCaseInsensitiveContains(searchText)
                 || $0.exampleId.localizedCaseInsensitiveContains(searchText)
+                || (viewModel.mode == .idToZh && PinyinService.shared.pinyin(for: $0.textZh).localizedCaseInsensitiveContains(searchText))
+                || (viewModel.mode == .idToZh && PinyinService.shared.pinyin(for: $0.exampleZh).localizedCaseInsensitiveContains(searchText))
             }
 
         let difficultyFiltered = selectedDifficulty == "全部"
@@ -180,6 +221,145 @@ struct LearningSearchPanel: View {
     }
 }
 
+struct LearningModeCard: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
+    @Binding var selectedMode: LearningMode
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(languageStore.localized("learning_mode_title"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Picker("", selection: $selectedMode) {
+                Text(languageStore.localized("learning_mode_zh_id")).tag(LearningMode.zhToId)
+                Text(languageStore.localized("learning_mode_id_zh")).tag(LearningMode.idToZh)
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+}
+
+struct LearningStatsSummaryCard: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
+    let practiceSessions: Int
+    let accuracy: Double
+    let learningMinutes: Int
+    let streakDays: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(languageStore.localized("learning_stats_title"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+            HStack(spacing: 8) {
+                ProgressStatCard(title: languageStore.localized("learning_stats_practice"), value: "\(practiceSessions)", color: AppTheme.accentStrong, icon: "checkmark.seal.fill")
+                ProgressStatCard(title: languageStore.localized("learning_stats_accuracy"), value: accuracyText, color: AppTheme.brandBlue, icon: "chart.bar.fill")
+                ProgressStatCard(title: languageStore.localized("learning_stats_minutes"), value: "\(learningMinutes)", color: AppTheme.accentWarm, icon: "clock.fill")
+                ProgressStatCard(title: languageStore.localized("learning_stats_streak"), value: "\(streakDays)", color: AppTheme.success, icon: "flame.fill")
+            }
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+
+    private var accuracyText: String {
+        let percent = Int(accuracy * 100)
+        return "\(percent)%"
+    }
+}
+
+struct DailyTaskCard: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
+    let tasks: [DailyTask]
+    var onToggle: (DailyTask) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(languageStore.localized("daily_task_title"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer(minLength: 0)
+                Text("\(tasks.filter { $0.isCompleted }.count)/\(tasks.count)")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            VStack(spacing: 8) {
+                ForEach(tasks, id: \.id) { task in
+                    Button {
+                        onToggle(task)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(task.isCompleted ? AppTheme.success : AppTheme.textTertiary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(languageStore.localized(task.titleKey))
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Text(languageStore.localized(task.subtitleKey))
+                                    .font(.caption2)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 10)
+                        .background(AppTheme.surfaceMuted)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+}
+
+struct LearningProgressDetailCard: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
+    let vocabCount: Int
+    let lessonCount: Int
+    let level: LearningLevel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(languageStore.localized("learning_progress_title"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+            HStack(spacing: 8) {
+                ProgressStatCard(title: languageStore.localized("learning_progress_vocab"), value: "\(vocabCount)", color: AppTheme.accentStrong, icon: "book.fill")
+                ProgressStatCard(title: languageStore.localized("learning_progress_lessons"), value: "\(lessonCount)", color: AppTheme.brandBlue, icon: "square.grid.2x2.fill")
+                ProgressStatCard(title: languageStore.localized("learning_progress_level"), value: levelText, color: AppTheme.accentWarm, icon: "star.fill")
+            }
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+
+    private var levelText: String {
+        switch level {
+        case .beginner: return languageStore.localized("learning_level_beginner")
+        case .intermediate: return languageStore.localized("learning_level_intermediate")
+        case .advanced: return languageStore.localized("learning_level_advanced")
+        }
+    }
+}
+
 struct LearningInsightCard: View {
     let title: String
     let subtitle: String
@@ -246,6 +426,7 @@ struct LearningResourceSection: View {
     let difficulties: [String]
     @Binding var selectedDifficulty: String
     @Binding var showFavoritesOnly: Bool
+    let mode: LearningMode
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -318,7 +499,8 @@ struct LearningResourceSection: View {
                                 category: category,
                                 tint: tint,
                                 systemImage: iconForIndex(index),
-                                isSelected: selectedCategoryId == category.id
+                                isSelected: selectedCategoryId == category.id,
+                                mode: mode
                             )
                         }
                         .buttonStyle(.plain)
@@ -349,6 +531,7 @@ struct LearningResourceCard: View {
     let tint: Color
     let systemImage: String
     let isSelected: Bool
+    let mode: LearningMode
 
     var body: some View {
         VStack(spacing: 6) {
@@ -361,7 +544,7 @@ struct LearningResourceCard: View {
                     .foregroundStyle(tint)
             }
 
-            Text(category.nameZh)
+            Text(mode == .zhToId ? category.nameZh : category.nameId)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
                 .lineLimit(1)

@@ -146,6 +146,14 @@ final class ClearDataStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "learning_categories_cache")
         UserDefaults.standard.removeObject(forKey: "learning_active_days")
         UserDefaults.standard.removeObject(forKey: "learning_active_day_synced")
+        UserDefaults.standard.removeObject(forKey: "learning_mode")
+        UserDefaults.standard.removeObject(forKey: "practice_stats_sessions")
+        UserDefaults.standard.removeObject(forKey: "practice_stats_correct")
+        UserDefaults.standard.removeObject(forKey: "practice_stats_total")
+        UserDefaults.standard.removeObject(forKey: "learning_minutes_total")
+        UserDefaults.standard.removeObject(forKey: "learning_streak_dates")
+        UserDefaults.standard.removeObject(forKey: "daily_tasks_completed")
+        UserDefaults.standard.removeObject(forKey: "wrong_book_items")
         NotificationCenter.default.post(name: .clearLocalData, object: nil)
     }
 }
@@ -206,6 +214,7 @@ final class SpeechSettingsStore: ObservableObject {
         get { UserDefaults.standard.string(forKey: speechSpeedKey) ?? "normal" }
         set {
             UserDefaults.standard.set(newValue, forKey: speechSpeedKey)
+            UserDefaults.standard.set(mapSpeedToRate(newValue), forKey: rateKey)
             objectWillChange.send()
         }
     }
@@ -800,7 +809,7 @@ final class SpeechService: NSObject, ObservableObject {
     static let shared = SpeechService()
     @Published var isPlaying = false
     private let synthesizer = AVSpeechSynthesizer()
-    private let edgeService = EdgeTTSService.shared
+    private let voicePlayback = VoicePlaybackService.shared
     /// 语音回放保护：用于过滤“应用自己播报”被麦克风回采的文本
     private var playbackGuardText: String = ""
     private var playbackGuardUntil: Date = .distantPast
@@ -819,22 +828,9 @@ final class SpeechService: NSObject, ObservableObject {
         stopSpeaking()
         beginPlaybackGuard(with: text)
         isPlaying = true
-        if SpeechSettingsStore.shared.voiceMode == "neural" {
-            Task { [weak self] in
-                guard let self else { return }
-                do {
-                    try await edgeService.play(text: text) { [weak self] in
-                        self?.isPlaying = false
-                    }
-                } catch {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.speakLocal(text: text, language: detectedLang)
-                    }
-                }
-            }
-            return
+        voicePlayback.speak(text: text, languageHint: detectedLang) { [weak self] in
+            self?.isPlaying = false
         }
-        speakLocal(text: text, language: detectedLang)
     }
 
     /// 强制在线 TTS（用于对话页：更像真人，且与本机语音无关）
@@ -845,17 +841,8 @@ final class SpeechService: NSObject, ObservableObject {
         stopSpeaking()
         beginPlaybackGuard(with: text)
         isPlaying = true
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                try await edgeService.play(text: text) { [weak self] in
-                    self?.isPlaying = false
-                }
-            } catch {
-                DispatchQueue.main.async { [weak self] in
-                    self?.speakLocal(text: text, language: detectedLang)
-                }
-            }
+        voicePlayback.speak(text: text, languageHint: detectedLang) { [weak self] in
+            self?.isPlaying = false
         }
     }
 
@@ -870,7 +857,7 @@ final class SpeechService: NSObject, ObservableObject {
     /// 立即停止朗读（用户打断或开始说话时调用）
     func stopSpeaking() {
         synthesizer.stopSpeaking(at: .immediate)
-        edgeService.stop()
+        voicePlayback.stop()
         // 保留短暂保护窗口，避免刚停止时仍被回采
         playbackGuardUntil = Date().addingTimeInterval(1.2)
         isPlaying = false

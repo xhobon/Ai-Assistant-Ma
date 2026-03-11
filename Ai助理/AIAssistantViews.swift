@@ -695,6 +695,7 @@ struct AIAssistantChatView: View {
     @State private var recentPhotoThumbnails: [UIImage] = []
     @State private var showCameraPicker = false
     @State private var showMorePhotosPicker = false
+    @ObservedObject private var speechSettings = SpeechSettingsStore.shared
 
     private let threads: [ChatThread] = [
         ChatThread(id: "c1", title: "电商数据分析", preview: "上周转化率降低的原因是什么？", time: "10:24", systemImage: "chart.line.uptrend.xyaxis", tint: .blue, tags: ["置顶", "1 未读"]),
@@ -778,8 +779,10 @@ struct AIAssistantChatView: View {
                         text: $viewModel.inputText,
                         isListening: viewModel.isListening,
                         isSending: viewModel.isSending,
+                        isVoiceMuted: speechSettings.playbackMuted,
                         onVoice: { viewModel.toggleListening() },
                         onSend: { viewModel.sendMessage() },
+                        onToggleVoice: { speechSettings.playbackMuted.toggle() },
                         onVoiceCall: { showVoiceCall = true },
                         onPlus: { showShortcutRow.toggle() },
                         onPasteImage: { imageData in
@@ -1658,8 +1661,10 @@ struct ChatComposerBar: View {
     @Binding var text: String
     let isListening: Bool
     let isSending: Bool
+    let isVoiceMuted: Bool
     var onVoice: () -> Void
     var onSend: () -> Void
+    var onToggleVoice: () -> Void
     var onVoiceCall: () -> Void = {}
     var onPlus: () -> Void = {}
     var onPasteImage: ((Data) -> Void)? = nil
@@ -1702,6 +1707,11 @@ struct ChatComposerBar: View {
             }
             .disabled(hasInputText && !canSend)
             .accessibilityLabel(hasInputText ? "发送" : (isListening ? "正在听" : "语音输入"))
+
+            UnifiedAppIconButton(systemImage: isVoiceMuted ? "speaker.slash.fill" : "speaker.wave.2.fill") {
+                onToggleVoice()
+            }
+            .accessibilityLabel(isVoiceMuted ? "开启语音播放" : "关闭语音播放")
 
             UnifiedAppIconButton(systemImage: "waveform") {
                 onVoiceCall()
