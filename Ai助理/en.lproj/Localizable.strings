@@ -196,7 +196,7 @@
 "提交中..." = "Submitting...";
 "验证码" = "Verification code";
 "请输入邮箱验证码" = "Enter email verification code";
-"发送中" = "Sending";
+"发送中" = "Sending...";
 "发送验证码" = "Send code";
 "正在发送验证码..." = "Sending verification code...";
 "验证码已发送，请在 10 分钟内完成验证" = "Code sent. Please verify within 10 minutes";
@@ -530,12 +530,14 @@
 "输入文本或使用语音开始翻译" = "Enter text or use voice to translate";
 "进行中" = "In progress";
 "难度筛选" = "Difficulty filter";
+"实时语音翻译" = "Real-time voice translation";
+"翻译记录" = "Translation history";
 "- 建议每天至少完成 15 分钟口语或翻译练习\n- 多复习「旅行」「职场」等高频场景的短句" = "- Aim for at least 15 minutes of speaking or translation practice daily\n- Review high‑frequency phrases for scenarios like “Travel” and “Workplace”";
 "xxxx年，对我来说是一个不平凡的一年。它给我考验、带来挑战，也让我幸运地获得成功。\n\n一方面，在2019年我坚持完成了自己的学习计划，取得了进步，提高了自己的能力，得到了老师的认可和肯定。我参加了一系列的考试，如期末考试、中考和高考，取得了优异的成绩，非常满意。我对自己已经可以承担起学习与责任感到很开心。" = "Year xxxx was an extraordinary year for me. It tested me, brought challenges, and also let me find success.\n\nOn one hand, in 2019 I stuck to my study plan, made progress, improved my abilities, and earned my teachers’ recognition. I took a series of exams—finals, entrance exams, and more—and achieved excellent results. I was very satisfied and felt happy that I could take on learning and responsibility.";
 "助理请求在本机执行：\n\\(pending.command)" = "Assistant requested to run locally:\n\\(pending.command)";
 "最后更新:" = "Last updated:";
 "立即" = "Now";
-"立即进入" = "Enter now";
+"立即进入" = "Start now";
 "推荐" = "Recommended";
 "建议" = "Suggestion";
 "在线" = "Online";
@@ -651,7 +653,7 @@
 "做任务 领次数" = "Do tasks to earn uses";
 "该操作不可恢复。登录用户的云端数据不会被删除。" = "This action cannot be undone. Cloud data for logged-in users will not be deleted.";
 "助理会按“偏好 / 习惯 / 长期目标”分层记忆，并结合置信度与过期策略自动优化。登录后记忆会同步到你的账号。" = "The assistant remembers by preference/habit/long-term goals and optimizes by confidence and expiry. Logged-in memories sync to your account.";
-"加载中…" = "Loading…";
+"加载中…" = "Loading...";
 "到期 %@" = "Expires %@";
 "长期" = "Long-term";
 "添加" = "Add";

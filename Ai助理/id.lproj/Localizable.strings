@@ -164,7 +164,7 @@
 "该操作将删除此对话及其消息，无法恢复。" = "Tindakan ini akan menghapus percakapan dan pesannya, tidak dapat dipulihkan.";
 "已复制到剪贴板" = "Disalin ke papan klip";
 "立即" = "Segera";
-"立即进入" = "Masuk sekarang";
+"立即进入" = "Mulai sekarang";
 "推荐" = "Rekomendasi";
 "建议" = "Saran";
 "在线" = "Online";
@@ -411,7 +411,7 @@
 "做任务 领次数" = "Kerjakan tugas untuk mendapat kuota";
 "该操作不可恢复。登录用户的云端数据不会被删除。" = "Tindakan ini tidak dapat dibatalkan. Data cloud akun login tidak akan dihapus.";
 "助理会按“偏好 / 习惯 / 长期目标”分层记忆，并结合置信度与过期策略自动优化。登录后记忆会同步到你的账号。" = "Asisten mengingat berdasarkan preferensi/kebiasaan/tujuan jangka panjang dan mengoptimalkan menurut tingkat kepercayaan dan masa berlaku. Memori akan tersinkron ke akun Anda.";
-"加载中…" = "Memuat…";
+"加载中…" = "Memuat...";
 "到期 %@" = "Berlaku hingga %@";
 "长期" = "Jangka panjang";
 "添加" = "Tambah";
@@ -538,7 +538,7 @@
 "提交中..." = "Mengirim...";
 "验证码" = "Kode verifikasi";
 "请输入邮箱验证码" = "Masukkan kode verifikasi email";
-"发送中" = "Mengirim";
+"发送中" = "Mengirim...";
 "发送验证码" = "Kirim kode";
 "正在发送验证码..." = "Mengirim kode verifikasi...";
 "验证码已发送，请在 10 分钟内完成验证" = "Kode terkirim. Selesaikan verifikasi dalam 10 menit";
@@ -708,7 +708,7 @@
 "演讲稿" = "Naskah pidato";
 "点击下方生成按钮后显示草稿" = "Draf muncul setelah menekan tombol di bawah";
 "点击生成后显示 PPT 大纲" = "Outline PPT muncul setelah dibuat";
-"生成中..." = "Sedang membuat...";
+"生成中..." = "Membuat...";
 "目录" = "Daftar isi";
 "短" = "Pendek";
 "科技" = "Teknologi";
@@ -864,6 +864,8 @@
 "输入文本或使用语音开始翻译" = "Masukkan teks atau gunakan suara untuk menerjemahkan";
 "进行中" = "Sedang berjalan";
 "难度筛选" = "Filter tingkat";
+"实时语音翻译" = "Terjemahan suara real-time";
+"翻译记录" = "Riwayat terjemahan";
 "- 建议每天至少完成 15 分钟口语或翻译练习\n- 多复习「旅行」「职场」等高频场景的短句" = "- Usahakan latihan berbicara atau terjemahan minimal 15 menit setiap hari\n- Ulangi frasa berfrekuensi tinggi seperti “Perjalanan” dan “Dunia kerja”";
 "xxxx年，对我来说是一个不平凡的一年。它给我考验、带来挑战，也让我幸运地获得成功。\n\n一方面，在2019年我坚持完成了自己的学习计划，取得了进步，提高了自己的能力，得到了老师的认可和肯定。我参加了一系列的考试，如期末考试、中考和高考，取得了优异的成绩，非常满意。我对自己已经可以承担起学习与责任感到很开心。" = "Tahun xxxx adalah tahun yang luar biasa bagi saya. Tahun itu menguji saya, membawa tantangan, dan juga memberi keberhasilan.\n\nDi satu sisi, pada 2019 saya konsisten menjalankan rencana belajar, membuat kemajuan, meningkatkan kemampuan, dan mendapatkan pengakuan dari guru. Saya mengikuti serangkaian ujian seperti ujian akhir, ujian masuk, dan lainnya, dengan hasil sangat baik. Saya puas dan merasa senang karena mampu memikul tanggung jawab belajar.";
 "助理请求在本机执行：\n\\(pending.command)" = "Asisten meminta menjalankan di perangkat:\n\\(pending.command)";

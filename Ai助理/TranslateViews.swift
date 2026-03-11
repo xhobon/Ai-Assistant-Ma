@@ -175,7 +175,7 @@ struct TranslationQuickLinkCard: View {
                     .font(.title3)
                     .foregroundStyle(tint)
             }
-            Text(title)
+            Text(L(title))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             Text(L(subtitle))
@@ -204,7 +204,7 @@ struct TranslationQuickInfoCard: View {
                     .font(.title3)
                     .foregroundStyle(AppTheme.textSecondary)
             }
-            Text(title)
+            Text(L(title))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             Text(L(subtitle))
@@ -1271,7 +1271,7 @@ struct ModernTranslationQuickLinkCard: View {
                     .foregroundStyle(accent)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(L(title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(1)

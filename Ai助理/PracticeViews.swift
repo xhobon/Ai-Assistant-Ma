@@ -1135,6 +1135,8 @@ struct PracticeSessionView: View {
         if !correct {
             wrongStore.addWrong(itemId: question.itemId, mode: question.mode, type: question.type)
         }
+        applyFeedback(correct: correct)
+        applyTimeBonusIfNeeded(correct: correct)
         updateStreak(correct: correct)
     }
 
@@ -1197,6 +1199,7 @@ struct PracticeSessionView: View {
         currentIndex = 0
         currentStreak = 0
         bestStreak = 0
+        timeBoosts = challengeEnabled ? 2 : 0
         resetTimer()
     }
 
@@ -1221,6 +1224,7 @@ struct PracticeSessionView: View {
         answerDetail = "\(languageStore.localized("practice_timeout")) · \(detail)"
         results.append(PracticeResultItem(question: question, isCorrect: false))
         wrongStore.addWrong(itemId: question.itemId, mode: question.mode, type: question.type)
+        applyFeedback(correct: false)
         updateStreak(correct: false)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             if !showSummary {
@@ -1259,9 +1263,65 @@ struct PracticeSessionView: View {
         if correct {
             currentStreak += 1
             bestStreak = max(bestStreak, currentStreak)
+            if currentStreak >= 2 {
+                comboBurstValue = currentStreak
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    showComboBurst = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        showComboBurst = false
+                    }
+                }
+            }
         } else {
             currentStreak = 0
         }
+    }
+
+    private func applyTimeBonusIfNeeded(correct: Bool) {
+        guard challengeEnabled, autoBonusEnabled, correct else { return }
+        let bonus = 3
+        timeRemaining = min(timeRemaining + bonus, timeLimit + 5)
+    }
+
+    private func applyTimeBoost() {
+        guard challengeEnabled, timeBoosts > 0 else { return }
+        timeBoosts -= 1
+        timeRemaining = min(timeRemaining + 5, timeLimit + 10)
+        HapticFeedback.light()
+        playFeedbackSound(.boost)
+    }
+
+    private func applyFeedback(correct: Bool) {
+        if correct {
+            HapticFeedback.success()
+            playFeedbackSound(.success)
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                showCorrectPulse = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    showCorrectPulse = false
+                }
+            }
+        } else {
+            HapticFeedback.error()
+            playFeedbackSound(.error)
+            withAnimation(.easeInOut(duration: 0.08)) {
+                showWrongShake = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                withAnimation(.easeInOut(duration: 0.08)) {
+                    showWrongShake = false
+                }
+            }
+        }
+    }
+
+    private func playFeedbackSound(_ type: PracticeFeedbackSound) {
+        guard !SpeechSettingsStore.shared.playbackMuted else { return }
+        AudioServicesPlaySystemSound(type.soundId)
     }
 
     private func toggleShadowingRecording(answer: String, audioLanguage: String) {
