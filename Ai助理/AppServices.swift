@@ -71,7 +71,7 @@ enum APIClientError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidResponse:
-            return "服务响应异常"
+            return L("服务响应异常")
         case .serverError(let message):
             return message
         }
@@ -88,20 +88,20 @@ func userFacingMessage(for error: Error) -> String {
     #endif
     let lower = desc.lowercased()
     if lower.contains("<!doctype html>") || (lower.contains("cannot get /api/") && lower.contains("<html")) {
-        return "当前服务器未启用该接口，请检查后端路由配置。"
+        return L("当前服务器未启用该接口，请检查后端路由配置。")
     }
     if lower.contains("cannot get /api/") {
-        return "当前服务器未启用该接口，请检查后端路由配置。"
+        return L("当前服务器未启用该接口，请检查后端路由配置。")
     }
     if lower.contains("connect") || lower.contains("connection") || lower.contains("网络") || lower.contains("无法连接") {
-        return "无法连接服务器，请检查网络或稍后重试。若持续失败，请确认后端服务已部署并正常运行。"
+        return L("无法连接服务器，请检查网络或稍后重试。若持续失败，请确认后端服务已部署并正常运行。")
     }
     if let urlError = error as? URLError {
         switch urlError.code {
         case .cannotConnectToHost, .notConnectedToInternet, .timedOut:
-            return "无法连接服务器，请检查网络与服务器地址。"
+            return L("无法连接服务器，请检查网络与服务器地址。")
         case .cannotFindHost:
-            return "无法解析服务器地址，请检查网络。若使用代理或 VPN 可先关闭后重试。"
+            return L("无法解析服务器地址，请检查网络。若使用代理或 VPN 可先关闭后重试。")
         default:
             break
         }
@@ -134,6 +134,7 @@ final class TokenStore: ObservableObject {
 /// 清除本地数据时发送，各页可监听并清空内存数据
 extension Notification.Name {
     static let clearLocalData = Notification.Name("ai_assistant_clear_local_data")
+    static let ttsPlaybackNotice = Notification.Name("ai_assistant_tts_playback_notice")
 }
 
 /// 清除所有本地记录（收藏、翻译历史等）；卸载应用后数据也会清空。登录用户的数据将来可同步至服务器。
@@ -275,7 +276,7 @@ final class APIClient {
         let base = ServerConfigStore.shared.baseURLString
         let pathTrimmed = path.hasPrefix("/") ? String(path.dropFirst()) : path
         guard let url = URL(string: base.hasSuffix("/") ? base + pathTrimmed : base + "/" + pathTrimmed) else {
-            throw APIClientError.serverError("无效的请求地址")
+            throw APIClientError.serverError(L("无效的请求地址"))
         }
         var request = URLRequest(url: url)
         request.httpMethod = method
@@ -437,10 +438,10 @@ final class APIClient {
         let callbackURL = try await startGoogleWebAuth()
         let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)
         if let err = components?.queryItems?.first(where: { $0.name == "error" })?.value, !err.isEmpty {
-            throw APIClientError.serverError("Google 登录失败：\(err)")
+            throw APIClientError.serverError(Lf("Google 登录失败：%@", err))
         }
         guard let ticket = components?.queryItems?.first(where: { $0.name == "ticket" })?.value, !ticket.isEmpty else {
-            throw APIClientError.serverError("Google 登录失败：未获取到登录票据")
+            throw APIClientError.serverError(L("Google 登录失败：未获取到登录票据"))
         }
         struct GoogleTicketResponse: Codable {
             let token: String
@@ -456,13 +457,13 @@ final class APIClient {
     private func startGoogleWebAuth() async throws -> URL {
         let rawBase = ServerConfigStore.shared.baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard var comps = URLComponents(string: rawBase.hasSuffix("/") ? "\(rawBase)api/auth/google/start" : "\(rawBase)/api/auth/google/start") else {
-            throw APIClientError.serverError("Google 登录地址无效")
+            throw APIClientError.serverError(L("Google 登录地址无效"))
         }
         comps.queryItems = [
             URLQueryItem(name: "redirect_uri", value: "aiassistant://oauth/google")
         ]
         guard let authURL = comps.url else {
-            throw APIClientError.serverError("Google 登录地址无效")
+            throw APIClientError.serverError(L("Google 登录地址无效"))
         }
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.main.async {
@@ -470,14 +471,14 @@ final class APIClient {
                     self.webAuthSession = nil
                     if let error {
                         if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
-                            continuation.resume(throwing: APIClientError.serverError("已取消 Google 登录"))
+                            continuation.resume(throwing: APIClientError.serverError(L("已取消 Google 登录")))
                         } else {
-                            continuation.resume(throwing: APIClientError.serverError("Google 登录失败，请重试"))
+                            continuation.resume(throwing: APIClientError.serverError(L("Google 登录失败，请重试")))
                         }
                         return
                     }
                     guard let callbackURL else {
-                        continuation.resume(throwing: APIClientError.serverError("Google 登录失败：未收到回调"))
+                        continuation.resume(throwing: APIClientError.serverError(L("Google 登录失败：未收到回调")))
                         return
                     }
                     continuation.resume(returning: callbackURL)
@@ -487,7 +488,7 @@ final class APIClient {
                 self.webAuthSession = session
                 if !session.start() {
                     self.webAuthSession = nil
-                    continuation.resume(throwing: APIClientError.serverError("无法打开 Google 登录窗口"))
+                    continuation.resume(throwing: APIClientError.serverError(L("无法打开 Google 登录窗口")))
                 }
             }
         }
@@ -518,7 +519,7 @@ final class APIClient {
         let base = ServerConfigStore.shared.baseURLString
         let pathTrimmed = "api/assistant/chat/stream"
         guard let url = URL(string: base.hasSuffix("/") ? base + pathTrimmed : base + "/" + pathTrimmed) else {
-            return AsyncThrowingStream { $0.finish(throwing: APIClientError.serverError("无效的请求地址")) }
+            return AsyncThrowingStream { $0.finish(throwing: APIClientError.serverError(L("无效的请求地址"))) }
         }
         var body: [String: Any] = ["message": message]
         if let imageData {
@@ -556,7 +557,7 @@ final class APIClient {
         let base = ServerConfigStore.shared.baseURLString
         let pathTrimmed = "api/assistant/chat/file/stream"
         guard let url = URL(string: base.hasSuffix("/") ? base + pathTrimmed : base + "/" + pathTrimmed) else {
-            return AsyncThrowingStream { $0.finish(throwing: APIClientError.serverError("无效的请求地址")) }
+            return AsyncThrowingStream { $0.finish(throwing: APIClientError.serverError(L("无效的请求地址"))) }
         }
 
         var request = URLRequest(url: url)
@@ -666,7 +667,7 @@ final class APIClient {
         let base = ServerConfigStore.shared.baseURLString
         let pathTrimmed = "api/assistant/chat"
         guard let url = URL(string: base.hasSuffix("/") ? base + pathTrimmed : base + "/" + pathTrimmed) else {
-            throw APIClientError.serverError("无效的请求地址")
+            throw APIClientError.serverError(L("无效的请求地址"))
         }
         
         var request = URLRequest(url: url)
@@ -1015,9 +1016,15 @@ final class SpeechService: NSObject, ObservableObject {
         stopSpeaking()
         beginPlaybackGuard(with: text)
         isPlaying = true
-        voicePlayback.speak(text: text, languageHint: detectedLang) { [weak self] in
-            self?.isPlaying = false
-        }
+        voicePlayback.speak(
+            text: text,
+            languageHint: detectedLang,
+            onFinish: { [weak self] in
+                self?.isPlaying = false
+            },
+            forceOnline: true,
+            allowFallback: false
+        )
     }
 
     /// 流式朗读（边生成边播放）
@@ -1039,6 +1046,24 @@ final class SpeechService: NSObject, ObservableObject {
         voicePlayback.speakStreaming(wrapped, languageHint: language) { [weak self] in
             self?.isPlaying = false
             onFinish?()
+        }
+    }
+
+    /// 在线语音测试（仅检测 Edge TTS 是否可用）
+    func testOnlineVoice(sampleText: String, language: String) async -> Bool {
+        if SpeechSettingsStore.shared.playbackMuted { return false }
+        AudioSessionCoordinator.shared.stopAllRecordings()
+        stopSpeaking()
+        beginPlaybackGuard(with: sampleText)
+        isPlaying = true
+        do {
+            try await voicePlayback.testOnlineVoice(text: sampleText, languageHint: language)
+            isPlaying = false
+            return true
+        } catch {
+            print("Edge TTS test failed: \(error.localizedDescription)")
+            isPlaying = false
+            return false
         }
     }
 
@@ -1251,23 +1276,23 @@ final class OpenClawService: ObservableObject {
             return await openPath(pathPart, asFolder: false)
         }
         guard Self.isCommandAllowed(command) else {
-            return "出于安全与隐私保护，该命令未被允许执行。仅支持：ls、pwd、date、whoami、df、uname、echo 等只读类命令。"
+            return L("出于安全与隐私保护，该命令未被允许执行。仅支持：ls、pwd、date、whoami、df、uname、echo 等只读类命令。")
         }
-        return "iOS 端不支持执行本机 Shell 命令。"
+        return L("iOS 端不支持执行本机 Shell 命令。")
     }
 
     /// 按关键词在 /Applications 与 ~/Applications 中查找 .app 并打开第一个匹配项（不依赖精确应用名）
     private func openAppByKeyword(_ keyword: String) async -> String {
-        guard !keyword.isEmpty else { return "未提供应用关键词。" }
-        return "iOS 不支持按关键词打开应用。"
+        guard !keyword.isEmpty else { return L("未提供应用关键词。") }
+        return L("iOS 不支持按关键词打开应用。")
     }
 
     /// 打开指定路径的文件夹（Finder）或文件（默认应用），路径仅允许用户目录与 /Applications 下
     private func openPath(_ pathPart: String, asFolder: Bool) async -> String {
         guard Self.isPathAllowed(pathPart) else {
-            return "出于安全考虑，仅允许打开用户目录（如 ~/Desktop、~/Downloads）或 /Applications 下的路径。"
+            return L("出于安全考虑，仅允许打开用户目录（如 ~/Desktop、~/Downloads）或 /Applications 下的路径。")
         }
-        return "iOS 不支持打开本地路径。"
+        return L("iOS 不支持打开本地路径。")
     }
 
 }

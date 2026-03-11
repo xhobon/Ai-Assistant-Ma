@@ -70,6 +70,8 @@ struct PracticeGenerator {
             return makeSentenceOrder(item: item, mode: mode)
         case .dictation:
             return makeDictation(item: item, mode: mode)
+        case .shadowing:
+            return makeShadowing(item: item, mode: mode)
         }
     }
 
@@ -287,7 +289,16 @@ struct PracticeGenerator {
     }
 
     private static func makeSentenceOrder(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
-        let sentence = item.exampleId
+        let sentence: String
+        let language: String
+        switch mode {
+        case .zhToId:
+            sentence = item.exampleId
+            language = "id"
+        case .idToZh:
+            sentence = item.exampleZh
+            language = "zh"
+        }
         let words = sentence.split(separator: " ").map(String.init)
         guard words.count >= 3 else { return nil }
         let shuffled = words.shuffled()
@@ -296,7 +307,7 @@ struct PracticeGenerator {
             type: .sentenceOrder,
             mode: mode,
             itemId: item.id,
-            payload: .sentenceOrder(words: shuffled, answer: words.joined(separator: " "), language: "id")
+            payload: .sentenceOrder(words: shuffled, answer: words.joined(separator: " "), language: language)
         )
     }
 
@@ -325,6 +336,34 @@ struct PracticeGenerator {
             mode: mode,
             itemId: item.id,
             payload: .dictation(audioText: audioText, answer: answer, targetLanguage: targetLanguage, audioLanguage: audioLanguage)
+        )
+    }
+
+    private static func makeShadowing(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
+        let audioText: String
+        let answer: String
+        let targetLanguage: String
+        let audioLanguage: String
+
+        switch mode {
+        case .zhToId:
+            audioText = item.exampleId
+            answer = item.exampleId
+            targetLanguage = "id"
+            audioLanguage = "id-ID"
+        case .idToZh:
+            audioText = item.exampleZh
+            answer = item.exampleZh
+            targetLanguage = "zh"
+            audioLanguage = "zh-CN"
+        }
+
+        return PracticeQuestion(
+            id: UUID().uuidString,
+            type: .shadowing,
+            mode: mode,
+            itemId: item.id,
+            payload: .shadowing(audioText: audioText, answer: answer, targetLanguage: targetLanguage, audioLanguage: audioLanguage)
         )
     }
 

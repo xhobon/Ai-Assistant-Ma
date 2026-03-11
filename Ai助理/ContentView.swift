@@ -548,6 +548,12 @@ struct ContentView: View {
                 copyToastMessage = L("已复制到剪贴板")
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .ttsPlaybackNotice)) { notification in
+            guard let message = notification.userInfo?["message"] as? String, !message.isEmpty else { return }
+            withAnimation(.easeInOut(duration: 0.2)) {
+                copyToastMessage = message
+            }
+        }
         .onChange(of: tokenStore.token) { _, _ in
             loadSidebarHistory()
             hasLoadedSidebarHistory = false

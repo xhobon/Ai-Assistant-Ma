@@ -84,6 +84,7 @@ enum PracticeQuestionType: String, CaseIterable, Identifiable, Codable {
     case listening
     case sentenceOrder
     case dictation
+    case shadowing
 
     var id: String { rawValue }
 }
@@ -103,6 +104,7 @@ enum PracticeQuestionPayload: Hashable {
     case listening(audioText: String, options: [String], answer: String, targetLanguage: String, audioLanguage: String)
     case sentenceOrder(words: [String], answer: String, language: String)
     case dictation(audioText: String, answer: String, targetLanguage: String, audioLanguage: String)
+    case shadowing(audioText: String, answer: String, targetLanguage: String, audioLanguage: String)
 }
 
 struct PracticeQuestion: Identifiable, Hashable {

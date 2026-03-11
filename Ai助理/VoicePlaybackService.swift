@@ -27,14 +27,20 @@ final class VoicePlaybackService: NSObject, ObservableObject {
         isPlaying = false
     }
 
-    func speak(text: String, languageHint: String? = nil, onFinish: (() -> Void)? = nil) {
+    func speak(
+        text: String,
+        languageHint: String? = nil,
+        onFinish: (() -> Void)? = nil,
+        forceOnline: Bool = false,
+        allowFallback: Bool = true
+    ) {
         guard !text.isEmpty else { return }
         if SpeechSettingsStore.shared.playbackMuted { return }
         stop()
         isPlaying = true
 
         let mode = SpeechSettingsStore.shared.voiceMode
-        if mode == "system" {
+        if !forceOnline && mode == "system" {
             speakSystem(text: text, languageHint: languageHint, onFinish: onFinish)
             return
         }
@@ -49,21 +55,34 @@ final class VoicePlaybackService: NSObject, ObservableObject {
                     onFinish?()
                 }
             } catch {
+                print("Edge TTS failed (speak): \(error.localizedDescription)")
                 await MainActor.run {
                     self.isPlaying = false
-                    self.speakSystem(text: text, languageHint: languageHint, onFinish: onFinish)
+                    if allowFallback {
+                        self.postTTSNotice(L("voice_fallback_to_system"))
+                        self.speakSystem(text: text, languageHint: languageHint, onFinish: onFinish)
+                    } else {
+                        self.postTTSNotice(L("voice_online_failed"))
+                        onFinish?()
+                    }
                 }
             }
         }
     }
 
-    func speakStreaming(_ stream: AsyncStream<String>, languageHint: String? = nil, onFinish: (() -> Void)? = nil) {
+    func speakStreaming(
+        _ stream: AsyncStream<String>,
+        languageHint: String? = nil,
+        onFinish: (() -> Void)? = nil,
+        forceOnline: Bool = false,
+        allowFallback: Bool = true
+    ) {
         if SpeechSettingsStore.shared.playbackMuted { return }
         stop()
         isPlaying = true
 
         let mode = SpeechSettingsStore.shared.voiceMode
-        if mode == "system" {
+        if !forceOnline && mode == "system" {
             streamTask = Task { [weak self] in
                 guard let self else { return }
                 var full = ""
@@ -96,11 +115,34 @@ final class VoicePlaybackService: NSObject, ObservableObject {
                     onFinish?()
                 }
             } catch {
+                print("Edge TTS failed (stream): \(error.localizedDescription)")
                 await MainActor.run {
-                    self.speakSystem(text: full, languageHint: languageHint, onFinish: onFinish)
+                    if allowFallback {
+                        self.postTTSNotice(L("voice_fallback_to_system"))
+                        self.speakSystem(text: full, languageHint: languageHint, onFinish: onFinish)
+                    } else {
+                        self.postTTSNotice(L("voice_online_failed"))
+                        onFinish?()
+                    }
                 }
             }
         }
+    }
+
+    func testOnlineVoice(text: String, languageHint: String? = nil) async throws {
+        guard !text.isEmpty else { return }
+        stop()
+        isPlaying = true
+        defer { isPlaying = false }
+
+        try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+        try AVAudioSession.sharedInstance().setActive(true, options: [])
+
+        let sample = chunkText(text).first ?? text
+        let voice = selectVoice(for: sample, languageHint: languageHint)
+        let speed = SpeechSettingsStore.shared.speechSpeed
+        let url = try await edge.synthesize(text: sample, voice: voice, speed: speed)
+        try await edge.play(url: url)
     }
 
     private func playChunks(_ chunks: [String], languageHint: String?) async throws {
@@ -174,6 +216,14 @@ final class VoicePlaybackService: NSObject, ObservableObject {
                 await MainActor.run { onFinish() }
             }
         }
+    }
+
+    private func postTTSNotice(_ message: String) {
+        NotificationCenter.default.post(
+            name: .ttsPlaybackNotice,
+            object: nil,
+            userInfo: ["message": message]
+        )
     }
 
     private func chunkText(_ text: String) -> [String] {

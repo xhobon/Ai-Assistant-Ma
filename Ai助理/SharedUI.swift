@@ -2459,14 +2459,14 @@ struct SmartErrorView: View {
                         .foregroundStyle(AppTheme.error)
                     
                     VStack(spacing: ModernDesignSystem.Spacing.xs) {
-                        ResponsiveText("出现错误", style: .headline)
+                        ResponsiveText(L("出现错误"), style: .headline)
                         ResponsiveText(errorMessage, style: .subheadline)
                             .multilineTextAlignment(.center)
                     }
                 }
                 
                 if let retryAction = retryAction {
-                    ModernButton("重试", style: .neon, action: retryAction)
+                    ModernButton(L("重试"), style: .neon, action: retryAction)
                         .frame(maxWidth: .infinity)
                 }
             }

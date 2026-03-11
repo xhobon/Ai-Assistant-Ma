@@ -466,7 +466,7 @@ struct ProfileSectionHeader: View {
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             if let subtitle {
-                Text(subtitle)
+                Text(L(subtitle))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -519,10 +519,10 @@ struct MemberBenefitsCard: View {
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(benefit.title)
+                            Text(L(benefit.title))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
-                            Text(benefit.subtitle)
+                            Text(L(benefit.subtitle))
                                 .font(.caption2)
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
@@ -605,7 +605,7 @@ struct MemberPlanCard: View {
                                     .frame(height: 20)
                             }
 
-                            Text(plan.title)
+                            Text(L(plan.title))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -661,7 +661,7 @@ struct PaymentOptionCard: View {
                         Image(systemName: option.systemImage)
                             .foregroundStyle(option.id == "wechat" ? .green : AppTheme.brandBlue)
 
-                        Text(option.title)
+                        Text(L(option.title))
                             .font(.subheadline)
                             .foregroundStyle(AppTheme.textPrimary)
 
@@ -725,7 +725,7 @@ struct ProfileQuickActionRow: View {
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.primary)
                         }
-                        Text(action.title)
+                        Text(L(action.title))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textPrimary)
                     }
@@ -772,11 +772,11 @@ struct ProfileMenuList: View {
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title)
+                            Text(L(item.title))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
                             if let subtitle = item.subtitle {
-                                Text(subtitle)
+                                Text(L(subtitle))
                                     .font(.caption)
                                     .foregroundStyle(AppTheme.textSecondary)
                             }
@@ -976,7 +976,7 @@ struct TaskRow: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(task.title)
+                    Text(L(task.title))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer()
@@ -990,7 +990,7 @@ struct TaskRow: View {
                     .frame(width: 88)
                 }
 
-                Text(task.subtitle)
+                Text(L(task.subtitle))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
 
@@ -1090,9 +1090,35 @@ struct AppSettingsView: View {
                     ],
                     selection: Binding(
                         get: { speechSettings.voiceMode },
-                        set: { speechSettings.voiceMode = $0 }
+                        set: {
+                            speechSettings.voiceMode = $0
+                            if $0 == "system" {
+                                toastMessage = L("voice_system_mode_notice")
+                            }
+                        }
                     )
                 )
+
+                SettingsRow(
+                    systemImage: "antenna.radiowaves.left.and.right",
+                    title: L("voice_test_title"),
+                    subtitle: L("voice_test_subtitle"),
+                    showChevron: false
+                ) {
+                    if speechSettings.playbackMuted {
+                        toastMessage = L("voice_unmute_required")
+                        return
+                    }
+                    Task {
+                        let ok = await SpeechService.shared.testOnlineVoice(
+                            sampleText: L("voice_preview_sample"),
+                            language: "zh-CN"
+                        )
+                        await MainActor.run {
+                            toastMessage = ok ? L("voice_test_success") : L("voice_test_failed")
+                        }
+                    }
+                }
 
                 SettingsSegmentedRow(
                     systemImage: "person.fill",
@@ -2534,7 +2560,7 @@ private struct SettingsLinkRow: View {
                 Text(title)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text(subtitle)
+                Text(L(subtitle))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
                     .lineLimit(2)

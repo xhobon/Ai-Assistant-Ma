@@ -807,7 +807,7 @@ private struct ProductivityHeader: View {
                 Text(title)
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text(subtitle)
+                Text(L(subtitle))
                     .font(.footnote)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -855,10 +855,10 @@ private struct LabeledField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
+            Text(L(title))
                 .font(.caption)
                 .foregroundStyle(AppTheme.textSecondary)
-            TextField(placeholder, text: $text)
+            TextField(L(placeholder), text: $text)
                 .textFieldStyle(.plain)
                 .foregroundStyle(AppTheme.inputText)
                 .padding(.horizontal, 12)
@@ -877,7 +877,7 @@ private struct TextEditorField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
+            Text(L(title))
                 .font(.caption)
                 .foregroundStyle(AppTheme.textSecondary)
             ZStack(alignment: .topLeading) {
@@ -888,7 +888,7 @@ private struct TextEditorField: View {
                     .background(AppTheme.surfaceMuted)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 if text.isEmpty {
-                    Text(placeholder)
+                    Text(L(placeholder))
                         .font(.footnote)
                         .foregroundStyle(AppTheme.inputPlaceholder)
                         .padding(.horizontal, 16)
@@ -906,7 +906,7 @@ private struct ChipPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
+            Text(L(title))
                 .font(.caption)
                 .foregroundStyle(AppTheme.textSecondary)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -915,7 +915,7 @@ private struct ChipPicker: View {
                         Button {
                             selection = option
                         } label: {
-                            Text(option)
+                            Text(L(option))
                                 .font(.caption.weight(selection == option ? .semibold : .regular))
                                 .foregroundStyle(selection == option ? AppTheme.textPrimary : AppTheme.textSecondary)
                                 .padding(.horizontal, 12)
@@ -938,7 +938,7 @@ private struct QuickChips: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
+            Text(L(title))
                 .font(.caption)
                 .foregroundStyle(AppTheme.textSecondary)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -947,7 +947,7 @@ private struct QuickChips: View {
                         Button {
                             onSelect(option)
                         } label: {
-                            Text(option)
+                            Text(L(option))
                                 .font(.caption)
                                 .foregroundStyle(AppTheme.accentStrong)
                                 .padding(.horizontal, 10)
@@ -970,7 +970,7 @@ private struct EmptyStateRow: View {
         HStack(spacing: 10) {
             Image(systemName: "tray")
                 .foregroundStyle(AppTheme.textTertiary)
-            Text(text)
+            Text(L(text))
                 .font(.footnote)
                 .foregroundStyle(AppTheme.textSecondary)
             Spacer(minLength: 0)
@@ -1093,7 +1093,7 @@ private struct DraftRow: View {
     var body: some View {
         Button(action: onLoad) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(draft.title)
+                Text(L(draft.title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
             Text(Lf("风格：%@ · 语气：%@ · 篇幅：%@", draft.style, draft.tone, draft.length))
@@ -1118,7 +1118,7 @@ private struct SlideOutlineRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(outline.title)
+            Text(L(outline.title))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             ForEach(outline.bullets, id: \.self) { bullet in
@@ -1146,7 +1146,7 @@ private struct NoteRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(note.title)
+                Text(L(note.title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer(minLength: 0)
@@ -1223,7 +1223,7 @@ private struct SummaryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(summary.title)
+                Text(L(summary.title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer(minLength: 0)
@@ -1380,7 +1380,7 @@ private struct AINotePreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(note.title)
+            Text(L(note.title))
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             Text(note.summary)
@@ -1516,7 +1516,7 @@ private struct ToggleRow: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 if let subtitle {
-                    Text(subtitle)
+                    Text(L(subtitle))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -1594,7 +1594,7 @@ private struct AISummaryPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(summary.title)
+            Text(L(summary.title))
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             Text(summary.summary)

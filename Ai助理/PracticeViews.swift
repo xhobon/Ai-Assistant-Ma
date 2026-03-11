@@ -1,4 +1,5 @@
 import SwiftUI
+import AudioToolbox
 
 enum PracticeSource {
     case all
@@ -17,9 +18,14 @@ struct PracticeHomeView: View {
     @State private var sessionSource: PracticeSource = .all
     @State private var selectedDifficulty: LearningDifficulty = .all
     @State private var showFavoritesOnly = false
+    @State private var challengeEnabled = false
+    @State private var comboEnabled = true
+    @State private var timeLimit = 30
+    @State private var autoBonusEnabled = true
 
     private let questionCounts = [5, 10, 20]
     private let difficulties = LearningDifficulty.allCases
+    private let timeOptions = [15, 30, 45]
 
     var body: some View {
         NavigationStack {
@@ -36,6 +42,15 @@ struct PracticeHomeView: View {
                         selectedCount: $selectedCount,
                         questionCounts: questionCounts,
                         selectedTypes: $selectedTypes
+                    )
+                    .padding(.horizontal, 14)
+
+                    PracticeChallengeCard(
+                        isEnabled: $challengeEnabled,
+                        timeLimit: $timeLimit,
+                        timeOptions: timeOptions,
+                        comboEnabled: $comboEnabled,
+                        autoBonusEnabled: $autoBonusEnabled
                     )
                     .padding(.horizontal, 14)
 
@@ -83,7 +98,11 @@ struct PracticeHomeView: View {
                     types: Array(selectedTypes),
                     source: sessionSource,
                     sourceItems: filteredItems,
-                    allItems: allItems
+                    allItems: allItems,
+                    challengeEnabled: challengeEnabled,
+                    timeLimit: timeLimit,
+                    comboEnabled: challengeEnabled ? comboEnabled : false,
+                    autoBonusEnabled: challengeEnabled ? autoBonusEnabled : false
                 )
             }
         }
@@ -238,6 +257,7 @@ struct PracticeModeCard: View {
         case .listening: return languageStore.localized("practice_type_listening")
         case .sentenceOrder: return languageStore.localized("practice_type_order")
         case .dictation: return languageStore.localized("practice_type_dictation")
+        case .shadowing: return languageStore.localized("practice_type_shadowing")
         }
     }
 
@@ -252,7 +272,229 @@ struct PracticeModeCard: View {
         case .listening: return "ear"
         case .sentenceOrder: return "arrow.up.arrow.down"
         case .dictation: return "mic.fill"
+        case .shadowing: return "waveform"
         }
+    }
+}
+
+struct PracticeCategorySection: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
+    let categories: [VocabCategory]
+    @Binding var selectedCategoryId: String?
+    let difficulties: [LearningDifficulty]
+    @Binding var selectedDifficulty: LearningDifficulty
+    @Binding var showFavoritesOnly: Bool
+    let mode: LearningMode
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(languageStore.localized("practice_category_title"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(languageStore.localizedFormat("practice_category_subtitle", categories.count))
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(difficulties, id: \.self) { item in
+                        Button {
+                            selectedDifficulty = item
+                        } label: {
+                            Text(languageStore.localized(item.labelKey))
+                                .font(.caption.weight(selectedDifficulty == item ? .semibold : .medium))
+                                .foregroundStyle(selectedDifficulty == item ? .white : AppTheme.textPrimary)
+                                .frame(minWidth: 44)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(selectedDifficulty == item ? AppTheme.accentStrong : AppTheme.surfaceMuted)
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .stroke(selectedDifficulty == item ? AppTheme.accentStrong : AppTheme.border, lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Button {
+                        showFavoritesOnly.toggle()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: showFavoritesOnly ? "heart.fill" : "heart")
+                                .font(.caption)
+                            Text(languageStore.localized("仅看收藏"))
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(showFavoritesOnly ? AppTheme.accentStrong : AppTheme.textSecondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(showFavoritesOnly ? AppTheme.accentStrong.opacity(0.12) : AppTheme.surfaceMuted)
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(showFavoritesOnly ? AppTheme.accentStrong.opacity(0.6) : AppTheme.border, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
+                        let tint = tintForIndex(index)
+                        Button {
+                            selectedCategoryId = category.id
+                        } label: {
+                            LearningResourceCard(
+                                category: category,
+                                tint: tint,
+                                systemImage: iconForIndex(index),
+                                isSelected: selectedCategoryId == category.id,
+                                mode: mode
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+    }
+
+    private func iconForIndex(_ index: Int) -> String {
+        let icons = ["bolt.fill", "leaf.fill", "airplane", "cart.fill", "face.smiling", "curlybraces"]
+        return icons[index % icons.count]
+    }
+
+    private func tintForIndex(_ index: Int) -> Color {
+        let tints: [Color] = [AppTheme.accentStrong, AppTheme.accentWarm, AppTheme.brandBlue, .purple, .green, Color(red: 0.35, green: 0.34, blue: 0.84)]
+        return tints[index % tints.count]
+    }
+}
+
+struct PracticeChallengeCard: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
+    @Binding var isEnabled: Bool
+    @Binding var timeLimit: Int
+    let timeOptions: [Int]
+    @Binding var comboEnabled: Bool
+    @Binding var autoBonusEnabled: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(languageStore.localized("practice_challenge_title"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text(languageStore.localized("practice_challenge_subtitle"))
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                Spacer(minLength: 0)
+                Toggle("", isOn: $isEnabled)
+                    .labelsHidden()
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(languageStore.localized("practice_challenge_time"))
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                HStack(spacing: 8) {
+                    ForEach(timeOptions, id: \.self) { option in
+                        Button {
+                            timeLimit = option
+                        } label: {
+                            Text(languageStore.localizedFormat("practice_challenge_seconds", option))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(timeLimit == option ? .white : AppTheme.textPrimary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule().fill(timeLimit == option ? AppTheme.accentStrong : AppTheme.surfaceMuted)
+                                )
+                                .overlay(
+                                    Capsule().stroke(timeLimit == option ? AppTheme.accentStrong : AppTheme.border, lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .opacity(isEnabled ? 1 : 0.5)
+                        .disabled(!isEnabled)
+                    }
+                }
+            }
+
+            Button {
+                comboEnabled.toggle()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: comboEnabled ? "flame.fill" : "flame")
+                        .foregroundStyle(comboEnabled ? AppTheme.accentWarm : AppTheme.textTertiary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(languageStore.localized("practice_challenge_combo"))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text(languageStore.localized("practice_challenge_combo_subtitle"))
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: comboEnabled ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(comboEnabled ? AppTheme.accentStrong : AppTheme.textTertiary)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .opacity(isEnabled ? 1 : 0.5)
+            .disabled(!isEnabled)
+
+            Button {
+                autoBonusEnabled.toggle()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: autoBonusEnabled ? "sparkles" : "sparkle")
+                        .foregroundStyle(autoBonusEnabled ? AppTheme.brandBlue : AppTheme.textTertiary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(languageStore.localized("practice_challenge_bonus"))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text(languageStore.localized("practice_challenge_bonus_subtitle"))
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: autoBonusEnabled ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(autoBonusEnabled ? AppTheme.accentStrong : AppTheme.textTertiary)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .background(AppTheme.surfaceMuted)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .opacity(isEnabled ? 1 : 0.5)
+            .disabled(!isEnabled)
+        }
+        .padding(12)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
+        .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
     }
 }
 
@@ -359,6 +601,7 @@ struct PracticeSessionView: View {
     @StateObject private var statsStore = LearningStatsStore.shared
     @StateObject private var wrongStore = WrongBookStore.shared
     @StateObject private var dailyStore = DailyTaskStore.shared
+    private let speechTranscriber = SpeechTranscriber()
 
     let mode: LearningMode
     let questionCount: Int
@@ -366,6 +609,10 @@ struct PracticeSessionView: View {
     let source: PracticeSource
     let sourceItems: [VocabItem]
     let allItems: [VocabItem]
+    let challengeEnabled: Bool
+    let timeLimit: Int
+    let comboEnabled: Bool
+    let autoBonusEnabled: Bool
 
     @State private var questions: [PracticeQuestion] = []
     @State private var currentIndex: Int = 0
@@ -379,12 +626,26 @@ struct PracticeSessionView: View {
     @State private var trueFalseSelection: Bool? = nil
     @State private var orderedWords: [String] = []
     @State private var availableWords: [String] = []
-    @State private var buildSelection: [String] = []
-    @State private var buildOptions: [String] = []
+    @State private var buildSelection: [PracticeToken] = []
+    @State private var buildOptions: [PracticeToken] = []
+    @State private var shadowingText = ""
+    @State private var shadowingScore: Double? = nil
+    @State private var isShadowingRecording = false
+    @State private var shadowingError: String? = nil
+    @State private var timeRemaining: Int = 0
+    @State private var currentStreak: Int = 0
+    @State private var bestStreak: Int = 0
+    @State private var timeBoosts: Int = 0
+    @State private var comboBurstValue: Int = 0
+    @State private var showComboBurst = false
+    @State private var showCorrectPulse = false
+    @State private var showWrongShake = false
     @State private var results: [PracticeResultItem] = []
     @State private var startTime = Date()
     @State private var showSummary = false
     @State private var answerDetail = ""
+
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ScrollView {
@@ -396,7 +657,19 @@ struct PracticeSessionView: View {
                         dismiss()
                     }
                 } else {
-                    PracticeProgressCard(current: currentIndex + 1, total: questions.count)
+                    PracticeProgressCard(
+                        current: currentIndex + 1,
+                        total: questions.count,
+                        timeRemaining: challengeEnabled ? timeRemaining : nil,
+                        currentStreak: comboEnabled ? currentStreak : nil,
+                        bestStreak: comboEnabled ? bestStreak : nil
+                    )
+                    if challengeEnabled {
+                        PracticePowerUpRow(
+                            boosts: timeBoosts,
+                            onBoost: { applyTimeBoost() }
+                        )
+                    }
                     questionCard
                     actionButtons
                 }
@@ -408,8 +681,38 @@ struct PracticeSessionView: View {
         .background(AppTheme.pageBackground.ignoresSafeArea())
         .navigationTitle(languageStore.localized("practice_title"))
         .navigationBarTitleDisplayMode(.inline)
+        .overlay(alignment: .top) {
+            if showComboBurst {
+                ComboBurstView(value: comboBurstValue)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .padding(.top, 8)
+            }
+        }
+        .alert(languageStore.localized("practice_alert_title"), isPresented: Binding(
+            get: { shadowingError != nil },
+            set: { if !$0 { shadowingError = nil } }
+        )) {
+            Button(languageStore.localized("practice_alert_ok"), role: .cancel) {}
+        } message: {
+            Text(shadowingError ?? "")
+        }
         .onAppear {
             loadQuestions()
+        }
+        .onDisappear {
+            if isShadowingRecording {
+                speechTranscriber.stopTranscribing()
+                isShadowingRecording = false
+            }
+        }
+        .onReceive(timer) { _ in
+            guard challengeEnabled, !showSummary, !questions.isEmpty, !answered else { return }
+            if timeRemaining > 0 {
+                timeRemaining -= 1
+            }
+            if timeRemaining == 0 {
+                timeoutCurrentQuestion()
+            }
         }
     }
 
@@ -426,6 +729,8 @@ struct PracticeSessionView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.border, lineWidth: 1))
         .shadow(color: AppTheme.softShadow, radius: 4, x: 0, y: 2)
+        .scaleEffect(showCorrectPulse ? 1.02 : 1.0)
+        .offset(x: showWrongShake ? -6 : 0)
     }
 
     private var actionButtons: some View {
@@ -477,6 +782,8 @@ struct PracticeSessionView: View {
             return languageStore.localized("practice_sentence_order_title")
         case .dictation:
             return languageStore.localized("practice_dictation_title")
+        case .shadowing:
+            return languageStore.localized("practice_shadowing_title")
         }
     }
 
@@ -575,7 +882,7 @@ struct PracticeSessionView: View {
                     PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
                 }
             }
-        case .wordBuild(let prompt, let tokens, _, let separator, _):
+        case .wordBuild(let prompt, let tokens, _, _, _):
             VStack(alignment: .leading, spacing: 10) {
                 Text(prompt)
                     .font(.headline.weight(.semibold))
@@ -584,22 +891,25 @@ struct PracticeSessionView: View {
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 8)], spacing: 8) {
-                    ForEach(buildOptions, id: \.self) { token in
-                        PracticeWordChip(title: token, style: .secondary) {
-                            buildOptions.removeAll { $0 == token }
-                            buildSelection.append(token)
+                    ForEach(buildOptions) { token in
+                        PracticeWordChip(title: token.value, style: .secondary) {
+                            if let index = buildOptions.firstIndex(of: token) {
+                                buildOptions.remove(at: index)
+                                buildSelection.append(token)
+                            }
                         }
                     }
                 }
                 Divider()
                 HStack(spacing: 6) {
-                    ForEach(buildSelection.indices, id: \.self) { index in
-                        let token = buildSelection[index]
+                    ForEach(buildSelection) { token in
                         Button {
-                            buildSelection.remove(at: index)
-                            buildOptions.append(token)
+                            if let index = buildSelection.firstIndex(of: token) {
+                                buildSelection.remove(at: index)
+                                buildOptions.append(token)
+                            }
                         } label: {
-                            Text(token)
+                            Text(token.value)
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
                                 .padding(.horizontal, 10)
@@ -618,7 +928,7 @@ struct PracticeSessionView: View {
             }
             .onAppear {
                 if buildOptions.isEmpty {
-                    buildOptions = tokens
+                    buildOptions = tokens.map { PracticeToken(value: $0) }
                     buildSelection = []
                 }
             }
@@ -709,6 +1019,69 @@ struct PracticeSessionView: View {
             .onAppear {
                 SpeechService.shared.speak(audioText, language: audioLanguage)
             }
+        case .shadowing(let audioText, let answer, let targetLanguage, let audioLanguage):
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    UnifiedAppButton(title: languageStore.localized("practice_shadowing_play"), systemImage: "speaker.wave.2", style: .outline) {
+                        SpeechService.shared.speak(audioText, language: audioLanguage)
+                    }
+                    UnifiedAppButton(
+                        title: languageStore.localized(isShadowingRecording ? "practice_shadowing_stop" : "practice_shadowing_record"),
+                        systemImage: isShadowingRecording ? "stop.fill" : "mic.fill",
+                        style: isShadowingRecording ? .primary : .outline
+                    ) {
+                        toggleShadowingRecording(answer: answer, audioLanguage: audioLanguage)
+                    }
+                }
+                Text(languageStore.localized("practice_shadowing_hint"))
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(languageStore.localized("practice_shadowing_recognized"))
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textTertiary)
+                    Text(shadowingText.isEmpty ? languageStore.localized("practice_shadowing_placeholder") : shadowingText)
+                        .font(.subheadline)
+                        .foregroundStyle(shadowingText.isEmpty ? AppTheme.textTertiary : AppTheme.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                        .background(AppTheme.surfaceMuted)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+
+                if !shadowingText.isEmpty {
+                    ShadowingAlignmentView(
+                        expected: answer,
+                        recognized: shadowingText,
+                        targetLanguage: targetLanguage
+                    )
+                }
+
+                if let shadowingScore {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(languageStore.localizedFormat("practice_shadowing_score", Int(shadowingScore * 100)))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Spacer()
+                            Text(shadowingFeedback(for: shadowingScore))
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        ProgressView(value: shadowingScore)
+                            .tint(shadowingScore >= 0.75 ? AppTheme.success : AppTheme.accentWarm)
+                    }
+                }
+
+                if answered {
+                    PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
+                }
+            }
+            .onAppear {
+                shadowingText = ""
+                shadowingScore = nil
+            }
         }
     }
 
@@ -721,6 +1094,9 @@ struct PracticeSessionView: View {
         case .multipleChoice(_, _, let answer, _):
             correct = normalized(selectedOption) == normalized(answer)
             detail = answer
+        case .trueFalse(_, _, let correctText, let answer, _):
+            correct = (trueFalseSelection == answer)
+            detail = correctText
         case .matching(_, _, let pairs):
             correct = pairs.allSatisfy { pair in
                 normalized(matchSelections[pair.left]) == normalized(pair.right)
@@ -728,6 +1104,10 @@ struct PracticeSessionView: View {
             detail = matchingDetail(pairs: pairs)
         case .fillBlank(_, let answer):
             correct = normalized(fillBlankText) == normalized(answer)
+            detail = answer
+        case .wordBuild(_, _, let answer, let separator, _):
+            let combined = buildSelection.map(\.value).joined(separator: separator)
+            correct = normalized(combined) == normalized(answer)
             detail = answer
         case .translation(_, let answer, _):
             correct = normalized(translationText) == normalized(answer)
@@ -739,6 +1119,13 @@ struct PracticeSessionView: View {
             let combined = orderedWords.joined(separator: " ")
             correct = normalized(combined) == normalized(answer)
             detail = answer
+        case .dictation(_, let answer, _, _):
+            correct = normalized(dictationText) == normalized(answer)
+            detail = answer
+        case .shadowing(_, let answer, _, _):
+            let score = shadowingScore ?? similarityScore(shadowingText, answer)
+            correct = score >= 0.75
+            detail = "\(answer) · \(languageStore.localizedFormat("practice_shadowing_score", Int(score * 100)))"
         }
 
         isCorrect = correct
@@ -748,6 +1135,7 @@ struct PracticeSessionView: View {
         if !correct {
             wrongStore.addWrong(itemId: question.itemId, mode: question.mode, type: question.type)
         }
+        updateStreak(correct: correct)
     }
 
     private func goNext() {
@@ -756,6 +1144,7 @@ struct PracticeSessionView: View {
             resetState()
             answered = false
             isCorrect = false
+            resetTimer()
         } else {
             finalizeSession()
         }
@@ -777,18 +1166,27 @@ struct PracticeSessionView: View {
         matchSelections = [:]
         fillBlankText = ""
         translationText = ""
+        dictationText = ""
+        trueFalseSelection = nil
         orderedWords = []
         availableWords = []
+        buildSelection = []
+        buildOptions = []
+        shadowingText = ""
+        shadowingScore = nil
+        if isShadowingRecording {
+            speechTranscriber.stopTranscribing()
+            isShadowingRecording = false
+        }
         answerDetail = ""
     }
 
     private func loadQuestions() {
-        let items = SampleData.vocabCategories.flatMap { $0.items }
         if source == .wrongBook {
             let wrongItems = wrongStore.items.filter { $0.mode == mode }
-            questions = PracticeGenerator.generateQuestions(from: wrongItems, allItems: items)
+            questions = PracticeGenerator.generateQuestions(from: wrongItems, allItems: allItems)
         } else {
-            questions = PracticeGenerator.generateQuestions(mode: mode, count: questionCount, types: types, sourceItems: items)
+            questions = PracticeGenerator.generateQuestions(mode: mode, count: questionCount, types: types, sourceItems: sourceItems)
         }
         startTime = Date()
         resetState()
@@ -796,6 +1194,10 @@ struct PracticeSessionView: View {
         isCorrect = false
         results = []
         showSummary = questions.isEmpty
+        currentIndex = 0
+        currentStreak = 0
+        bestStreak = 0
+        resetTimer()
     }
 
     private func normalized(_ text: String?) -> String {
@@ -805,17 +1207,195 @@ struct PracticeSessionView: View {
     private func matchingDetail(pairs: [PracticeMatchPair]) -> String {
         pairs.map { "\($0.left) → \($0.right)" }.joined(separator: " · ")
     }
+
+    private func resetTimer() {
+        timeRemaining = challengeEnabled ? timeLimit : 0
+    }
+
+    private func timeoutCurrentQuestion() {
+        guard !answered, currentIndex < questions.count else { return }
+        let question = questions[currentIndex]
+        isCorrect = false
+        answered = true
+        let detail = correctAnswerDetail(for: question)
+        answerDetail = "\(languageStore.localized("practice_timeout")) · \(detail)"
+        results.append(PracticeResultItem(question: question, isCorrect: false))
+        wrongStore.addWrong(itemId: question.itemId, mode: question.mode, type: question.type)
+        updateStreak(correct: false)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            if !showSummary {
+                goNext()
+            }
+        }
+    }
+
+    private func correctAnswerDetail(for question: PracticeQuestion) -> String {
+        switch question.payload {
+        case .multipleChoice(_, _, let answer, _):
+            return answer
+        case .trueFalse(_, _, let correctText, _, _):
+            return correctText
+        case .matching(_, _, let pairs):
+            return matchingDetail(pairs: pairs)
+        case .fillBlank(_, let answer):
+            return answer
+        case .wordBuild(_, _, let answer, _, _):
+            return answer
+        case .translation(_, let answer, _):
+            return answer
+        case .listening(_, _, let answer, _, _):
+            return answer
+        case .sentenceOrder(_, let answer, _):
+            return answer
+        case .dictation(_, let answer, _, _):
+            return answer
+        case .shadowing(_, let answer, _, _):
+            return answer
+        }
+    }
+
+    private func updateStreak(correct: Bool) {
+        guard comboEnabled else { return }
+        if correct {
+            currentStreak += 1
+            bestStreak = max(bestStreak, currentStreak)
+        } else {
+            currentStreak = 0
+        }
+    }
+
+    private func toggleShadowingRecording(answer: String, audioLanguage: String) {
+        if isShadowingRecording {
+            speechTranscriber.stopTranscribing()
+            isShadowingRecording = false
+            shadowingScore = similarityScore(shadowingText, answer)
+            return
+        }
+
+        Task {
+            let granted = await speechTranscriber.requestAuthorization()
+            if !granted {
+                await MainActor.run { shadowingError = languageStore.localized("practice_speech_permission_denied") }
+                return
+            }
+            await MainActor.run {
+                shadowingText = ""
+                shadowingScore = nil
+                isShadowingRecording = true
+            }
+            do {
+                try speechTranscriber.startTranscribing(locale: Locale(identifier: audioLanguage)) { text, isFinal in
+                    Task { @MainActor in
+                        if !text.isEmpty {
+                            shadowingText = text
+                        }
+                        if isFinal {
+                            isShadowingRecording = false
+                            shadowingScore = similarityScore(shadowingText, answer)
+                        }
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isShadowingRecording = false
+                    shadowingError = languageStore.localizedFormat("practice_speech_failed", error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func similarityScore(_ source: String, _ target: String) -> Double {
+        let a = normalizeForSimilarity(source)
+        let b = normalizeForSimilarity(target)
+        guard !a.isEmpty, !b.isEmpty else { return 0 }
+        let distance = levenshteinDistance(a, b)
+        let maxLen = max(a.count, b.count)
+        if maxLen == 0 { return 0 }
+        return max(0, 1.0 - Double(distance) / Double(maxLen))
+    }
+
+    private func normalizeForSimilarity(_ text: String) -> [Character] {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowered = trimmed.lowercased()
+        let filtered = lowered.filter { $0.isLetter || $0.isNumber || $0.isWhitespace }
+        return Array(filtered.filter { !$0.isWhitespace })
+    }
+
+    private func levenshteinDistance(_ a: [Character], _ b: [Character]) -> Int {
+        if a.isEmpty { return b.count }
+        if b.isEmpty { return a.count }
+        var costs = Array(0...b.count)
+        for i in 1...a.count {
+            var last = i - 1
+            costs[0] = i
+            for j in 1...b.count {
+                let newLast = costs[j]
+                if a[i - 1] == b[j - 1] {
+                    costs[j] = last
+                } else {
+                    costs[j] = min(last, costs[j - 1], costs[j]) + 1
+                }
+                last = newLast
+            }
+        }
+        return costs[b.count]
+    }
+
+    private func shadowingFeedback(for score: Double) -> String {
+        if score >= 0.9 { return languageStore.localized("practice_shadowing_feedback_great") }
+        if score >= 0.75 { return languageStore.localized("practice_shadowing_feedback_good") }
+        if score >= 0.6 { return languageStore.localized("practice_shadowing_feedback_ok") }
+        return languageStore.localized("practice_shadowing_feedback_retry")
+    }
 }
 
 struct PracticeProgressCard: View {
     let current: Int
     let total: Int
+    let timeRemaining: Int?
+    let currentStreak: Int?
+    let bestStreak: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\(current)/\(total)")
-                .font(.caption)
-                .foregroundStyle(AppTheme.textSecondary)
+            HStack {
+                Text("\(current)/\(total)")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                Spacer(minLength: 0)
+                HStack(spacing: 6) {
+                    if let timeRemaining {
+                        HStack(spacing: 4) {
+                            Image(systemName: "timer")
+                                .font(.caption2)
+                            Text("\(timeRemaining)s")
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .foregroundStyle(timeRemaining <= 5 ? AppTheme.error : AppTheme.textSecondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.surfaceMuted)
+                        .clipShape(Capsule())
+                    }
+                    if let currentStreak, let bestStreak {
+                        HStack(spacing: 4) {
+                            Image(systemName: "flame.fill")
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.accentWarm)
+                            Text("\(currentStreak)")
+                                .font(.caption2.weight(.semibold))
+                            Text("/\(bestStreak)")
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.textTertiary)
+                        }
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.surfaceMuted)
+                        .clipShape(Capsule())
+                    }
+                }
+            }
             ProgressView(value: Double(current), total: Double(total))
                 .tint(AppTheme.accentStrong)
         }
@@ -853,6 +1433,37 @@ struct PracticeOptionButton: View {
     }
 }
 
+struct PracticeBinaryButton: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+    let isSelected: Bool
+    var onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.caption)
+                Text(title)
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(isSelected ? .white : tint)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? tint : tint.opacity(0.12))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(tint.opacity(isSelected ? 0.8 : 0.4), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 struct PracticeWordChip: View {
     enum Style {
         case primary
@@ -875,6 +1486,16 @@ struct PracticeWordChip: View {
                 .overlay(Capsule().stroke(AppTheme.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct PracticeToken: Identifiable, Hashable {
+    let id: UUID
+    let value: String
+
+    init(value: String) {
+        self.id = UUID()
+        self.value = value
     }
 }
 
@@ -959,9 +1580,13 @@ struct PracticeResultView: View {
         switch question.payload {
         case .multipleChoice(let sourceText, _, _, _):
             return sourceText
+        case .trueFalse(let sourceText, _, _, _, _):
+            return sourceText
         case .matching(let left, _, _):
             return left.joined(separator: ", ")
         case .fillBlank(let prompt, _):
+            return prompt
+        case .wordBuild(let prompt, _, _, _, _):
             return prompt
         case .translation(let sourceText, _, _):
             return sourceText
@@ -969,6 +1594,10 @@ struct PracticeResultView: View {
             return audioText
         case .sentenceOrder(_, let answer, _):
             return answer
+        case .dictation(let audioText, _, _, _):
+            return audioText
+        case .shadowing(let audioText, _, _, _):
+            return audioText
         }
     }
 }

@@ -95,7 +95,8 @@ final class ChatViewModel: ObservableObject {
         }
         
         // 创建用户消息（如果有图片，显示提示）
-        let messageContent = hasImage ? (trimmed.isEmpty ? "[图片]" : trimmed + " [图片]") : trimmed
+        let imageTag = L("image_tag")
+        let messageContent = hasImage ? (trimmed.isEmpty ? imageTag : trimmed + " " + imageTag) : trimmed
         let userMessage = ChatMessage(id: UUID().uuidString, role: .user, content: messageContent, time: Date())
         messages.append(userMessage)
         
@@ -138,7 +139,7 @@ final class ChatViewModel: ObservableObject {
                     messages.append(ChatMessage(id: assistantId, role: .assistant, content: "", time: Date()))
                     var accumulated = ""
                     let shouldStreamVoice = SpeechSettingsStore.shared.autoPlayVoice && !allowLocalExecution && SpeechSettingsStore.shared.voiceStreamingEnabled
-                    let requestMessage = effectiveMessage + (imageData != nil ? " [用户附了一张图]" : "")
+                    let requestMessage = effectiveMessage + (imageData != nil ? " " + L("user_attached_image_tag") : "")
                     if shouldStreamVoice {
                         let voiceStream = AsyncStream<String> { continuation in
                             voiceContinuation = continuation
@@ -182,7 +183,7 @@ final class ChatViewModel: ObservableObject {
                 } else {
                     let (cid, serverReply) = try await APIClient.shared.assistantChat(
                         conversationId: serverConversationId,
-                        message: effectiveMessage.isEmpty ? nil : (effectiveMessage + (imageData != nil ? " [用户附了一张图]" : "")),
+                        message: effectiveMessage.isEmpty ? nil : (effectiveMessage + (imageData != nil ? " " + L("user_attached_image_tag") : "")),
                         imageData: imageData,
                         userContext: userContext,
                         localExecution: allowLocalExecution
