@@ -416,23 +416,25 @@ struct VIPBannerCard: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(L("VIP会员"))
+                Text("profile_vip_title")
                     .font(.headline.weight(.bold))
                     .foregroundStyle(AppTheme.textOnPrimary)
-                Text(L("升级解锁全部功能与更高额度"))
+                    .appLabelStyle(minScale: 0.8)
+                Text(L("profile_vip_subtitle"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textOnPrimary.opacity(0.82))
+                    .appLabelStyle(minScale: 0.8)
             }
 
             Spacer()
 
             UnifiedAppButton(
-                title: "立即解锁",
+                title: L("profile_vip_unlock"),
                 systemImage: nil,
                 style: .outline,
                 action: onUnlock
             )
-            .frame(width: 102)
+            .frame(minWidth: 102)
         }
         .padding(16)
         .background(
@@ -464,13 +466,15 @@ struct ProfileSectionHeader: View {
             Capsule()
                 .fill(AppTheme.primaryGradient)
                 .frame(width: 8, height: 22)
-            Text(title)
+            Text(L(title))
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
+                .appLabelStyle(minScale: 0.8)
             if let subtitle {
                 Text(L(subtitle))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .appLabelStyle(minScale: 0.8)
             }
             Spacer()
         }

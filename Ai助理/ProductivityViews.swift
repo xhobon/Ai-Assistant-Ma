@@ -305,7 +305,7 @@ struct NotesWorkspaceView: View {
             } catch {
                 await MainActor.run {
                     isRecording = false
-                    alertMessage = "语音转写失败：\(error.localizedDescription)"
+                    alertMessage = Lf("语音转写失败：%@", error.localizedDescription)
                 }
             }
         }
@@ -388,14 +388,14 @@ struct NotesWorkspaceView: View {
         if title.count > 16 {
             title = String(title.prefix(16))
         }
-        return title.isEmpty ? "未命名笔记" : title
+        return title.isEmpty ? L("未命名笔记") : title
     }
 
     private func saveNoteToLocalAndCloud() {
         guard let aiNote else { return }
         let entry = NoteEntry(
             id: UUID().uuidString,
-            title: aiNote.title.isEmpty ? "未命名笔记" : aiNote.title,
+            title: aiNote.title.isEmpty ? L("未命名笔记") : aiNote.title,
             summary: aiNote.summary,
             content: aiNote.content,
             tags: aiNote.tags,
@@ -593,7 +593,7 @@ struct SummaryWorkspaceView: View {
             } catch {
                 await MainActor.run {
                     isRecording = false
-                    alertMessage = "语音转写失败：\(error.localizedDescription)"
+                    alertMessage = Lf("语音转写失败：%@", error.localizedDescription)
                 }
             }
         }
@@ -690,6 +690,8 @@ enum NotesSummaryMode: String, CaseIterable, Identifiable {
     case summary = "总结"
 
     var id: String { rawValue }
+
+    var displayName: String { L(rawValue) }
 }
 
 struct NotesSummaryWorkspaceView: View {
@@ -709,7 +711,7 @@ struct NotesSummaryWorkspaceView: View {
             VStack(spacing: 12) {
                 Picker("模式", selection: $mode) {
                     ForEach(NotesSummaryMode.allCases) { item in
-                        Text(item.rawValue).tag(item)
+                        Text(item.displayName).tag(item)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -813,7 +815,7 @@ private struct ProductivityHeader: View {
                     .foregroundStyle(tint)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(L(title))
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Text(L(subtitle))
@@ -851,7 +853,7 @@ private struct SectionTitle: View {
     init(_ text: String) { self.text = text }
 
     var body: some View {
-        Text(text)
+        Text(L(text))
             .font(.headline.weight(.semibold))
             .foregroundStyle(AppTheme.textPrimary)
     }
@@ -1023,7 +1025,7 @@ private struct ProductivityActionButton: View {
                     Image(systemName: systemImage)
                         .font(iconFont)
                 }
-                Text(title)
+                Text(L(title))
                     .font(textFont)
             }
             .padding(.vertical, verticalPadding)

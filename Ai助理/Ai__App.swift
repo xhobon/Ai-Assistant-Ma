@@ -19,6 +19,7 @@ struct Ai__App: App {
             ContentView()
                 .environmentObject(languageStore)
                 .environment(\.locale, languageStore.locale)
+                .id(languageStore.current.rawValue)
         }
     }
 }

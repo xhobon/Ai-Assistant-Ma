@@ -300,7 +300,7 @@ struct TranslationInputField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(title)
+                Text(L(title))
                     .font(.caption)
                     .foregroundStyle(tint.opacity(0.8))
                 Spacer()
@@ -317,7 +317,7 @@ struct TranslationInputField: View {
             if isEditable {
                 ZStack(alignment: .leading) {
                     if text.isEmpty {
-                        Text(placeholder)
+                        Text(L(placeholder))
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(AppTheme.textSecondary)
                     }
@@ -389,7 +389,7 @@ struct ResultRow: View {
     var body: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(title)
+                Text(L(title))
                     .font(.caption)
                     .foregroundStyle(tint.opacity(0.8))
                 Text(text)
@@ -512,7 +512,7 @@ struct ActionChip: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: systemImage)
-                Text(title)
+                Text(L(title))
                     .font(.caption.weight(.semibold))
             }
             .foregroundStyle(tint)
@@ -535,7 +535,7 @@ struct TranslationActionTile: View {
             VStack(spacing: 6) {
                 Image(systemName: systemImage)
                     .font(.title3)
-                Text(title)
+                Text(L(title))
                     .font(.caption.weight(.semibold))
             }
             .foregroundStyle(AppTheme.unifiedButtonBorder)
@@ -947,7 +947,7 @@ struct WaveformRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(title)
+            Text(L(title))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(tint)
                 .frame(width: 52, alignment: .leading)
@@ -1046,7 +1046,7 @@ struct VoiceRecordButton: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(isRecording ? .white : tint)
                 }
-                Text(title)
+                Text(L(title))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
             }
@@ -1093,7 +1093,7 @@ struct SpeechBubbleCard: View {
                     Circle()
                         .fill(tint.opacity(0.6))
                         .frame(width: 6, height: 6)
-                    Text(title)
+                    Text(L(title))
                         .font(.caption2)
                         .foregroundStyle(tint)
                 }
@@ -1159,7 +1159,7 @@ struct RealtimeSpeechBubble: View {
                         Circle()
                             .fill(bubbleMetaColor.opacity(0.8))
                             .frame(width: 6, height: 6)
-                        Text(title)
+                        Text(L(title))
                             .font(.caption2.weight(.semibold))
                     }
                     .foregroundStyle(bubbleMetaColor)
@@ -1312,7 +1312,7 @@ struct ModernTranslationQuickInfoCard: View {
                     .foregroundStyle(AppTheme.textSecondary)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(L(title))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(1)
@@ -1438,7 +1438,7 @@ struct TranslationInputBox: View {
         VStack(alignment: .leading, spacing: 0) {
             // 标题栏：标题 + 字数统计（上方不再重复放朗读/复制按钮）
             HStack {
-                Text(title)
+                Text(L(title))
                     .font(.caption.weight(.medium))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer(minLength: 0)
@@ -1464,7 +1464,7 @@ struct TranslationInputBox: View {
                         .padding(.top, 6)
                         .allowsHitTesting(false)
                     } else if !isInputFocused {
-                        Text(placeholder)
+                        Text(L(placeholder))
                             .font(.subheadline)
                             .foregroundStyle(AppTheme.textSecondary)
                             .padding(.leading, 6)
@@ -1703,8 +1703,8 @@ struct AllTranslationRecordsView: View {
             if history.isEmpty {
                 ModernEmptyState(
                     icon: "clock.arrow.circlepath",
-                    title: "暂无翻译记录",
-                    subtitle: "您的翻译记录将显示在这里"
+                    title: L("暂无翻译记录"),
+                    subtitle: L("您的翻译记录将显示在这里")
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -1885,8 +1885,8 @@ struct ModernTranslationHistorySection: View {
             if displayedHistory.isEmpty {
                 ModernEmptyState(
                     icon: "clock.arrow.circlepath",
-                    title: "暂无翻译记录",
-                    subtitle: "点击上方的翻译记录可查看全部，支持语音播放和复制"
+                    title: L("暂无翻译记录"),
+                    subtitle: L("点击上方的翻译记录可查看全部，支持语音播放和复制")
                 )
                 .padding(.vertical, 20)
             }
