@@ -22,6 +22,11 @@
 "practice_challenge_seconds" = "%d sec";
 "practice_challenge_combo" = "Combo mode";
 "practice_challenge_combo_subtitle" = "Earn streaks for correct answers";
+"practice_challenge_bonus" = "Time bonus";
+"practice_challenge_bonus_subtitle" = "Adds seconds for each correct answer";
+"practice_powerup_title" = "Power-up";
+"practice_powerup_time" = "Time +5s · %d";
+"practice_combo" = "Combo";
 "practice_stats_title" = "Practice Stats";
 "practice_stats_sessions" = "Sessions";
 "practice_stats_accuracy" = "Accuracy";
@@ -67,6 +72,7 @@
 "practice_shadowing_feedback_good" = "Nice";
 "practice_shadowing_feedback_ok" = "Keep going";
 "practice_shadowing_feedback_retry" = "Try again";
+"practice_shadowing_align_title" = "Alignment";
 "practice_timeout" = "Time out";
 "practice_speech_permission_denied" = "Speech recognition permission denied";
 "practice_speech_failed" = "Speech recognition failed: %@";

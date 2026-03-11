@@ -22,6 +22,11 @@
 "practice_challenge_seconds" = "%d detik";
 "practice_challenge_combo" = "Mode combo";
 "practice_challenge_combo_subtitle" = "Dapatkan streak untuk jawaban benar";
+"practice_challenge_bonus" = "Bonus waktu";
+"practice_challenge_bonus_subtitle" = "Tambah detik untuk jawaban benar";
+"practice_powerup_title" = "Power-up";
+"practice_powerup_time" = "Waktu +5d · %d";
+"practice_combo" = "Combo";
 "practice_stats_title" = "Statistik latihan";
 "practice_stats_sessions" = "Jumlah latihan";
 "practice_stats_accuracy" = "Akurasi";
@@ -67,6 +72,7 @@
 "practice_shadowing_feedback_good" = "Bagus";
 "practice_shadowing_feedback_ok" = "Teruskan";
 "practice_shadowing_feedback_retry" = "Coba lagi";
+"practice_shadowing_align_title" = "Penyelarasan";
 "practice_timeout" = "Waktu habis";
 "practice_speech_permission_denied" = "Izin pengenalan suara ditolak";
 "practice_speech_failed" = "Pengenalan suara gagal: %@";
