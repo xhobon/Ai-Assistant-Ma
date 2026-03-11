@@ -673,6 +673,43 @@ final class APIClient {
         var eventName = "message"
         var dataLines: [String] = []
 
+        func handlePayload(_ raw: String) -> Bool {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return true }
+            if trimmed == "[DONE]" {
+                continuation.yield(.done(conversationId: nil, reply: ""))
+                return true
+            }
+            if let data = trimmed.data(using: .utf8) {
+                if let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let delta = payload["delta"] as? String {
+                        continuation.yield(.delta(delta))
+                        return true
+                    } else if let reply = payload["reply"] as? String {
+                        let cid = payload["conversationId"] as? String
+                        continuation.yield(.done(conversationId: cid, reply: reply))
+                        return true
+                    } else if eventName == "delta", let delta = payload["message"] as? String {
+                        continuation.yield(.delta(delta))
+                        return true
+                    } else if eventName == "done" {
+                        let cid = payload["conversationId"] as? String
+                        let reply = payload["reply"] as? String ?? ""
+                        continuation.yield(.done(conversationId: cid, reply: reply))
+                        return true
+                    }
+                } else if let payload = try? JSONSerialization.jsonObject(with: data) as? String {
+                    if eventName == "done" {
+                        continuation.yield(.done(conversationId: nil, reply: payload))
+                    } else {
+                        continuation.yield(.delta(payload))
+                    }
+                    return true
+                }
+            }
+            return false
+        }
+
         func flushEvent() throws {
             guard !dataLines.isEmpty else {
                 eventName = "message"
@@ -680,36 +717,16 @@ final class APIClient {
             }
             let dataString = dataLines.joined(separator: "\n")
             dataLines.removeAll()
-            let trimmed = dataString.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed == "[DONE]" {
-                continuation.yield(.done(conversationId: nil, reply: ""))
-                eventName = "message"
-                return
+            var handled = false
+            for line in dataString.split(separator: "\n") {
+                if handlePayload(String(line)) { handled = true }
             }
-            if let data = dataString.data(using: .utf8) {
-                if let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    if eventName == "delta" {
-                        if let delta = payload["delta"] as? String {
-                            continuation.yield(.delta(delta))
-                        }
-                    } else if eventName == "done" {
-                        let cid = payload["conversationId"] as? String
-                        let reply = payload["reply"] as? String ?? ""
-                        continuation.yield(.done(conversationId: cid, reply: reply))
-                    }
-                } else if let payload = try? JSONSerialization.jsonObject(with: data) as? String {
-                    if eventName == "delta" {
-                        continuation.yield(.delta(payload))
-                    } else if eventName == "done" {
-                        continuation.yield(.done(conversationId: nil, reply: payload))
-                    }
+            if !handled {
+                // 服务端偶发返回非 JSON 数据，直接当作文本处理，避免格式错误弹窗
+                if eventName == "done" {
+                    continuation.yield(.done(conversationId: nil, reply: dataString))
                 } else {
-                    // 服务端偶发返回非 JSON 数据，直接当作文本处理，避免格式错误弹窗
-                    if eventName == "delta" {
-                        continuation.yield(.delta(dataString))
-                    } else if eventName == "done" {
-                        continuation.yield(.done(conversationId: nil, reply: dataString))
-                    }
+                    continuation.yield(.delta(dataString))
                 }
             }
             eventName = "message"
@@ -723,7 +740,15 @@ final class APIClient {
             if line.hasPrefix("event:") {
                 eventName = line.replacingOccurrences(of: "event:", with: "").trimmingCharacters(in: .whitespaces)
             } else if line.hasPrefix("data:") {
-                dataLines.append(line.replacingOccurrences(of: "data:", with: "").trimmingCharacters(in: .whitespaces))
+                let payload = line.replacingOccurrences(of: "data:", with: "").trimmingCharacters(in: .whitespaces)
+                if handlePayload(payload) { continue }
+                dataLines.append(payload)
+            } else {
+                // 兼容非 SSE 的 JSONL 流（例如直接输出 {"delta": "..."}）
+                let raw = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !raw.isEmpty else { continue }
+                if handlePayload(raw) { continue }
+                continuation.yield(.delta(raw))
             }
         }
         try flushEvent()

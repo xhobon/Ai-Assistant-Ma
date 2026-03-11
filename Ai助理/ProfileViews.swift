@@ -26,23 +26,23 @@ struct ProfileCenterView: View {
     @State private var showAssistantMemory = false
 
     private let quickActions: [ProfileQuickAction] = [
-        ProfileQuickAction(id: "fav", title: "我的收藏", icon: "star.fill"),
-        ProfileQuickAction(id: "wallet", title: "我的钱包", icon: "wallet.pass"),
-        ProfileQuickAction(id: "task", title: "任务中心", icon: "calendar.badge.checkmark"),
-        ProfileQuickAction(id: "gift", title: "分享有礼", icon: "gift.fill")
+        ProfileQuickAction(id: "fav", title: L("我的收藏"), icon: "star.fill"),
+        ProfileQuickAction(id: "wallet", title: L("我的钱包"), icon: "wallet.pass"),
+        ProfileQuickAction(id: "task", title: L("任务中心"), icon: "calendar.badge.checkmark"),
+        ProfileQuickAction(id: "gift", title: L("分享有礼"), icon: "gift.fill")
     ]
 
     private let settingsItems: [ProfileMenuItem] = [
-        ProfileMenuItem(id: "settings", title: "通用设置", subtitle: "语音、外观、隐私与本地数据", icon: "gearshape"),
-        ProfileMenuItem(id: "account", title: "账户与安全", subtitle: "登录状态与设备安全", icon: "shield.fill"),
-        ProfileMenuItem(id: "memory", title: "助理记忆", subtitle: "偏好与长期记忆管理", icon: "brain.head.profile")
+        ProfileMenuItem(id: "settings", title: L("通用设置"), subtitle: L("语音、外观、隐私与本地数据"), icon: "gearshape"),
+        ProfileMenuItem(id: "account", title: L("账户与安全"), subtitle: L("登录状态与设备安全"), icon: "shield.fill"),
+        ProfileMenuItem(id: "memory", title: L("助理记忆"), subtitle: L("偏好与长期记忆管理"), icon: "brain.head.profile")
     ]
 
     private let helpItems: [ProfileMenuItem] = [
-        ProfileMenuItem(id: "faq", title: "常见问题", subtitle: "快速排查与使用说明", icon: "questionmark.circle"),
-        ProfileMenuItem(id: "support", title: "在线客服", subtitle: "工作日 9:00-18:00", icon: "headphones"),
-        ProfileMenuItem(id: "about", title: "关于与文档", subtitle: "版本信息、协议条款、会员规则", icon: "info.circle"),
-        ProfileMenuItem(id: "clear", title: "清除所有记录", subtitle: "聊天、学习、翻译", icon: "trash")
+        ProfileMenuItem(id: "faq", title: L("常见问题"), subtitle: L("快速排查与使用说明"), icon: "questionmark.circle"),
+        ProfileMenuItem(id: "support", title: L("在线客服"), subtitle: L("工作日 9:00-18:00"), icon: "headphones"),
+        ProfileMenuItem(id: "about", title: L("关于与文档"), subtitle: L("版本信息、协议条款、会员规则"), icon: "info.circle"),
+        ProfileMenuItem(id: "clear", title: L("清除所有记录"), subtitle: L("聊天、学习、翻译"), icon: "trash")
     ]
 
     var body: some View {
@@ -71,7 +71,7 @@ struct ProfileCenterView: View {
                     }
                 }
 
-                ProfileSectionHeader(title: "设置入口")
+                ProfileSectionHeader(title: L("设置入口"))
                 ProfileMenuList(items: settingsItems) { item in
                     switch item.id {
                     case "settings": showSettings = true
@@ -82,7 +82,7 @@ struct ProfileCenterView: View {
                 }
                 ProfileHintCard(text: L("profile_settings_hint"))
 
-                ProfileSectionHeader(title: "服务与支持")
+                ProfileSectionHeader(title: L("服务与支持"))
                 ProfileMenuList(items: helpItems) { item in
                     switch item.id {
                     case "faq": showFAQ = true
@@ -250,8 +250,8 @@ struct AccountProfileCenterView: View {
     }
 
     var body: some View {
-        SettingsPage(title: "个人中心") {
-            SettingsCard(title: "账号信息", subtitle: "管理头像、昵称与登录账号") {
+        SettingsPage(title: L("个人中心")) {
+            SettingsCard(title: L("账号信息"), subtitle: L("管理头像、昵称与登录账号")) {
                 HStack(spacing: 14) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -273,38 +273,38 @@ struct AccountProfileCenterView: View {
                 }
                 .padding(.vertical, 6)
 
-                SettingsRow(systemImage: "person.text.rectangle", title: "资料设置", subtitle: "编辑昵称与展示信息", showChevron: true) {
+                SettingsRow(systemImage: "person.text.rectangle", title: L("资料设置"), subtitle: L("编辑昵称与展示信息"), showChevron: true) {
                     showEditProfile = true
                 }
-                SettingsRow(systemImage: "person.crop.circle.badge.plus", title: "头像设置", subtitle: "切换头像样式", showChevron: true) {
+                SettingsRow(systemImage: "person.crop.circle.badge.plus", title: L("头像设置"), subtitle: L("切换头像样式"), showChevron: true) {
                     avatarStyle = (avatarStyle + 1) % 6
                     UserDefaults.standard.set(avatarStyle, forKey: "profile_avatar_style")
                 }
-                SettingsRow(systemImage: "arrow.triangle.2.circlepath.circle", title: "切换账号", subtitle: "退出当前账号并重新登录", showChevron: true) {
+                SettingsRow(systemImage: "arrow.triangle.2.circlepath.circle", title: L("切换账号"), subtitle: L("退出当前账号并重新登录"), showChevron: true) {
                     tokenStore.token = nil
                     showAuthSheet = true
                 }
             }
 
-            SettingsCard(title: "账户状态", subtitle: "当前登录状态与数据同步情况") {
+            SettingsCard(title: L("账户状态"), subtitle: L("当前登录状态与数据同步情况")) {
                 SettingsRow(
                     systemImage: tokenStore.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
-                    title: tokenStore.isLoggedIn ? "已登录" : "未登录",
-                    subtitle: tokenStore.isLoggedIn ? "当前设备已完成登录" : "请先登录账号",
+                    title: tokenStore.isLoggedIn ? L("已登录") : L("未登录"),
+                    subtitle: tokenStore.isLoggedIn ? L("当前设备已完成登录") : L("请先登录账号"),
                     tint: tokenStore.isLoggedIn ? AppTheme.primary : AppTheme.textPrimary,
                     showChevron: false,
                     action: nil
                 )
                 SettingsRow(
                     systemImage: "icloud",
-                    title: "数据同步",
-                    subtitle: tokenStore.isLoggedIn ? "已开启" : "未开启",
+                    title: L("数据同步"),
+                    subtitle: tokenStore.isLoggedIn ? L("已开启") : L("未开启"),
                     showChevron: false,
                     action: nil
                 )
             }
 
-            SettingsCard(title: "登录管理", subtitle: "你可以随时退出当前账号") {
+            SettingsCard(title: L("登录管理"), subtitle: L("你可以随时退出当前账号")) {
                 Button {
                     tokenStore.token = nil
                     message = L("已退出登录")
@@ -911,20 +911,20 @@ struct TaskCenterView: View {
     private let tasks: [RewardTask] = [
         RewardTask(
             id: "share",
-            title: "每日分享 3 个好友",
-            subtitle: "每分享 1 个，可得天数+1",
+            title: L("每日分享 3 个好友"),
+            subtitle: L("每分享 1 个，可得天数+1"),
             progress: 0,
             progressText: "0/3",
-            actionTitle: "去分享",
+            actionTitle: L("去分享"),
             systemImage: "arrowshape.turn.up.right.fill"
         ),
         RewardTask(
             id: "invite",
-            title: "每日邀请 5 个新用户",
-            subtitle: "每邀请 1 人，可得天数+5",
+            title: L("每日邀请 5 个新用户"),
+            subtitle: L("每邀请 1 人，可得天数+5"),
             progress: 0,
             progressText: "0/5",
-            actionTitle: "去邀请",
+            actionTitle: L("去邀请"),
             systemImage: "person.crop.circle.badge.plus"
         )
     ]
@@ -1071,32 +1071,32 @@ struct AppSettingsView: View {
 
     var body: some View {
         let _ = languageStore.current
-        SettingsPage(title: "设置") {
+        SettingsPage(title: L("设置")) {
             let L = languageStore.localized
             SettingsCard(
-                title: "快捷入口",
-                subtitle: "常用设置与帮助集中在这里。"
+                title: L("快捷入口"),
+                subtitle: L("常用设置与帮助集中在这里。")
             ) {
                 SettingsRow(
                     systemImage: "shield.lefthalf.filled",
-                    title: "账户与安全",
-                    subtitle: "查看登录状态与安全说明",
+                    title: L("账户与安全"),
+                    subtitle: L("查看登录状态与安全说明"),
                     showChevron: true
                 ) {
                     showAccountSecurity = true
                 }
                 SettingsRow(
                     systemImage: "questionmark.circle",
-                    title: "常见问题",
-                    subtitle: "快速排查使用问题",
+                    title: L("常见问题"),
+                    subtitle: L("快速排查使用问题"),
                     showChevron: true
                 ) {
                     showFAQ = true
                 }
                 SettingsRow(
                     systemImage: "headphones",
-                    title: "在线客服",
-                    subtitle: "工作日 9:00-18:00",
+                    title: L("在线客服"),
+                    subtitle: L("工作日 9:00-18:00"),
                     showChevron: true
                 ) {
                     showSupport = true
@@ -1220,13 +1220,13 @@ struct AppSettingsView: View {
             }
 
             SettingsCard(
-                title: "Language",
-                subtitle: "设置应用显示语言。"
+                title: L("Language"),
+                subtitle: L("设置应用显示语言。")
             ) {
                 SettingsSegmentedRow(
                     systemImage: "globe",
-                    title: "Language",
-                    subtitle: "中文 / Bahasa Indonesia",
+                    title: L("Language"),
+                    subtitle: L("中文 / Bahasa Indonesia"),
                     options: [
                         (label: "中文", value: "zh"),
                         (label: "Bahasa Indonesia", value: "id")
@@ -1239,13 +1239,13 @@ struct AppSettingsView: View {
             }
 
             SettingsCard(
-                title: "智能能力",
-                subtitle: "管理记忆、知识库与回答上下文。"
+                title: L("智能能力"),
+                subtitle: L("管理记忆、知识库与回答上下文。")
             ) {
                 SettingsInlineToggleRow(
                     systemImage: memoryMode.isEnabled ? "brain.head.profile" : "brain",
-                    title: "Memory Mode",
-                    subtitle: memoryMode.isEnabled ? "已开启" : "已关闭",
+                    title: L("Memory Mode"),
+                    subtitle: memoryMode.isEnabled ? L("已开启") : L("已关闭"),
                     isOn: $memoryMode.isEnabled
                 )
 
@@ -1258,8 +1258,8 @@ struct AppSettingsView: View {
 
                 SettingsRow(
                     systemImage: "person.text.rectangle",
-                    title: "User Memory",
-                    subtitle: "管理用户关键信息",
+                    title: L("User Memory"),
+                    subtitle: L("管理用户关键信息"),
                     showChevron: true
                 ) {
                     showUserMemory = true
@@ -1267,8 +1267,8 @@ struct AppSettingsView: View {
 
                 SettingsRow(
                     systemImage: "books.vertical.fill",
-                    title: "Knowledge Base",
-                    subtitle: "上传文档并用于问答",
+                    title: L("Knowledge Base"),
+                    subtitle: L("上传文档并用于问答"),
                     showChevron: true
                 ) {
                     showKnowledgeBase = true
@@ -1276,13 +1276,13 @@ struct AppSettingsView: View {
             }
 
             SettingsCard(
-                title: "隐私与数据",
-                subtitle: "管理本地数据与同步状态。"
+                title: L("隐私与数据"),
+                subtitle: L("管理本地数据与同步状态。")
             ) {
                 SettingsRow(
                     systemImage: tokenStore.isLoggedIn ? "checkmark.circle.fill" : "person.crop.circle.badge.questionmark",
-                    title: "登录状态",
-                    subtitle: tokenStore.isLoggedIn ? "已登录" : "未登录",
+                    title: L("登录状态"),
+                    subtitle: tokenStore.isLoggedIn ? L("已登录") : L("未登录"),
                     value: nil,
                     tint: tokenStore.isLoggedIn ? AppTheme.primary : AppTheme.textPrimary,
                     showChevron: false,
@@ -1291,23 +1291,23 @@ struct AppSettingsView: View {
 
                 SettingsRow(
                     systemImage: "icloud",
-                    title: "数据同步",
-                    subtitle: tokenStore.isLoggedIn ? "已启用账号同步（按功能逐步开放）" : "未登录，仅保存在本机",
+                    title: L("数据同步"),
+                    subtitle: tokenStore.isLoggedIn ? L("已启用账号同步（按功能逐步开放）") : L("未登录，仅保存在本机"),
                     showChevron: false,
                     action: nil
                 )
 
                 SettingsRow(
                     systemImage: "hand.raised.fill",
-                    title: "隐私说明",
-                    subtitle: "我们不会在未经同意的情况下共享你的个人数据。",
+                    title: L("隐私说明"),
+                    subtitle: L("我们不会在未经同意的情况下共享你的个人数据。"),
                     showChevron: false,
                     action: nil
                 )
                 SettingsRow(
                     systemImage: "trash",
-                    title: "清除所有本地记录",
-                    subtitle: "收藏、翻译历史、部分偏好等",
+                    title: L("清除所有本地记录"),
+                    subtitle: L("收藏、翻译历史、部分偏好等"),
                     isDestructive: true,
                     showChevron: true
                 ) {
@@ -1608,7 +1608,7 @@ struct UserMemorySettingsView: View {
 
     var body: some View {
         SettingsPage(title: "User Memory") {
-            SettingsCard(title: "已保存的用户信息", subtitle: "用于长期记忆和个性化回复。") {
+            SettingsCard(title: L("已保存的用户信息"), subtitle: L("用于长期记忆和个性化回复。")) {
                 if items.isEmpty {
                     Text(L("暂无记忆"))
                         .font(.subheadline)
@@ -1708,7 +1708,7 @@ struct UserMemorySettingsView: View {
             }
             .padding(20)
             .background(AppTheme.pageBackground.ignoresSafeArea())
-            .navigationTitle(editItem == nil ? "添加记忆" : "编辑记忆")
+            .navigationTitle(editItem == nil ? L("添加记忆") : L("编辑记忆"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1755,7 +1755,7 @@ struct KnowledgeBaseView: View {
 
     var body: some View {
         SettingsPage(title: "Knowledge Base") {
-            SettingsCard(title: "文档库", subtitle: "上传 PDF / TXT / DOCX / Markdown 文档用于问答。") {
+            SettingsCard(title: L("文档库"), subtitle: L("上传 PDF / TXT / DOCX / Markdown 文档用于问答。")) {
                 if documents.isEmpty {
                     Text(L("暂无文档"))
                         .font(.subheadline)
@@ -1914,7 +1914,7 @@ struct AuthView: View {
     }
 
     private var submitButtonTitle: String {
-        isSubmitting ? "提交中..." : (mode == .login ? "登录" : "注册")
+        isSubmitting ? L("提交中...") : (mode == .login ? L("登录") : L("注册"))
     }
 
     var body: some View {
@@ -1925,7 +1925,7 @@ struct AuthView: View {
                     VStack(spacing: 0) {
                         Spacer(minLength: 20)
                         VStack(spacing: 18) {
-                            Text(mode == .login ? "登录" : "注册")
+                            Text(mode == .login ? L("登录") : L("注册"))
                                 .font(.title3.weight(.bold))
                                 .foregroundStyle(AppTheme.textPrimary)
                                 .padding(.top, 4)
@@ -2005,7 +2005,7 @@ struct AuthView: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(mode == item ? AnyShapeStyle(AppTheme.primaryGradient) : AnyShapeStyle(AppTheme.surface))
-                Text(item.rawValue)
+                Text(L(item.rawValue))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(mode == item ? AppTheme.textOnPrimary : AppTheme.textPrimary)
                     .padding(.vertical, 11)
@@ -2017,11 +2017,11 @@ struct AuthView: View {
 
     private var formSection: some View {
         VStack(spacing: 12) {
-            AuthTextField(title: "邮箱", placeholder: "name@email.com", text: $email)
+            AuthTextField(title: L("邮箱"), placeholder: "name@email.com", text: $email)
                 .focused($focusedField, equals: .email)
 
             if mode == .register {
-                AuthTextField(title: "昵称", placeholder: "请输入昵称", text: $displayName)
+                AuthTextField(title: L("昵称"), placeholder: L("请输入昵称"), text: $displayName)
                     .focused($focusedField, equals: .displayName)
             }
 
@@ -2056,7 +2056,7 @@ struct AuthView: View {
                                 .controlSize(.small)
                                 .tint(AppTheme.textOnPrimary)
                         }
-                        Text(isSendingCode ? "发送中" : "发送验证码")
+                        Text(isSendingCode ? L("发送中") : L("发送验证码"))
                             .font(.caption.weight(.semibold))
                     }
                     .frame(minWidth: 110)
@@ -2300,7 +2300,7 @@ struct AuthView: View {
                 let credential = try appleCredential(from: result)
                 let userId = credential.user
                 let email = credential.email ?? ""
-                let displayName = formattedAppleName(credential.fullName) ?? "Apple 用户"
+                let displayName = formattedAppleName(credential.fullName) ?? L("Apple 用户")
                 let auth = try await APIClient.shared.loginWithApple(
                     userId: userId,
                     email: email,
@@ -2408,8 +2408,8 @@ struct MyFavoritesView: View {
     }
 
     var body: some View {
-        SettingsPage(title: "我的收藏") {
-            SettingsCard(title: "已收藏词汇", subtitle: "在学习页将词汇或句子加入收藏后，会显示在这里。") {
+        SettingsPage(title: L("我的收藏")) {
+            SettingsCard(title: L("已收藏词汇"), subtitle: L("在学习页将词汇或句子加入收藏后，会显示在这里。")) {
                 if favoriteItems.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "star.slash")
@@ -2475,15 +2475,15 @@ struct FavoriteVocabRow: View {
 
 struct MyWalletView: View {
     var body: some View {
-        SettingsPage(title: "我的钱包") {
-            SettingsCard(title: "账户余额", subtitle: "当前可用余额") {
+        SettingsPage(title: L("我的钱包")) {
+            SettingsCard(title: L("账户余额"), subtitle: L("当前可用余额")) {
                 Text("¥ 0.00")
                     .font(.title.weight(.bold))
                     .foregroundStyle(AppTheme.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
 
-            SettingsCard(title: "收支记录", subtitle: "最近交易记录") {
+            SettingsCard(title: L("收支记录"), subtitle: L("最近交易记录")) {
                 Text(L("暂无记录"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
@@ -2774,8 +2774,8 @@ struct AboutView: View {
                 } label: {
                     SettingsLinkRow(
                         systemImage: "person.text.rectangle",
-                        title: "用户协议",
-                        subtitle: "用户权利与责任说明"
+                        title: L("用户协议"),
+                        subtitle: L("用户权利与责任说明")
                     )
                 }
                 .buttonStyle(.plain)
@@ -2785,8 +2785,8 @@ struct AboutView: View {
                 } label: {
                     SettingsLinkRow(
                         systemImage: "doc.text",
-                        title: "服务条款",
-                        subtitle: "服务范围与免责声明"
+                        title: L("服务条款"),
+                        subtitle: L("服务范围与免责声明")
                     )
                 }
                 .buttonStyle(.plain)
@@ -2796,8 +2796,8 @@ struct AboutView: View {
                 } label: {
                     SettingsLinkRow(
                         systemImage: "crown",
-                        title: "会员说明",
-                        subtitle: "权益、续费与退款规则"
+                        title: L("会员说明"),
+                        subtitle: L("权益、续费与退款规则")
                     )
                 }
                 .buttonStyle(.plain)

@@ -1573,59 +1573,69 @@ struct ConversationHistorySheet: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        ForEach(filteredItems) { item in
-                            Button {
-                                onPick(item)
-                            } label: {
-                                HStack(alignment: .top, spacing: 10) {
-                                    Image(systemName: "bubble.left.and.bubble.right")
+                List {
+                    ForEach(filteredItems) { item in
+                        Button {
+                            onPick(item)
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "bubble.left.and.bubble.right")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(AppTheme.primary)
+                                    .frame(width: 28, height: 28)
+                                    .background(AppTheme.primary.opacity(0.12))
+                                    .clipShape(Circle())
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.title.isEmpty ? L("未命名对话") : item.title)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(AppTheme.primary)
-                                        .frame(width: 28, height: 28)
-                                        .background(AppTheme.primary.opacity(0.12))
-                                        .clipShape(Circle())
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(item.title.isEmpty ? L("未命名对话") : item.title)
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(AppTheme.textPrimary)
-                                            .lineLimit(1)
-                                        Text(item.lastMessage.isEmpty ? L("无内容") : item.lastMessage)
-                                            .font(.caption)
-                                            .foregroundStyle(AppTheme.textSecondary)
-                                            .lineLimit(2)
-                                    }
-                                    Spacer(minLength: 8)
-                                    Text(formatDate(item.updatedAt))
-                                        .font(.caption2)
+                                        .foregroundStyle(AppTheme.textPrimary)
+                                        .lineLimit(1)
+                                    Text(item.lastMessage.isEmpty ? L("无内容") : item.lastMessage)
+                                        .font(.caption)
                                         .foregroundStyle(AppTheme.textSecondary)
+                                        .lineLimit(2)
                                 }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 12)
-                                .background(AppTheme.surface)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .stroke(AppTheme.border.opacity(0.7), lineWidth: 1)
-                                )
+                                Spacer(minLength: 8)
+                                Text(formatDate(item.updatedAt))
+                                    .font(.caption2)
+                                    .foregroundStyle(AppTheme.textSecondary)
                             }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                Button(L("重命名")) {
-                                    selectedItem = item
-                                    renameText = item.title
-                                    showRenameDialog = true
-                                }
-                                Button(L("删除对话"), role: .destructive) {
-                                    selectedItem = item
-                                    showDeleteConfirm = true
-                                }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                            .background(AppTheme.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(AppTheme.border.opacity(0.7), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
+                        .listRowBackground(AppTheme.pageBackground)
+                        .listRowSeparator(.hidden)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                selectedItem = item
+                                showDeleteConfirm = true
+                            } label: {
+                                Label(L("删除对话"), systemImage: "trash")
+                            }
+                        }
+                        .contextMenu {
+                            Button(L("重命名")) {
+                                selectedItem = item
+                                renameText = item.title
+                                showRenameDialog = true
+                            }
+                            Button(L("删除对话"), role: .destructive) {
+                                selectedItem = item
+                                showDeleteConfirm = true
                             }
                         }
                     }
-                    .padding(12)
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -2283,6 +2293,12 @@ struct ChatMessageSection: View {
     var showDateSeparator: Bool = true
 
     var body: some View {
+        let visibleMessages = messages.filter { message in
+            if message.role == .assistant {
+                return !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            return true
+        }
         LazyVStack(alignment: .leading, spacing: 12) {
             if showDateSeparator, let first = messages.first {
                 VStack(alignment: .leading, spacing: 4) {
@@ -2294,7 +2310,7 @@ struct ChatMessageSection: View {
                 }
                 .padding(.bottom, 4)
             }
-            ForEach(messages) { message in
+            ForEach(visibleMessages) { message in
                 ChatBubble(message: message)
             }
         }
