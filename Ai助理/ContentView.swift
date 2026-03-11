@@ -120,6 +120,7 @@ struct ContentView: View {
     @State private var hasLoadedSidebarHistory = false
     @State private var showSidebarRenameDialog = false
     @State private var showSidebarDeleteConfirm = false
+    @State private var showLanguageDialog = false
     @State private var sidebarRenameText: String = ""
     @State private var selectedSidebarItem: CloudConversationSummary?
     private var primarySidebarItems: [SidebarItem] {
@@ -220,6 +221,47 @@ struct ContentView: View {
                 Divider()
                     .padding(.horizontal, 12)
                     .padding(.vertical, 4)
+
+                Button {
+                    showLanguageDialog = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(sidebarInactive)
+                            .frame(width: 28, height: 28)
+                            .background(sidebarInactive.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        Text(L("Language"))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.9)
+                            .layoutPriority(1)
+                        Spacer(minLength: 0)
+                        Text(languageStore.current.displayName)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.textSecondary)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+                .confirmationDialog(L("Language"), isPresented: $showLanguageDialog) {
+                    Button(L("中文")) { languageStore.setLanguage(code: "zh") }
+                    Button(L("Bahasa Indonesia")) { languageStore.setLanguage(code: "id") }
+                    Button(L("English")) { languageStore.setLanguage(code: "en") }
+                    Button(L("取消"), role: .cancel) {}
+                }
 
                 Button {
                     selectSidebarItem(.profile)
