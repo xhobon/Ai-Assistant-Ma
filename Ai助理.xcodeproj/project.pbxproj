@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		97B58E862F4A333A005357CF /* Ai助理.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Ai助理.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		97B58E862F4A333A005357CF /* AI Helper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AI Helper.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,7 +40,7 @@
 		97B58E872F4A333A005357CF /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				97B58E862F4A333A005357CF /* Ai助理.app */,
+				97B58E862F4A333A005357CF /* AI Helper.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		97B58E852F4A333A005357CF /* Ai助理 */ = {
+		97B58E852F4A333A005357CF /* AI Helper */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 97B58E932F4A333B005357CF /* Build configuration list for PBXNativeTarget "Ai助理" */;
+			buildConfigurationList = 97B58E932F4A333B005357CF /* Build configuration list for PBXNativeTarget "AI Helper" */;
 			buildPhases = (
 				97B58E822F4A333A005357CF /* Sources */,
 				97B58E832F4A333A005357CF /* Frameworks */,
@@ -63,11 +63,11 @@
 			fileSystemSynchronizedGroups = (
 				97B58E882F4A333A005357CF /* Ai助理 */,
 			);
-			name = "Ai助理";
+			name = "AI Helper";
 			packageProductDependencies = (
 			);
-			productName = "Ai助理";
-			productReference = 97B58E862F4A333A005357CF /* Ai助理.app */;
+			productName = "AI Helper";
+			productReference = 97B58E862F4A333A005357CF /* AI Helper.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 97B58E812F4A333A005357CF /* Build configuration list for PBXProject "Ai助理" */;
+			buildConfigurationList = 97B58E812F4A333A005357CF /* Build configuration list for PBXProject "AI Helper" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -101,7 +101,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				97B58E852F4A333A005357CF /* Ai助理 */,
+				97B58E852F4A333A005357CF /* AI Helper */,
 			);
 		};
 /* End PBXProject section */
@@ -269,7 +269,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongkun.aiassistant;
-				PRODUCT_NAME = "Ai助理";
+				PRODUCT_NAME = "AI Helper";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -303,7 +303,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongkun.aiassistant;
-				PRODUCT_NAME = "Ai助理";
+				PRODUCT_NAME = "AI Helper";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -318,7 +318,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		97B58E812F4A333A005357CF /* Build configuration list for PBXProject "Ai助理" */ = {
+		97B58E812F4A333A005357CF /* Build configuration list for PBXProject "AI Helper" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				97B58E912F4A333B005357CF /* Debug */,
@@ -327,7 +327,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		97B58E932F4A333B005357CF /* Build configuration list for PBXNativeTarget "Ai助理" */ = {
+		97B58E932F4A333B005357CF /* Build configuration list for PBXNativeTarget "AI Helper" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				97B58E942F4A333B005357CF /* Debug */,

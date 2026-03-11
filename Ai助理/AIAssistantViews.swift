@@ -31,8 +31,8 @@ struct AIAssistantHomeView: View {
         let filtered = services.filter { service in
             let matchedCategory = selectedCategory == "全部" || category(for: service) == selectedCategory
             let matchedSearch = searchText.isEmpty
-                || service.title.localizedCaseInsensitiveContains(searchText)
-                || service.subtitle.localizedCaseInsensitiveContains(searchText)
+                || L(service.title).localizedCaseInsensitiveContains(searchText)
+                || L(service.subtitle).localizedCaseInsensitiveContains(searchText)
             return matchedCategory && matchedSearch
         }
         return filtered
@@ -695,7 +695,6 @@ struct AIAssistantChatView: View {
     @State private var recentPhotoThumbnails: [UIImage] = []
     @State private var showCameraPicker = false
     @State private var showMorePhotosPicker = false
-    @ObservedObject private var speechSettings = SpeechSettingsStore.shared
 
     private let threads: [ChatThread] = [
         ChatThread(id: "c1", title: "电商数据分析", preview: "上周转化率降低的原因是什么？", time: "10:24", systemImage: "chart.line.uptrend.xyaxis", tint: .blue, tags: ["置顶", "1 未读"]),
@@ -712,6 +711,9 @@ struct AIAssistantChatView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             ChatSyncStatusRow(status: viewModel.syncStatus, errorText: viewModel.lastSyncError)
                                 .padding(.top, 4)
+                            if viewModel.statusText == "Searching the web..." {
+                                ChatStatusBanner(text: viewModel.statusText)
+                            }
                             ChatMessageSection(messages: viewModel.messages, onClear: viewModel.resetConversation)
                             if viewModel.isSending {
                                 ChatThinkingBubble()
@@ -779,10 +781,10 @@ struct AIAssistantChatView: View {
                         text: $viewModel.inputText,
                         isListening: viewModel.isListening,
                         isSending: viewModel.isSending,
-                        isVoiceMuted: speechSettings.playbackMuted,
+                        isVoiceMuted: !speechSettings.autoPlayVoice,
                         onVoice: { viewModel.toggleListening() },
                         onSend: { viewModel.sendMessage() },
-                        onToggleVoice: { speechSettings.playbackMuted.toggle() },
+                        onToggleVoice: { speechSettings.autoPlayVoice.toggle() },
                         onVoiceCall: { showVoiceCall = true },
                         onPlus: { showShortcutRow.toggle() },
                         onPasteImage: { imageData in
@@ -2394,6 +2396,31 @@ struct ChatBubble: View {
             if message.role == .assistant { Spacer(minLength: 0) }
         }
         .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+    }
+}
+
+
+private struct ChatStatusBanner: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "globe")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.primary)
+            Text(text)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
     }
 }
 

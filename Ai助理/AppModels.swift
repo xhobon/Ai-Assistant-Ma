@@ -122,6 +122,24 @@ enum LearningLevel: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum LearningDifficulty: String, CaseIterable, Identifiable {
+    case all
+    case beginner
+    case intermediate
+    case advanced
+
+    var id: String { rawValue }
+
+    var labelKey: String {
+        switch self {
+        case .all: return "difficulty_all"
+        case .beginner: return "difficulty_beginner"
+        case .intermediate: return "difficulty_intermediate"
+        case .advanced: return "difficulty_advanced"
+        }
+    }
+}
+
 struct LearningStat: Identifiable, Hashable {
     let id: String
     let title: String
@@ -175,6 +193,56 @@ struct UserMemoryItem: Identifiable, Hashable, Codable {
             createdAt: createdAt
         )
     }
+}
+
+// MARK: - User Memory (Key-Value)
+
+/// 用户关键事实记忆（结构化 KV）
+struct UserMemoryEntry: Identifiable, Hashable, Codable {
+    let id: String
+    var userId: String
+    var memoryKey: String
+    var memoryValue: String
+    var createdAt: Date
+    var updatedAt: Date
+
+    static func make(
+        userId: String = "local",
+        memoryKey: String,
+        memoryValue: String,
+        id: String = UUID().uuidString,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) -> UserMemoryEntry {
+        UserMemoryEntry(
+            id: id,
+            userId: userId,
+            memoryKey: memoryKey,
+            memoryValue: memoryValue,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+}
+
+// MARK: - Knowledge Base
+
+struct KnowledgeDocument: Identifiable, Hashable, Codable {
+    let id: String
+    let fileName: String
+    let fileType: String
+    let localPath: String
+    let size: Int
+    let chunkCount: Int
+    let createdAt: Date
+}
+
+struct VectorStoreEntry: Identifiable, Hashable, Codable {
+    let id: String
+    let documentId: String
+    let chunkText: String
+    let embeddingVector: [Double]
+    let createdAt: Date
 }
 
 enum ReminderStatus: String, Codable {

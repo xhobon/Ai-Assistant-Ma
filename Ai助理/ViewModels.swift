@@ -87,6 +87,12 @@ final class ChatViewModel: ObservableObject {
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasImage = pendingImageData != nil
         guard !trimmed.isEmpty || hasImage else { return }
+
+        // 结构化记忆抽取（仅文本输入）
+        if !trimmed.isEmpty {
+            let extracted = MemoryService.shared.extractMemories(from: trimmed)
+            MemoryService.shared.upsert(extracted)
+        }
         
         // 创建用户消息（如果有图片，显示提示）
         let messageContent = hasImage ? (trimmed.isEmpty ? "[图片]" : trimmed + " [图片]") : trimmed
@@ -123,33 +129,126 @@ final class ChatViewModel: ObservableObject {
                         effectiveMessage = "请描述并分析这张图片内容。"
                     }
                 }
-                let userContext = TokenStore.shared.isLoggedIn ? nil : LocalDataStore.shared.memoriesAsUserContext()
-                let (cid, serverReply) = try await APIClient.shared.assistantChat(
-                    conversationId: serverConversationId,
-                    message: effectiveMessage.isEmpty ? nil : (effectiveMessage + (imageData != nil ? " [用户附了一张图]" : "")),
-                    imageData: imageData,
-                    userContext: userContext,
-                    localExecution: allowLocalExecution
-                )
-                serverConversationId = cid
-                let (displayText, command) = allowLocalExecution ? OpenClawService.parseCommand(from: serverReply) : (serverReply, nil)
-                let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: displayText, time: Date())
-                messages.append(replyMsg)
-                saveMessagesToLocal()
-                if let cmd = command, !cmd.isEmpty {
-                    pendingCommand = (displayText, cmd, cid)
+                let promptContext = await buildPromptContext(for: effectiveMessage.isEmpty ? trimmed : effectiveMessage)
+                let userContext = promptContext.isEmpty ? nil : promptContext
+                let canStream = !effectiveMessage.isEmpty && SpeechSettingsStore.shared.voiceStreamingEnabled
+                var voiceContinuation: AsyncStream<String>.Continuation?
+                if canStream {
+                    let assistantId = UUID().uuidString
+                    messages.append(ChatMessage(id: assistantId, role: .assistant, content: "", time: Date()))
+                    var accumulated = ""
+                    let shouldStreamVoice = SpeechSettingsStore.shared.autoPlayVoice && !allowLocalExecution && SpeechSettingsStore.shared.voiceStreamingEnabled
+                    let requestMessage = effectiveMessage + (imageData != nil ? " [用户附了一张图]" : "")
+                    if shouldStreamVoice {
+                        let voiceStream = AsyncStream<String> { continuation in
+                            voiceContinuation = continuation
+                        }
+                        SpeechService.shared.speakStreaming(voiceStream, language: nil)
+                    }
+
+                    for try await event in APIClient.shared.assistantChatStream(
+                        conversationId: serverConversationId,
+                        message: requestMessage,
+                        imageData: imageData,
+                        userContext: userContext,
+                        localExecution: allowLocalExecution
+                    ) {
+                        switch event {
+                        case .delta(let delta):
+                            accumulated += delta
+                            voiceContinuation?.yield(delta)
+                            await MainActor.run {
+                                self.updateAssistantMessage(id: assistantId, content: accumulated)
+                                self.statusText = "AI 回复中..."
+                            }
+                        case .done(let cid, let reply):
+                            let finalReply = reply.isEmpty ? accumulated : reply
+                            voiceContinuation?.finish()
+                            serverConversationId = cid
+                            let (displayText, command) = allowLocalExecution ? OpenClawService.parseCommand(from: finalReply) : (finalReply, nil)
+                            await MainActor.run {
+                                self.updateAssistantMessage(id: assistantId, content: displayText)
+                                self.saveMessagesToLocal()
+                                self.statusText = "AI 已就绪"
+                            }
+                            if let cmd = command, !cmd.isEmpty {
+                                pendingCommand = (displayText, cmd, cid)
+                                SpeechService.shared.stopSpeaking()
+                            } else if SpeechSettingsStore.shared.autoPlayVoice && !shouldStreamVoice {
+                                SpeechService.shared.speak(displayText, language: "zh-CN")
+                            }
+                        }
+                    }
                 } else {
-                    statusText = "AI 已就绪"
-                    SpeechService.shared.speak(displayText, language: "zh-CN")
+                    let (cid, serverReply) = try await APIClient.shared.assistantChat(
+                        conversationId: serverConversationId,
+                        message: effectiveMessage.isEmpty ? nil : (effectiveMessage + (imageData != nil ? " [用户附了一张图]" : "")),
+                        imageData: imageData,
+                        userContext: userContext,
+                        localExecution: allowLocalExecution
+                    )
+                    serverConversationId = cid
+                    let (displayText, command) = allowLocalExecution ? OpenClawService.parseCommand(from: serverReply) : (serverReply, nil)
+                    let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: displayText, time: Date())
+                    messages.append(replyMsg)
+                    saveMessagesToLocal()
+                    if let cmd = command, !cmd.isEmpty {
+                        pendingCommand = (displayText, cmd, cid)
+                    } else {
+                        statusText = "AI 已就绪"
+                        SpeechService.shared.speak(displayText, language: "zh-CN")
+                    }
                 }
             } catch {
+                voiceContinuation?.finish()
                 alertMessage = userFacingMessage(for: error)
                 statusText = "AI 未就绪"
+                SpeechService.shared.stopSpeaking()
             }
             isSending = false
         }
     }
-    
+
+    private func updateAssistantMessage(id: String, content: String) {
+        guard let idx = messages.firstIndex(where: { $0.id == id }) else { return }
+        messages[idx].content = content
+    }
+
+    private func buildPromptContext(for message: String) async -> String {
+        var sections: [String] = []
+
+        if MemoryModeStore.shared.isEnabled {
+            let memoryContext = truncateText(MemoryService.shared.buildContext(), limit: 800)
+            if !memoryContext.isEmpty { sections.append(memoryContext) }
+
+            let legacyMemory = LocalDataStore.shared.memoriesAsUserContext()
+            if !legacyMemory.isEmpty {
+                sections.append("Assistant memory:\n" + truncateText(legacyMemory, limit: 800))
+            }
+        }
+
+        if WebSearchService.shared.shouldSearch(for: message) {
+            await MainActor.run { self.statusText = "Searching the web..." }
+            if let results = try? await WebSearchService.shared.search(query: message) {
+                let searchContext = truncateText(WebSearchService.shared.buildContext(from: results), limit: 1200)
+                if !searchContext.isEmpty { sections.append(searchContext) }
+            }
+        }
+
+        let kbEntries = KnowledgeBaseService.shared.retrieveRelevantChunks(for: message)
+        if !kbEntries.isEmpty {
+            let kbContext = truncateText(KnowledgeBaseService.shared.buildContext(from: kbEntries), limit: 2000)
+            if !kbContext.isEmpty { sections.append(kbContext) }
+        }
+
+        return sections.joined(separator: "\n\n")
+    }
+
+    private func truncateText(_ text: String, limit: Int) -> String {
+        guard text.count > limit else { return text }
+        return String(text.prefix(limit)) + "..."
+    }
+
     /// 加载历史对话列表（登录走云端，未登录走本地）
     func loadConversationHistory() async {
         isLoadingConversationHistory = true
@@ -420,39 +519,93 @@ final class ChatViewModel: ObservableObject {
             
             Task {
                 do {
-                    let userContext = TokenStore.shared.isLoggedIn ? nil : LocalDataStore.shared.memoriesAsUserContext()
-                    let (cid, reply) = try await APIClient.shared.assistantChatWithFile(
-                        conversationId: serverConversationId,
-                        message: inputText.isEmpty ? "请分析这个文件：\(fileName)" : inputText,
-                        fileData: data,
-                        fileName: fileName,
-                        fileType: isPDF ? "pdf" : "text",
-                        userContext: userContext
-                    )
-                    serverConversationId = cid
-                    
-                    // 添加用户消息
+                    let message = inputText.isEmpty ? "请分析这个文件：\(fileName)" : inputText
+                    let promptContext = await buildPromptContext(for: message)
+                    let userContext = promptContext.isEmpty ? nil : promptContext
+                    let shouldStream = SpeechSettingsStore.shared.voiceStreamingEnabled
                     let userMessageContent = inputText.isEmpty ? "[文件: \(fileName)]" : inputText + " [文件: \(fileName)]"
-                    let userMessage = ChatMessage(id: UUID().uuidString, role: .user, content: userMessageContent, time: Date())
-                    await MainActor.run {
-                        messages.append(userMessage)
-                        saveMessagesToLocal()
-                    }
-                    
-                    // 添加AI回复
-                    let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: reply, time: Date())
-                    await MainActor.run {
-                        messages.append(replyMsg)
-                        saveMessagesToLocal()
-                        inputText = ""
-                        statusText = "AI 已就绪"
-                        SpeechService.shared.speak(reply, language: "zh-CN")
+                    var voiceContinuation: AsyncStream<String>.Continuation?
+
+                    if shouldStream {
+                        let userMessage = ChatMessage(id: UUID().uuidString, role: .user, content: userMessageContent, time: Date())
+                        let assistantId = UUID().uuidString
+                        await MainActor.run {
+                            messages.append(userMessage)
+                            messages.append(ChatMessage(id: assistantId, role: .assistant, content: "", time: Date()))
+                            saveMessagesToLocal()
+                        }
+                        var accumulated = ""
+                        let shouldStreamVoice = SpeechSettingsStore.shared.autoPlayVoice
+                        if shouldStreamVoice {
+                            let voiceStream = AsyncStream<String> { continuation in
+                                voiceContinuation = continuation
+                            }
+                            SpeechService.shared.speakStreaming(voiceStream, language: nil)
+                        }
+                        for try await event in APIClient.shared.assistantChatWithFileStream(
+                            conversationId: serverConversationId,
+                            message: message,
+                            fileData: data,
+                            fileName: fileName,
+                            fileType: isPDF ? "pdf" : "text",
+                            userContext: userContext
+                        ) {
+                            switch event {
+                            case .delta(let delta):
+                                accumulated += delta
+                                voiceContinuation?.yield(delta)
+                                await MainActor.run {
+                                    self.updateAssistantMessage(id: assistantId, content: accumulated)
+                                    self.statusText = "AI 回复中..."
+                                }
+                            case .done(let cid, let reply):
+                                let finalReply = reply.isEmpty ? accumulated : reply
+                                voiceContinuation?.finish()
+                                serverConversationId = cid
+                                await MainActor.run {
+                                    self.updateAssistantMessage(id: assistantId, content: finalReply)
+                                    self.saveMessagesToLocal()
+                                    self.inputText = ""
+                                    self.statusText = "AI 已就绪"
+                                }
+                                if SpeechSettingsStore.shared.autoPlayVoice && !shouldStreamVoice {
+                                    SpeechService.shared.speak(finalReply, language: "zh-CN")
+                                }
+                            }
+                        }
+                    } else {
+                        let (cid, reply) = try await APIClient.shared.assistantChatWithFile(
+                            conversationId: serverConversationId,
+                            message: message,
+                            fileData: data,
+                            fileName: fileName,
+                            fileType: isPDF ? "pdf" : "text",
+                            userContext: userContext
+                        )
+                        serverConversationId = cid
+                        
+                        let userMessage = ChatMessage(id: UUID().uuidString, role: .user, content: userMessageContent, time: Date())
+                        await MainActor.run {
+                            messages.append(userMessage)
+                            saveMessagesToLocal()
+                        }
+                        
+                        let replyMsg = ChatMessage(id: UUID().uuidString, role: .assistant, content: reply, time: Date())
+                        await MainActor.run {
+                            messages.append(replyMsg)
+                            saveMessagesToLocal()
+                            inputText = ""
+                            statusText = "AI 已就绪"
+                            SpeechService.shared.speak(reply, language: "zh-CN")
+                        }
                     }
                 } catch {
+                    voiceContinuation?.finish()
                     await MainActor.run {
                         alertMessage = userFacingMessage(for: error)
                         statusText = "AI 未就绪"
                     }
+                    SpeechService.shared.stopSpeaking()
                 }
                 await MainActor.run {
                     isSending = false

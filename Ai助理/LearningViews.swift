@@ -182,12 +182,13 @@ struct LearningPageCompactHeader: View {
 }
 
 struct LearningStatBadge: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     let title: String
     let value: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title)
+            Text(languageStore.localized(title))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(AppTheme.textTertiary)
             Text(value)
@@ -449,7 +450,7 @@ struct LearningResourceSection: View {
                         Button {
                             selectedDifficulty = item
                         } label: {
-                            Text(item.label)
+                            Text(languageStore.localized(item.labelKey))
                                 .font(.caption.weight(selectedDifficulty == item ? .semibold : .medium))
                                 .foregroundStyle(selectedDifficulty == item ? .white : AppTheme.textPrimary)
                                 .frame(minWidth: 44)
@@ -593,6 +594,7 @@ struct SearchBar: View {
 }
 
 struct FilterRow: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     let difficulties: [LearningDifficulty]
     @Binding var selected: LearningDifficulty
     @Binding var showFavoritesOnly: Bool
@@ -608,7 +610,7 @@ struct FilterRow: View {
                         Button {
                             selected = item
                         } label: {
-                            Text(item.label)
+                            Text(languageStore.localized(item.labelKey))
                                 .font(.caption.weight(selected == item ? .semibold : .regular))
                                 .foregroundStyle(selected == item ? AppTheme.textPrimary : AppTheme.textSecondary)
                                 .padding(.horizontal, 12)
@@ -641,19 +643,20 @@ struct FilterRow: View {
 }
 
 struct LearningProgressCard: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     let completedText: String
     let daysText: String
     let masteredText: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("学习进度")
+            Text(languageStore.localized("学习进度"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             HStack(spacing: 8) {
-                ProgressStatCard(title: "完成", value: completedText, color: AppTheme.accentStrong, icon: "checkmark.seal.fill")
-                ProgressStatCard(title: "坚持", value: daysText, color: AppTheme.brandBlue, icon: "flame.fill")
-                ProgressStatCard(title: "掌握", value: masteredText, color: AppTheme.accentWarm, icon: "bookmark.fill")
+                ProgressStatCard(title: languageStore.localized("完成"), value: completedText, color: AppTheme.accentStrong, icon: "checkmark.seal.fill")
+                ProgressStatCard(title: languageStore.localized("坚持"), value: daysText, color: AppTheme.brandBlue, icon: "flame.fill")
+                ProgressStatCard(title: languageStore.localized("掌握"), value: masteredText, color: AppTheme.accentWarm, icon: "bookmark.fill")
             }
         }
         .padding(12)
@@ -831,7 +834,7 @@ struct VocabularyListSection: View {
 struct VocabularyCard: View {
     let item: VocabItem
     @ObservedObject var viewModel: LearningViewModel
-    let difficulty: String
+    let difficulty: LearningDifficulty
     let mode: LearningMode
 
     var body: some View {
@@ -875,7 +878,7 @@ struct VocabularyCard: View {
                 }
 
                 VStack(alignment: .trailing, spacing: 6) {
-                    DifficultyTag(text: difficulty)
+                    DifficultyTag(difficulty: difficulty)
                     if viewModel.isFavorite(item) {
                         Text("已收藏")
                             .font(.caption2)
@@ -936,6 +939,7 @@ struct VocabularyCard: View {
 }
 
 struct ExampleSentenceRow: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     let title: String
     let text: String
     let language: String
@@ -945,7 +949,7 @@ struct ExampleSentenceRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(languageStore.localized(title))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
                 Text(text)
@@ -975,10 +979,11 @@ struct ExampleSentenceRow: View {
 }
 
 struct DifficultyTag: View {
-    let text: String
+    @EnvironmentObject private var languageStore: AppLanguageStore
+    let difficulty: LearningDifficulty
 
     var body: some View {
-        Text(text)
+        Text(languageStore.localized(difficulty.labelKey))
             .font(.caption2.weight(.semibold))
             .foregroundStyle(AppTheme.accentStrong)
             .padding(.horizontal, 8)

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import AVFoundation
 
 final class VoicePlaybackService: NSObject, ObservableObject {
@@ -9,6 +10,7 @@ final class VoicePlaybackService: NSObject, ObservableObject {
     private let edge = EdgeTTSService.shared
     private let systemSynth = AVSpeechSynthesizer()
     private var currentTask: Task<Void, Never>?
+    private var streamTask: Task<Void, Never>?
 
     private override init() {
         super.init()
@@ -18,6 +20,8 @@ final class VoicePlaybackService: NSObject, ObservableObject {
     func stop() {
         currentTask?.cancel()
         currentTask = nil
+        streamTask?.cancel()
+        streamTask = nil
         edge.stop()
         systemSynth.stopSpeaking(at: .immediate)
         isPlaying = false
@@ -53,6 +57,52 @@ final class VoicePlaybackService: NSObject, ObservableObject {
         }
     }
 
+    func speakStreaming(_ stream: AsyncStream<String>, languageHint: String? = nil, onFinish: (() -> Void)? = nil) {
+        if SpeechSettingsStore.shared.playbackMuted { return }
+        stop()
+        isPlaying = true
+
+        let mode = SpeechSettingsStore.shared.voiceMode
+        if mode == "system" {
+            streamTask = Task { [weak self] in
+                guard let self else { return }
+                var full = ""
+                for await delta in stream {
+                    full += delta
+                }
+                await MainActor.run {
+                    self.speakSystem(text: full, languageHint: languageHint, onFinish: onFinish)
+                }
+            }
+            return
+        }
+
+        streamTask = Task { [weak self] in
+            guard let self else { return }
+            var full = ""
+            let wrapped = AsyncStream<String> { continuation in
+                Task {
+                    for await delta in stream {
+                        full += delta
+                        continuation.yield(delta)
+                    }
+                    continuation.finish()
+                }
+            }
+            do {
+                try await playStream(wrapped, languageHint: languageHint)
+                await MainActor.run {
+                    self.isPlaying = false
+                    onFinish?()
+                }
+            } catch {
+                await MainActor.run {
+                    self.speakSystem(text: full, languageHint: languageHint, onFinish: onFinish)
+                }
+            }
+        }
+    }
+
     private func playChunks(_ chunks: [String], languageHint: String?) async throws {
         try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
         try AVAudioSession.sharedInstance().setActive(true, options: [])
@@ -83,6 +133,31 @@ final class VoicePlaybackService: NSObject, ObservableObject {
         }
     }
 
+    private func playStream(_ stream: AsyncStream<String>, languageHint: String?) async throws {
+        try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+        try AVAudioSession.sharedInstance().setActive(true, options: [])
+
+        var buffer = ""
+        for await delta in stream {
+            buffer += delta
+            let chunks = drainStreamChunks(&buffer)
+            for chunk in chunks {
+                let voice = selectVoice(for: chunk, languageHint: languageHint)
+                let speed = SpeechSettingsStore.shared.speechSpeed
+                let url = try await edge.synthesize(text: chunk, voice: voice, speed: speed)
+                try await edge.play(url: url)
+            }
+        }
+
+        let final = buffer.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !final.isEmpty {
+            let voice = selectVoice(for: final, languageHint: languageHint)
+            let speed = SpeechSettingsStore.shared.speechSpeed
+            let url = try await edge.synthesize(text: final, voice: voice, speed: speed)
+            try await edge.play(url: url)
+        }
+    }
+
     private func speakSystem(text: String, languageHint: String?, onFinish: (() -> Void)?) {
         let lang = detectLanguage(text) ?? languageHint ?? "zh-CN"
         let utterance = AVSpeechUtterance(string: text)
@@ -102,11 +177,36 @@ final class VoicePlaybackService: NSObject, ObservableObject {
     }
 
     private func chunkText(_ text: String) -> [String] {
-        let separators = CharacterSet(charactersIn: "。！？!?;；\n")
+        let separators = CharacterSet(charactersIn: "。！？!?;；，,\n")
         let parts = text.split(whereSeparator: { separators.contains($0.unicodeScalars.first!) })
         let trimmed = parts.map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        if trimmed.isEmpty { return [text] }
-        return trimmed
+        if trimmed.isEmpty {
+            return chunkByLength(text, maxLength: 140)
+        }
+        let combined = trimmed.flatMap { chunkByLength($0, maxLength: 140) }
+        return combined.isEmpty ? [text] : combined
+    }
+
+    private func drainStreamChunks(_ buffer: inout String) -> [String] {
+        var chunks: [String] = []
+        let separators = CharacterSet(charactersIn: "。！？!?;；\n")
+        while let range = buffer.rangeOfCharacter(from: separators) {
+            let end = buffer.index(after: range.lowerBound)
+            let segment = String(buffer[..<end]).trimmingCharacters(in: .whitespacesAndNewlines)
+            buffer = String(buffer[end...])
+            if !segment.isEmpty {
+                chunks.append(segment)
+            }
+        }
+        if buffer.count > 160 {
+            let idx = buffer.index(buffer.startIndex, offsetBy: 160)
+            let segment = String(buffer[..<idx]).trimmingCharacters(in: .whitespacesAndNewlines)
+            buffer = String(buffer[idx...])
+            if !segment.isEmpty {
+                chunks.append(segment)
+            }
+        }
+        return chunks
     }
 
     private func selectVoice(for text: String, languageHint: String?) -> String {
@@ -122,20 +222,24 @@ final class VoicePlaybackService: NSObject, ObservableObject {
     }
 
     private func detectLanguage(_ text: String) -> String? {
-        if text.range(of: "\\p{Han}", options: .regularExpression) != nil {
-            return "zh-CN"
+        return LanguageDetector.detect(from: text)?.localeIdentifier ?? "en-US"
+    }
+
+    private func chunkByLength(_ text: String, maxLength: Int) -> [String] {
+        guard text.count > maxLength else { return [text] }
+        var chunks: [String] = []
+        var current = ""
+        for word in text.split(separator: " ") {
+            if current.count + word.count + 1 > maxLength, !current.isEmpty {
+                chunks.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
+                current = ""
+            }
+            current += (current.isEmpty ? "" : " ") + word
         }
-        let lower = text.lowercased()
-        let tokens = lower.split { !$0.isLetter }
-        let keywords: Set<String> = [
-            "yang","dan","tidak","apa","saya","kamu","anda","ini","itu","dengan","untuk",
-            "karena","bagaimana","terima","kasih","tolong","bisa","akan","sudah","belum","juga",
-            "mohon","sebagai","pada","dari","ke","di","adalah"
-        ]
-        if tokens.contains(where: { keywords.contains(String($0)) }) {
-            return "id-ID"
+        if !current.isEmpty {
+            chunks.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
         }
-        return "en-US"
+        return chunks.isEmpty ? [text] : chunks
     }
 }
 

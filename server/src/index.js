@@ -235,6 +235,82 @@ async function llmChat(messages) {
   return llmChatWithModel(getOllamaChatModel(), messages);
 }
 
+async function llmChatStreamWithModel(model, messages, onDelta, signal) {
+  const ollamaBase = getOllamaBaseUrl();
+  if (!ollamaBase) {
+    throw new Error("请配置 OLLAMA_API（例如：https://xxxxx.ngrok-free.dev）");
+  }
+  const res = await fetch(`${ollamaBase}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, messages, stream: true }),
+    signal
+  });
+  if (!res.ok) {
+    const raw = await res.text().catch(() => "");
+    throw new Error(`Ollama API 错误: ${res.status} ${raw.slice(0, 200)}`);
+  }
+  let buffer = "";
+  let full = "";
+  const decoder = new TextDecoder();
+  for await (const chunk of res.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      let data;
+      try {
+        data = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      const delta = data?.message?.content || "";
+      if (delta) {
+        full += delta;
+        onDelta(delta);
+      }
+      if (data?.done) {
+        return full.trim();
+      }
+    }
+  }
+  return full.trim();
+}
+
+function splitTextToChunks(text) {
+  const cleaned = String(text || "").trim();
+  if (!cleaned) return [];
+  const parts = cleaned.split(/(?<=[。！？!?;；\n])/);
+  const chunks = [];
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    if (trimmed.length <= 160) {
+      chunks.push(trimmed);
+    } else {
+      let start = 0;
+      while (start < trimmed.length) {
+        chunks.push(trimmed.slice(start, start + 160));
+        start += 160;
+      }
+    }
+  }
+  return chunks;
+}
+
+async function emitReplyChunks(res, reply) {
+  const chunks = splitTextToChunks(reply);
+  if (chunks.length === 0) {
+    res.write(`event: delta\ndata: ${JSON.stringify({ delta: String(reply || "") })}\n\n`);
+    return;
+  }
+  for (const chunk of chunks) {
+    res.write(`event: delta\ndata: ${JSON.stringify({ delta: chunk })}\n\n`);
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
+
 /** 从最近一轮对话中提取可长期记忆的用户信息，返回 { content, category, confidence, ttlDays, source }[] */
 async function extractMemoriesFromConversation(userMessage, assistantReply) {
   const ollamaBase = getOllamaBaseUrl();
@@ -1392,6 +1468,335 @@ app.post("/api/assistant/chat", optionalAuthMiddleware, async (req, res) => {
     conversationId: conversation?.id ?? null,
     reply
   });
+});
+
+app.post("/api/assistant/chat/stream", optionalAuthMiddleware, async (req, res) => {
+  const schema = z.object({
+    conversationId: z.string().optional(),
+    message: z.string().optional(),
+    image: z.string().optional(),
+    userContext: z.string().optional(),
+    localExecution: z.boolean().optional()
+  });
+  const parseResult = schema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.flatten() });
+  }
+
+  const { conversationId, message, image, userContext, localExecution } = parseResult.data;
+  if ((!message || !message.trim()) && !image) {
+    return res.status(400).json({ error: "需要提供消息或图片" });
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive"
+  });
+  res.flushHeaders();
+
+  let conversation = null;
+  const userMessageContent = message?.trim() || (image ? "[图片]" : "");
+  if (req.user) {
+    conversation = conversationId
+      ? await prisma.conversation.findUnique({ where: { id: conversationId } })
+      : await prisma.conversation.create({
+          data: { userId: req.user.sub, title: generateConversationTitle(userMessageContent) }
+        });
+    if (conversation) {
+      await prisma.message.create({
+        data: { conversationId: conversation.id, role: "user", content: userMessageContent }
+      });
+      const shouldRename = !conversation.title || conversation.title.startsWith("对话-");
+      if (shouldRename) {
+        const title = generateConversationTitle(userMessageContent);
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { title, lastMessageAt: new Date() }
+        });
+      } else {
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { lastMessageAt: new Date() }
+        });
+      }
+    }
+  }
+
+  let history = [];
+  if (conversation) {
+    const rows = await prisma.message.findMany({
+      where: { conversationId: conversation.id },
+      orderBy: { createdAt: "asc" }
+    });
+    history = rows.map((m) => ({ role: m.role, content: m.content }));
+  } else {
+    history = [{ role: "user", content: userMessageContent }];
+  }
+
+  let systemParts = ["你是专业、可靠的AI助理，请用中文简洁回答。"];
+  if (localExecution) {
+    systemParts.push(
+      "【本机执行】当前对话已开启本机执行，你要像一位真人助手一样，主动帮用户操作电脑、完成任务。请用以下能力（每次只输出一条 [CMD]...[/CMD]，执行结果会发回给你，你可继续发下一条）：\n" +
+      "1) 打开应用：用户说「打开 XXX」时回复 [CMD]OPEN_APP:XXX[/CMD]（如 打开 wps → OPEN_APP:wps，打开 QQ音乐 → OPEN_APP:QQ音乐）。\n" +
+      "2) 打开文件夹/文件：打开桌面/下载/文档等用 [CMD]OPEN_FOLDER:~/Desktop[/CMD]、[CMD]OPEN_FOLDER:~/Downloads[/CMD]、[CMD]OPEN_FOLDER:~/Documents[/CMD]；打开某文件用 [CMD]OPEN_FILE:路径[/CMD]（路径仅限用户目录或 /Applications 下）。\n" +
+      "3) 查看本机信息：用 [CMD]命令[/CMD] 输出一条安全命令（如 ls、ls ~/Downloads、pwd、date、whoami、df -h、cat 用户目录下的某文件），根据结果再决定下一步或直接回答。\n" +
+      "4) 多步任务：用户说「帮我整理下载」「看看桌面有什么」等，你先用 ls 查看，再根据结果用 OPEN_FOLDER/OPEN_FILE 打开或建议下一步，像真人助手一样一步步完成。\n" +
+      "禁止：给出手动操作步骤代替 [CMD]；使用 rm、mv、sudo、格式化等危险命令。"
+    );
+  }
+  if (userContext && String(userContext).trim()) {
+    systemParts.push("关于当前用户（请据此个性化回答）：\n" + String(userContext).trim().slice(0, 2000));
+  }
+  if (req.user) {
+    await cleanupExpiredMemories(req.user.sub);
+    const memories = await prisma.userMemory.findMany({
+      where: {
+        userId: req.user.sub,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
+      },
+      orderBy: [{ confidence: "desc" }, { updatedAt: "desc" }],
+      take: 80
+    });
+    if (memories.length > 0) {
+      const memoryText = memories.map((m) => `- [${m.category}|${(m.confidence || 0.65).toFixed(2)}] ${m.content}`).join("\n");
+      systemParts.push("已记住的关于该用户的信息：\n" + memoryText);
+    }
+  }
+  const systemContent = systemParts.join("\n\n");
+  if (!history.some((m) => m.role === "system")) {
+    history.unshift({ role: "system", content: systemContent });
+  } else {
+    history[0] = { role: "system", content: systemContent };
+  }
+
+  const aborter = new AbortController();
+  req.on("close", () => aborter.abort());
+
+  let reply = "";
+  try {
+    if (image) {
+      reply = await llmChatWithImage(history, image, message || "请识别这张图片");
+      await emitReplyChunks(res, reply);
+    } else {
+      reply = await llmChatStreamWithModel(
+        getOllamaChatModel(),
+        history,
+        (delta) => {
+          res.write(`event: delta\ndata: ${JSON.stringify({ delta })}\n\n`);
+        },
+        aborter.signal
+      );
+    }
+  } catch (err) {
+    const msg = `抱歉，AI 服务暂时不可用：${err.message}`;
+    await emitReplyChunks(res, msg);
+    reply = msg;
+  }
+
+  if (localExecution && message && !/\[CMD\]/.test(reply)) {
+    const openMatch = message.match(/(?:帮我)?打开\s+([^\s，。！？]+)/i);
+    if (openMatch) {
+      const raw = openMatch[1].trim().toLowerCase();
+      const folderMap = { 桌面: "~/Desktop", 下载: "~/Downloads", 文档: "~/Documents", 音乐: "~/Music", 图片: "~/Pictures", 视频: "~/Movies" };
+      const path = folderMap[raw] || folderMap[raw.replace(/\s/g, "")];
+      if (path) {
+        reply = `[CMD]OPEN_FOLDER:${path}[/CMD]`;
+      } else {
+        const keyword = openMatch[1].trim().replace(/\s+/g, " ").slice(0, 50);
+        reply = `[CMD]OPEN_APP:${keyword}[/CMD]`;
+      }
+    }
+  }
+
+  if (conversation) {
+    await prisma.message.create({
+      data: { conversationId: conversation.id, role: "assistant", content: reply }
+    });
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessageAt: new Date() }
+    });
+  }
+
+  if (req.user && reply) {
+    try {
+      const newMemories = await extractMemoriesFromConversation(userMessageContent, reply);
+      await upsertUserMemories(req.user.sub, newMemories);
+      if (conversation) {
+        const messageCount = await prisma.message.count({ where: { conversationId: conversation.id } });
+        if (messageCount > 0 && messageCount % 6 === 0) {
+          const rows = await prisma.message.findMany({
+            where: { conversationId: conversation.id },
+            orderBy: { createdAt: "asc" },
+            take: 12
+          });
+          const summaryMemories = await summarizeConversationMemories(rows.map((m) => ({ role: m.role, content: m.content })));
+          await upsertUserMemories(req.user.sub, summaryMemories);
+        }
+      }
+    } catch (extractErr) {
+      console.warn("Memory extract/save error:", extractErr?.message);
+    }
+  }
+
+  res.write(`event: done\ndata: ${JSON.stringify({ conversationId: conversation?.id ?? null, reply })}\n\n`);
+  res.end();
+});
+
+app.post("/api/assistant/chat/file/stream", optionalAuthMiddleware, async (req, res) => {
+  const contentType = req.headers["content-type"] || "";
+  if (!contentType.includes("multipart/form-data")) {
+    return res.status(400).json({ error: "需要 multipart/form-data" });
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive"
+  });
+  res.flushHeaders();
+
+  try {
+    const formData = await parseMultipartFormData(req);
+    const message = formData.message || "";
+    const file = formData.file;
+    const fileName = formData.fileName || "unknown";
+    const fileType = formData.fileType || "text";
+    const conversationId = formData.conversationId;
+    const userContext = formData.userContext ? String(formData.userContext).trim() : "";
+
+    if (!file || !file.data) {
+      res.write(`event: done\ndata: ${JSON.stringify({ conversationId: null, reply: "未提供文件" })}\n\n`);
+      return res.end();
+    }
+
+    const fileData = file.data;
+    let fileContent = "";
+    let processedMessage = message || `请分析这个${fileType === "pdf" ? "PDF" : "文本"}文件：${fileName}`;
+    if (fileType === "pdf") {
+      processedMessage += `\n\n[这是一个PDF文件，文件名：${fileName}，大小：${fileData.length}字节]`;
+    } else if (fileType === "text") {
+      try {
+        fileContent = fileData.toString("utf-8");
+        if (fileContent.length > 50000) {
+          fileContent = fileContent.substring(0, 50000) + "\n\n[文件内容过长，已截断]";
+        }
+        processedMessage += `\n\n文件内容：\n${fileContent}`;
+      } catch (err) {
+        processedMessage += `\n\n[无法读取文件内容：${err.message}]`;
+      }
+    } else {
+      try {
+        fileContent = fileData.toString("utf-8");
+        if (fileContent.length > 50000) {
+          fileContent = fileContent.substring(0, 50000) + "\n\n[文件内容过长，已截断]";
+        }
+        processedMessage += `\n\n文件内容：\n${fileContent}`;
+      } catch {
+        processedMessage += `\n\n[无法读取文件内容]`;
+      }
+    }
+
+    let conversation = null;
+    if (req.user) {
+      conversation = conversationId
+        ? await prisma.conversation.findUnique({ where: { id: conversationId } })
+        : await prisma.conversation.create({
+            data: { userId: req.user.sub, title: generateConversationTitle(message || fileName || "文件分析") }
+          });
+      if (conversation) {
+        await prisma.message.create({
+          data: { conversationId: conversation.id, role: "user", content: `[文件: ${fileName}] ${message || "请分析这个文件"}` }
+        });
+        const shouldRename = !conversation.title || conversation.title.startsWith("对话-");
+        if (shouldRename) {
+          const title = generateConversationTitle(message || fileName || "文件分析");
+          await prisma.conversation.update({
+            where: { id: conversation.id },
+            data: { title, lastMessageAt: new Date() }
+          });
+        } else {
+          await prisma.conversation.update({
+            where: { id: conversation.id },
+            data: { lastMessageAt: new Date() }
+          });
+        }
+      }
+    }
+
+    let history = [];
+    if (conversation) {
+      const rows = await prisma.message.findMany({
+        where: { conversationId: conversation.id },
+        orderBy: { createdAt: "asc" }
+      });
+      history = rows.map((m) => ({ role: m.role, content: m.content }));
+    } else {
+      history = [{ role: "user", content: processedMessage }];
+    }
+    let systemParts = ["你是专业、可靠的AI助理，请用中文简洁回答。当用户上传文件时，请仔细分析文件内容并给出有用的建议。"];
+    if (userContext) {
+      systemParts.push("关于当前用户（请据此个性化回答）：\n" + userContext.slice(0, 2000));
+    }
+    if (req.user) {
+      await cleanupExpiredMemories(req.user.sub);
+      const memories = await prisma.userMemory.findMany({
+        where: {
+          userId: req.user.sub,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
+        },
+        orderBy: [{ confidence: "desc" }, { updatedAt: "desc" }],
+        take: 80
+      });
+      if (memories.length > 0) {
+        systemParts.push("已记住的关于该用户的信息（按重要度排序）：\n" + memories.map((m) => `- [${m.category}|${(m.confidence || 0.65).toFixed(2)}] ${m.content}`).join("\n"));
+      }
+    }
+    const systemContent = systemParts.join("\n\n");
+    if (!history.some((m) => m.role === "system")) {
+      history.unshift({ role: "system", content: systemContent });
+    } else {
+      history[0] = { role: "system", content: systemContent };
+    }
+    if (history.length > 0 && history[history.length - 1].role === "user") {
+      history[history.length - 1].content = processedMessage;
+    }
+
+    let reply;
+    try {
+      reply = await llmChat(history);
+    } catch (err) {
+      reply = `抱歉，AI 服务暂时不可用：${err.message}`;
+    }
+
+    if (conversation) {
+      await prisma.message.create({
+        data: { conversationId: conversation.id, role: "assistant", content: reply }
+      });
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { lastMessageAt: new Date() }
+      });
+    }
+
+    if (req.user && reply) {
+      try {
+        const newMemories = await extractMemoriesFromConversation(processedMessage, reply);
+        await upsertUserMemories(req.user.sub, newMemories);
+      } catch (extractErr) {
+        console.warn("File chat memory extract/save error:", extractErr?.message);
+      }
+    }
+
+    await emitReplyChunks(res, reply);
+    res.write(`event: done\ndata: ${JSON.stringify({ conversationId: conversation?.id ?? null, reply })}\n\n`);
+    return res.end();
+  } catch (err) {
+    await emitReplyChunks(res, `文件处理失败: ${err.message}`);
+    res.write(`event: done\ndata: ${JSON.stringify({ conversationId: null, reply: `文件处理失败: ${err.message}` })}\n\n`);
+    return res.end();
+  }
 });
 
 app.post("/api/notes/ai", optionalAuthMiddleware, async (req, res) => {

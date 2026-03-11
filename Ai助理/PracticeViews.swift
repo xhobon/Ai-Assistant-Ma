@@ -9,12 +9,7 @@ struct PracticeHomeView: View {
     @EnvironmentObject private var languageStore: AppLanguageStore
     @StateObject private var statsStore = LearningStatsStore.shared
     @StateObject private var wrongStore = WrongBookStore.shared
-    @State private var selectedMode: LearningMode = {
-        if let saved = UserDefaults.standard.string(forKey: "learning_mode"), let mode = LearningMode(rawValue: saved) {
-            return mode
-        }
-        return .zhToId
-    }()
+    @AppStorage("learning_mode") private var storedMode: String = LearningMode.zhToId.rawValue
     @State private var selectedCount: Int = 10
     @State private var selectedTypes: Set<PracticeQuestionType> = Set(PracticeQuestionType.allCases)
     @State private var showSession = false
@@ -30,7 +25,10 @@ struct PracticeHomeView: View {
                         .padding(.horizontal, 14)
 
                     PracticeModeCard(
-                        selectedMode: $selectedMode,
+                        selectedMode: Binding(
+                            get: { LearningMode(rawValue: storedMode) ?? .zhToId },
+                            set: { storedMode = $0.rawValue }
+                        ),
                         selectedCount: $selectedCount,
                         questionCounts: questionCounts,
                         selectedTypes: $selectedTypes
@@ -64,12 +62,9 @@ struct PracticeHomeView: View {
             .background(AppTheme.pageBackground.ignoresSafeArea(edges: .top))
             .navigationTitle(languageStore.localized("practice_title"))
             .navigationBarTitleDisplayMode(.inline)
-            .onChange(of: selectedMode) { _, newMode in
-                UserDefaults.standard.set(newMode.rawValue, forKey: "learning_mode")
-            }
             .navigationDestination(isPresented: $showSession) {
                 PracticeSessionView(
-                    mode: selectedMode,
+                    mode: LearningMode(rawValue: storedMode) ?? .zhToId,
                     questionCount: selectedCount,
                     types: Array(selectedTypes),
                     source: sessionSource
@@ -267,10 +262,12 @@ struct WrongBookEntryCard: View {
                     .foregroundStyle(AppTheme.textSecondary)
             }
             Spacer(minLength: 0)
-            UnifiedAppButton(title: languageStore.localized("wrong_book_action"), systemImage: nil, style: .secondary) {
+            UnifiedAppButton(title: languageStore.localized("wrong_book_action"), systemImage: nil, style: .outline) {
                 onReview()
             }
             .frame(width: 90)
+            .disabled(count == 0)
+            .opacity(count == 0 ? 0.6 : 1)
         }
         .padding(12)
         .background(AppTheme.surface)
@@ -428,6 +425,9 @@ struct PracticeSessionView: View {
                         selectedOption = option
                     }
                 }
+                if answered {
+                    PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
+                }
             }
         case .matching(let left, let right, let pairs):
             VStack(spacing: 10) {
@@ -486,7 +486,7 @@ struct PracticeSessionView: View {
         case .listening(let audioText, let options, _, _, let audioLanguage):
             VStack(spacing: 10) {
                 HStack(spacing: 8) {
-                    UnifiedAppButton(title: languageStore.localized("practice_listening_play"), systemImage: "speaker.wave.2", style: .secondary) {
+                    UnifiedAppButton(title: languageStore.localized("practice_listening_play"), systemImage: "speaker.wave.2", style: .outline) {
                         SpeechService.shared.speak(audioText, language: audioLanguage)
                     }
                     Text(languageStore.localized("practice_listening_hint"))
@@ -497,6 +497,9 @@ struct PracticeSessionView: View {
                     PracticeOptionButton(title: option, isSelected: selectedOption == option) {
                         selectedOption = option
                     }
+                }
+                if answered {
+                    PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
                 }
             }
             .onAppear {
@@ -523,6 +526,9 @@ struct PracticeSessionView: View {
                             availableWords.append(word)
                         }
                     }
+                }
+                if answered {
+                    PracticeAnswerStateView(isCorrect: isCorrect, detail: answerDetail)
                 }
             }
             .onAppear {

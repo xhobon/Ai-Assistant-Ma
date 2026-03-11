@@ -5,9 +5,14 @@ import Combine
 
 final class SpeechRecognitionService: NSObject, ObservableObject {
     private let transcriber = SpeechTranscriber()
-    private var currentLocale: Locale = Locale(identifier: "zh-CN")
+    private var currentLocale: Locale = LanguageDetector.defaultLocale()
     private var lastSwitchAt: Date = .distantPast
     private var onResult: ((String, Bool) -> Void)?
+    private let supportedLocales: [Locale] = [
+        Locale(identifier: "zh-CN"),
+        Locale(identifier: "id-ID"),
+        Locale(identifier: "en-US")
+    ]
 
     func requestAuthorization() async -> Bool {
         await transcriber.requestAuthorization()
@@ -23,8 +28,9 @@ final class SpeechRecognitionService: NSObject, ObservableObject {
     }
 
     private func maybeSwitchLocale(with text: String) {
-        let detected = detectLanguage(text)
+        let detected = LanguageDetector.detectLocale(from: text)
         guard let target = detected, target.identifier != currentLocale.identifier else { return }
+        guard supportedLocales.contains(where: { $0.identifier == target.identifier }) else { return }
         let now = Date()
         if now.timeIntervalSince(lastSwitchAt) < 1.0 { return }
         lastSwitchAt = now
@@ -39,25 +45,5 @@ final class SpeechRecognitionService: NSObject, ObservableObject {
             handler?(text, isFinal)
             self.maybeSwitchLocale(with: text)
         }
-    }
-
-    private func detectLanguage(_ text: String) -> Locale? {
-        if text.range(of: "\\p{Han}", options: .regularExpression) != nil {
-            return Locale(identifier: "zh-CN")
-        }
-        let lower = text.lowercased()
-        let tokens = lower.split { !$0.isLetter }
-        let keywords: Set<String> = [
-            "yang","dan","tidak","apa","saya","kamu","anda","ini","itu","dengan","untuk",
-            "karena","bagaimana","terima","kasih","tolong","bisa","akan","sudah","belum","juga",
-            "mohon","sebagai","pada","dari","ke","di","adalah"
-        ]
-        if tokens.contains(where: { keywords.contains(String($0)) }) {
-            return Locale(identifier: "id-ID")
-        }
-        if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return Locale(identifier: "en-US")
-        }
-        return nil
     }
 }

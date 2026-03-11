@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 struct PracticeGenerator {
     static func generateQuestions(
@@ -126,13 +127,7 @@ struct PracticeGenerator {
     }
 
     private static func makeFillBlank(item: VocabItem, mode: LearningMode) -> PracticeQuestion? {
-        let sentence: String
-        switch mode {
-        case .zhToId:
-            sentence = item.textId
-        case .idToZh:
-            sentence = item.textZh
-        }
+        let sentence = item.textId
         let words = sentence.split(separator: " ")
         if words.count >= 2 {
             let index = Int.random(in: 0..<words.count)
@@ -149,7 +144,7 @@ struct PracticeGenerator {
             )
         }
 
-        let fallback = mode == .zhToId ? item.exampleId : item.exampleZh
+        let fallback = item.exampleId
         let fallbackWords = fallback.split(separator: " ")
         guard fallbackWords.count >= 2 else { return nil }
         let index = Int.random(in: 0..<fallbackWords.count)

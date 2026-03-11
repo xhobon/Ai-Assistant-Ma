@@ -149,24 +149,8 @@ final class EdgeTTSService: NSObject {
     }
 
     private func detectLanguage(for text: String) -> String {
-        if containsChinese(text) { return "zh" }
-        if containsIndonesian(text) { return "id" }
-        return "en"
-    }
-
-    private func containsChinese(_ text: String) -> Bool {
-        return text.range(of: "\\p{Han}", options: .regularExpression) != nil
-    }
-
-    private func containsIndonesian(_ text: String) -> Bool {
-        let lower = text.lowercased()
-        let tokens = lower.split { !$0.isLetter }
-        let keywords: Set<String> = [
-            "yang","dan","tidak","apa","saya","kamu","anda","ini","itu","dengan","untuk",
-            "karena","bagaimana","terima","kasih","tolong","bisa","akan","sudah","belum","juga",
-            "mohon","sebagai","pada","dari","ke","di","adalah"
-        ]
-        return tokens.contains { keywords.contains(String($0)) }
+        guard let lang = LanguageDetector.detect(from: text) else { return "en" }
+        return lang.rawValue
     }
 }
 

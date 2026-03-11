@@ -75,6 +75,7 @@ struct SidebarLogoView: View {
 
 /// 参考图：图标在上、文字在下，选中为浅绿圆角块
 struct SidebarRow: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     let item: SidebarItem
     let isSelected: Bool
 
@@ -86,7 +87,7 @@ struct SidebarRow: View {
                 .frame(width: 28, height: 28)
                 .background(isSelected ? sidebarActiveFg.opacity(0.12) : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            Text(item.title)
+            Text(languageStore.localized(item.title))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isSelected ? AppTheme.textPrimary : sidebarInactive)
                 .lineLimit(1)
@@ -104,6 +105,7 @@ struct SidebarRow: View {
 }
 
 struct ContentView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @State private var selectedItem: SidebarItem = .partner
     @State private var detailResetSeed = 0
     @State private var detailMounted = true
@@ -462,7 +464,7 @@ struct ContentView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .background(AppTheme.pageBackground.ignoresSafeArea())
-                .navigationTitle(currentWindowTitle)
+                .navigationTitle(languageStore.localized(currentWindowTitle))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {

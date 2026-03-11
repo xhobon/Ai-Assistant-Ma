@@ -167,12 +167,31 @@ final class SpeechSettingsStore: ObservableObject {
     private let voiceGenderKey = "speech_voice_gender"
     private let speechSpeedKey = "speech_speed"
     private let playbackMutedKey = "playback_muted"
+    private let voiceStreamingKey = "speech_voice_streaming"
 
     /// 是否静音（不播放 AI 回复等 TTS）
     var playbackMuted: Bool {
         get { UserDefaults.standard.bool(forKey: playbackMutedKey) }
         set {
             UserDefaults.standard.set(newValue, forKey: playbackMutedKey)
+            objectWillChange.send()
+        }
+    }
+
+    /// 自动播放语音（等价于非静音）
+    var autoPlayVoice: Bool {
+        get { !playbackMuted }
+        set { playbackMuted = !newValue }
+    }
+
+    /// 语音流式播放（边生成边播放）
+    var voiceStreamingEnabled: Bool {
+        get {
+            if UserDefaults.standard.object(forKey: voiceStreamingKey) == nil { return true }
+            return UserDefaults.standard.bool(forKey: voiceStreamingKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: voiceStreamingKey)
             objectWillChange.send()
         }
     }
@@ -241,6 +260,11 @@ final class APIClient {
     static let shared = APIClient()
     private var webAuthSession: ASWebAuthenticationSession?
     private let authPresentationProvider = WebAuthPresentationContextProvider()
+
+    enum AssistantStreamEvent {
+        case delta(String)
+        case done(conversationId: String?, reply: String)
+    }
 
     private func request<T: Decodable>(
         _ path: String,
@@ -488,6 +512,152 @@ final class APIClient {
         if localExecution { body["localExecution"] = true }
         let res: Res = try await request("api/assistant/chat", method: "POST", body: body, authorized: true)
         return (res.conversationId, res.reply)
+    }
+
+    func assistantChatStream(conversationId: String? = nil, message: String, imageData: Data? = nil, userContext: String? = nil, localExecution: Bool = false) -> AsyncThrowingStream<AssistantStreamEvent, Error> {
+        let base = ServerConfigStore.shared.baseURLString
+        let pathTrimmed = "api/assistant/chat/stream"
+        guard let url = URL(string: base.hasSuffix("/") ? base + pathTrimmed : base + "/" + pathTrimmed) else {
+            return AsyncThrowingStream { $0.finish(throwing: APIClientError.serverError("无效的请求地址")) }
+        }
+        var body: [String: Any] = ["message": message]
+        if let imageData {
+            body["image"] = imageData.base64EncodedString()
+        }
+        if let cid = conversationId { body["conversationId"] = cid }
+        if let ctx = userContext, !ctx.isEmpty { body["userContext"] = ctx }
+        if localExecution { body["localExecution"] = true }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = TokenStore.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                        throw APIClientError.invalidResponse
+                    }
+                    try await consumeSSE(bytes: bytes, continuation: continuation)
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    func assistantChatWithFileStream(conversationId: String? = nil, message: String, fileData: Data, fileName: String, fileType: String, userContext: String? = nil) -> AsyncThrowingStream<AssistantStreamEvent, Error> {
+        let base = ServerConfigStore.shared.baseURLString
+        let pathTrimmed = "api/assistant/chat/file/stream"
+        guard let url = URL(string: base.hasSuffix("/") ? base + pathTrimmed : base + "/" + pathTrimmed) else {
+            return AsyncThrowingStream { $0.finish(throwing: APIClientError.serverError("无效的请求地址")) }
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token = TokenStore.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"message\"\r\n\r\n".data(using: .utf8)!)
+        body.append(message.data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n".data(using: .utf8)!)
+
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"fileName\"\r\n\r\n".data(using: .utf8)!)
+        body.append(fileName.data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"fileType\"\r\n\r\n".data(using: .utf8)!)
+        body.append(fileType.data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+
+        if let cid = conversationId {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"conversationId\"\r\n\r\n".data(using: .utf8)!)
+            body.append(cid.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        if let ctx = userContext, !ctx.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"userContext\"\r\n\r\n".data(using: .utf8)!)
+            body.append(ctx.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                        throw APIClientError.invalidResponse
+                    }
+                    try await consumeSSE(bytes: bytes, continuation: continuation)
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func consumeSSE(bytes: URLSession.AsyncBytes, continuation: AsyncThrowingStream<AssistantStreamEvent, Error>.Continuation) async throws {
+        var eventName = "message"
+        var dataLines: [String] = []
+
+        func flushEvent() throws {
+            guard !dataLines.isEmpty else {
+                eventName = "message"
+                return
+            }
+            let dataString = dataLines.joined(separator: "\n")
+            dataLines.removeAll()
+            if let data = dataString.data(using: .utf8),
+               let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if eventName == "delta" {
+                    if let delta = payload["delta"] as? String {
+                        continuation.yield(.delta(delta))
+                    }
+                } else if eventName == "done" {
+                    let cid = payload["conversationId"] as? String
+                    let reply = payload["reply"] as? String ?? ""
+                    continuation.yield(.done(conversationId: cid, reply: reply))
+                }
+            }
+            eventName = "message"
+        }
+
+        for try await line in bytes.lines {
+            if line.isEmpty {
+                try flushEvent()
+                continue
+            }
+            if line.hasPrefix("event:") {
+                eventName = line.replacingOccurrences(of: "event:", with: "").trimmingCharacters(in: .whitespaces)
+            } else if line.hasPrefix("data:") {
+                dataLines.append(line.replacingOccurrences(of: "data:", with: "").trimmingCharacters(in: .whitespaces))
+            }
+        }
+        try flushEvent()
     }
     
     /// 服务器 AI 对话（支持文件上传）；userContext 为未登录时的本地记忆摘要
@@ -846,6 +1016,26 @@ final class SpeechService: NSObject, ObservableObject {
         }
     }
 
+    /// 流式朗读（边生成边播放）
+    func speakStreaming(_ stream: AsyncStream<String>, language: String? = nil, onFinish: (() -> Void)? = nil) {
+        if SpeechSettingsStore.shared.playbackMuted { return }
+        stopSpeaking()
+        isPlaying = true
+        let wrapped = AsyncStream<String> { [weak self] continuation in
+            Task {
+                for await delta in stream {
+                    self?.extendPlaybackGuard(with: delta)
+                    continuation.yield(delta)
+                }
+                continuation.finish()
+            }
+        }
+        voicePlayback.speakStreaming(wrapped, languageHint: language) { [weak self] in
+            self?.isPlaying = false
+            onFinish?()
+        }
+    }
+
     private func speakLocal(text: String, language: String) {
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = preferredVoice(for: language)
@@ -882,6 +1072,18 @@ final class SpeechService: NSObject, ObservableObject {
         let duration = min(18.0, max(2.0, Double(text.count) * 0.12))
         playbackGuardUntil = Date().addingTimeInterval(duration)
     }
+
+    private func extendPlaybackGuard(with text: String) {
+        let normalized = normalizeForEchoCheck(text)
+        guard !normalized.isEmpty else { return }
+        if playbackGuardText.isEmpty {
+            playbackGuardText = normalized
+        } else {
+            playbackGuardText += normalized
+        }
+        let duration = min(18.0, max(2.0, Double(playbackGuardText.count) * 0.12))
+        playbackGuardUntil = Date().addingTimeInterval(duration)
+    }
     
     private func normalizeForEchoCheck(_ text: String) -> String {
         let allowed = CharacterSet.letters.union(.decimalDigits)
@@ -904,20 +1106,7 @@ final class SpeechService: NSObject, ObservableObject {
     }
 
     private func detectLanguageCode(for text: String) -> String? {
-        if text.range(of: "\\p{Han}", options: .regularExpression) != nil {
-            return "zh-CN"
-        }
-        let lower = text.lowercased()
-        let tokens = lower.split { !$0.isLetter }
-        let keywords: Set<String> = [
-            "yang","dan","tidak","apa","saya","kamu","anda","ini","itu","dengan","untuk",
-            "karena","bagaimana","terima","kasih","tolong","bisa","akan","sudah","belum","juga",
-            "mohon","sebagai","pada","dari","ke","di","adalah"
-        ]
-        if tokens.contains(where: { keywords.contains(String($0)) }) {
-            return "id-ID"
-        }
-        return "en-US"
+        return LanguageDetector.detect(from: text)?.localeIdentifier ?? "en-US"
     }
 }
 

@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Combine
 
 /// 本地数据存储服务（用于未登录用户）
 final class LocalDataStore: ObservableObject {
@@ -9,6 +10,7 @@ final class LocalDataStore: ObservableObject {
     private let translationsKey = "local_translations"
     private let currentConversationKey = "current_conversation_id"
     private let memoriesKey = "local_assistant_memories"
+    private let userMemoryKVKey = "local_user_memory_kv_v1"
     private let notesKey = "local_notes_v2"
     private let summariesKey = "local_summaries_v1"
     private let cloudConversationSummariesKey = "cloud_conversation_summaries_v1"
@@ -16,6 +18,8 @@ final class LocalDataStore: ObservableObject {
     private let localConversationCustomTitlesKey = "local_conversation_custom_titles_v1"
     private let pendingTitleUpdatesKey = "pending_conversation_title_updates_v1"
     private let pendingDeleteIdsKey = "pending_conversation_delete_ids_v1"
+    private let knowledgeDocumentsKey = "knowledge_documents_v1"
+    private let vectorStoreKey = "knowledge_vector_store_v1"
 
     private init() {}
     
@@ -157,6 +161,7 @@ final class LocalDataStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: translationsKey)
         UserDefaults.standard.removeObject(forKey: currentConversationKey)
         UserDefaults.standard.removeObject(forKey: memoriesKey)
+        UserDefaults.standard.removeObject(forKey: userMemoryKVKey)
         UserDefaults.standard.removeObject(forKey: notesKey)
         UserDefaults.standard.removeObject(forKey: summariesKey)
         UserDefaults.standard.removeObject(forKey: cloudConversationSummariesKey)
@@ -164,6 +169,8 @@ final class LocalDataStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: localConversationCustomTitlesKey)
         UserDefaults.standard.removeObject(forKey: pendingTitleUpdatesKey)
         UserDefaults.standard.removeObject(forKey: pendingDeleteIdsKey)
+        UserDefaults.standard.removeObject(forKey: knowledgeDocumentsKey)
+        UserDefaults.standard.removeObject(forKey: vectorStoreKey)
     }
 
     // MARK: - 助理长期记忆（未登录时本地存储，登录后与云端同步）
@@ -233,6 +240,71 @@ final class LocalDataStore: ObservableObject {
         let list = loadMemories()
         guard !list.isEmpty else { return "" }
         return list.prefix(30).map { "[\($0.category)] \($0.content)" }.joined(separator: "\n")
+    }
+
+    // MARK: - 用户结构化记忆（KV）
+
+    func saveUserMemories(_ items: [UserMemoryEntry]) {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(items) {
+            UserDefaults.standard.set(data, forKey: userMemoryKVKey)
+        }
+    }
+
+    func loadUserMemories() -> [UserMemoryEntry] {
+        guard let data = UserDefaults.standard.data(forKey: userMemoryKVKey) else { return [] }
+        let decoder = JSONDecoder()
+        return (try? decoder.decode([UserMemoryEntry].self, from: data)) ?? []
+    }
+
+    func upsertUserMemory(_ entry: UserMemoryEntry) {
+        var list = loadUserMemories()
+        if let idx = list.firstIndex(where: { $0.memoryKey.lowercased() == entry.memoryKey.lowercased() }) {
+            list[idx] = entry
+        } else {
+            list.insert(entry, at: 0)
+        }
+        saveUserMemories(list)
+    }
+
+    func removeUserMemory(id: String) {
+        var list = loadUserMemories()
+        list.removeAll { $0.id == id }
+        saveUserMemories(list)
+    }
+
+    // MARK: - 知识库文档 & 向量
+
+    func saveKnowledgeDocuments(_ docs: [KnowledgeDocument]) {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(docs) {
+            UserDefaults.standard.set(data, forKey: knowledgeDocumentsKey)
+        }
+    }
+
+    func loadKnowledgeDocuments() -> [KnowledgeDocument] {
+        guard let data = UserDefaults.standard.data(forKey: knowledgeDocumentsKey) else { return [] }
+        let decoder = JSONDecoder()
+        return (try? decoder.decode([KnowledgeDocument].self, from: data)) ?? []
+    }
+
+    func saveVectorStore(_ entries: [VectorStoreEntry]) {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(entries) {
+            UserDefaults.standard.set(data, forKey: vectorStoreKey)
+        }
+    }
+
+    func loadVectorStore() -> [VectorStoreEntry] {
+        guard let data = UserDefaults.standard.data(forKey: vectorStoreKey) else { return [] }
+        let decoder = JSONDecoder()
+        return (try? decoder.decode([VectorStoreEntry].self, from: data)) ?? []
+    }
+
+    func removeVectors(documentId: String) {
+        var list = loadVectorStore()
+        list.removeAll { $0.documentId == documentId }
+        saveVectorStore(list)
     }
 
     // MARK: - Notes

@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ProfileCenterView: View {
     @StateObject private var tokenStore = TokenStore.shared
@@ -1012,15 +1013,19 @@ struct TaskRow: View {
 struct AppSettingsView: View {
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
     @ObservedObject private var tokenStore = TokenStore.shared
+    @ObservedObject private var memoryMode = MemoryModeStore.shared
     @EnvironmentObject private var languageStore: AppLanguageStore
     @State private var showClearConfirm = false
     @State private var toastMessage: String?
     @State private var showAccountSecurity = false
     @State private var showFAQ = false
     @State private var showSupport = false
+    @State private var showUserMemory = false
+    @State private var showKnowledgeBase = false
 
     var body: some View {
         SettingsPage(title: "设置") {
+            let L = languageStore.localized
             SettingsCard(
                 title: "快捷入口",
                 subtitle: "常用设置与帮助集中在这里。"
@@ -1052,26 +1057,36 @@ struct AppSettingsView: View {
             }
 
             SettingsCard(
-                title: "语音与朗读",
-                subtitle: "控制语音播报开关、语速与音质。"
+                title: L("voice_settings_title"),
+                subtitle: L("voice_settings_subtitle")
             ) {
                 SettingsInlineToggleRow(
-                    systemImage: speechSettings.playbackMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                    title: "语音播报",
-                    subtitle: speechSettings.playbackMuted ? "已关闭" : "已开启",
+                    systemImage: speechSettings.autoPlayVoice ? "speaker.wave.2.fill" : "speaker.slash.fill",
+                    title: L("voice_auto_play_title"),
+                    subtitle: speechSettings.autoPlayVoice ? L("voice_on") : L("voice_off"),
                     isOn: Binding(
-                        get: { !speechSettings.playbackMuted },
-                        set: { speechSettings.playbackMuted = !$0 }
+                        get: { speechSettings.autoPlayVoice },
+                        set: { speechSettings.autoPlayVoice = $0 }
+                    )
+                )
+
+                SettingsInlineToggleRow(
+                    systemImage: speechSettings.voiceStreamingEnabled ? "bolt.fill" : "bolt.slash.fill",
+                    title: L("voice_streaming_title"),
+                    subtitle: speechSettings.voiceStreamingEnabled ? L("voice_streaming_realtime") : L("voice_streaming_wait"),
+                    isOn: Binding(
+                        get: { speechSettings.voiceStreamingEnabled },
+                        set: { speechSettings.voiceStreamingEnabled = $0 }
                     )
                 )
 
                 SettingsSegmentedRow(
                     systemImage: "waveform",
-                    title: "语音模式",
-                    subtitle: "神经网络更自然，系统语音更稳定",
+                    title: L("voice_mode_title"),
+                    subtitle: L("voice_mode_subtitle"),
                     options: [
-                        (label: "Neural Voice", value: "neural"),
-                        (label: "System Voice", value: "system")
+                        (label: L("voice_mode_neural"), value: "neural"),
+                        (label: L("voice_mode_system"), value: "system")
                     ],
                     selection: Binding(
                         get: { speechSettings.voiceMode },
@@ -1081,11 +1096,11 @@ struct AppSettingsView: View {
 
                 SettingsSegmentedRow(
                     systemImage: "person.fill",
-                    title: "语音性别",
-                    subtitle: "选择更偏好的声音",
+                    title: L("voice_gender_title"),
+                    subtitle: L("voice_gender_subtitle"),
                     options: [
-                        (label: "女性", value: "female"),
-                        (label: "男性", value: "male")
+                        (label: L("voice_gender_female"), value: "female"),
+                        (label: L("voice_gender_male"), value: "male")
                     ],
                     selection: Binding(
                         get: { speechSettings.voiceGender },
@@ -1095,12 +1110,12 @@ struct AppSettingsView: View {
 
                 SettingsSegmentedRow(
                     systemImage: "speedometer",
-                    title: "语速",
-                    subtitle: "慢速适合学习，快速适合浏览",
+                    title: L("voice_speed_title"),
+                    subtitle: L("voice_speed_subtitle"),
                     options: [
-                        (label: "慢", value: "slow"),
-                        (label: "正常", value: "normal"),
-                        (label: "快", value: "fast")
+                        (label: L("voice_speed_slow"), value: "slow"),
+                        (label: L("voice_speed_normal"), value: "normal"),
+                        (label: L("voice_speed_fast"), value: "fast")
                     ],
                     selection: Binding(
                         get: { speechSettings.speechSpeed },
@@ -1109,11 +1124,17 @@ struct AppSettingsView: View {
                 )
 
                 UnifiedAppButton(
-                    title: "试听",
+                    title: L("voice_preview"),
                     systemImage: "play.circle.fill",
                     style: .primary
                 ) {
-                    SpeechService.shared.speak("这是一个示例播报，用来预览当前语音设置。", language: "zh-CN")
+                    let lang: String
+                    switch languageStore.current {
+                    case .chinese: lang = "zh-CN"
+                    case .indonesian: lang = "id-ID"
+                    case .english: lang = "en-US"
+                    }
+                    SpeechService.shared.speak(L("voice_preview_sample"), language: lang)
                 }
             }
 
@@ -1135,6 +1156,36 @@ struct AppSettingsView: View {
                         set: { languageStore.setLanguage(code: $0) }
                     )
                 )
+            }
+
+            SettingsCard(
+                title: "智能能力",
+                subtitle: "管理记忆、知识库与回答上下文。"
+            ) {
+                SettingsInlineToggleRow(
+                    systemImage: memoryMode.isEnabled ? "brain.head.profile" : "brain",
+                    title: "Memory Mode",
+                    subtitle: memoryMode.isEnabled ? "已开启" : "已关闭",
+                    isOn: $memoryMode.isEnabled
+                )
+
+                SettingsRow(
+                    systemImage: "person.text.rectangle",
+                    title: "User Memory",
+                    subtitle: "管理用户关键信息",
+                    showChevron: true
+                ) {
+                    showUserMemory = true
+                }
+
+                SettingsRow(
+                    systemImage: "books.vertical.fill",
+                    title: "Knowledge Base",
+                    subtitle: "上传文档并用于问答",
+                    showChevron: true
+                ) {
+                    showKnowledgeBase = true
+                }
             }
 
             SettingsCard(
@@ -1180,6 +1231,12 @@ struct AppSettingsView: View {
         .toast(message: $toastMessage)
         .navigationDestination(isPresented: $showAccountSecurity) {
             AccountSecurityView()
+        }
+        .navigationDestination(isPresented: $showUserMemory) {
+            UserMemorySettingsView()
+        }
+        .navigationDestination(isPresented: $showKnowledgeBase) {
+            KnowledgeBaseView()
         }
         .navigationDestination(isPresented: $showFAQ) {
             FAQView()
@@ -1447,6 +1504,291 @@ struct AssistantMemoryView: View {
         } else {
             LocalDataStore.shared.removeMemory(id: item.id)
             items.removeAll { $0.id == item.id }
+        }
+    }
+}
+
+
+// MARK: - User Memory (KV)
+
+struct UserMemorySettingsView: View {
+    @State private var items: [UserMemoryEntry] = []
+    @State private var showEditor = false
+    @State private var editItem: UserMemoryEntry? = nil
+    @State private var keyText = ""
+    @State private var valueText = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        SettingsPage(title: "User Memory") {
+            SettingsCard(title: "已保存的用户信息", subtitle: "用于长期记忆和个性化回复。") {
+                if items.isEmpty {
+                    Text("暂无记忆")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    ForEach(items) { item in
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.memoryKey)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Text(item.memoryValue)
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
+                            Spacer(minLength: 0)
+                            Button {
+                                editItem = item
+                                keyText = item.memoryKey
+                                valueText = item.memoryValue
+                                showEditor = true
+                            } label: {
+                                Image(systemName: "pencil")
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
+                            .buttonStyle(.plain)
+                            Button {
+                                MemoryService.shared.deleteMemory(id: item.id)
+                                loadMemories()
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(12)
+                        .background(AppTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(AppTheme.border, lineWidth: 1)
+                        )
+                    }
+                }
+            }
+
+            if let errorMessage, !errorMessage.isEmpty {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    editItem = nil
+                    keyText = ""
+                    valueText = ""
+                    showEditor = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                    Text("添加")
+                }
+                .foregroundStyle(AppTheme.primary)
+            }
+        }
+        .onAppear { loadMemories() }
+        .sheet(isPresented: $showEditor) {
+            editorSheet
+        }
+    }
+
+    private var editorSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                TextField("Key (e.g. name, language)", text: $keyText)
+                    .textFieldStyle(.plain)
+                    .padding(12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+                TextField("Value", text: $valueText, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(2...6)
+                    .padding(12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+                Spacer()
+            }
+            .padding(20)
+            .background(AppTheme.pageBackground.ignoresSafeArea())
+            .navigationTitle(editItem == nil ? "添加记忆" : "编辑记忆")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { showEditor = false }
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        saveEntry()
+                        showEditor = false
+                    }
+                    .foregroundStyle(AppTheme.primary)
+                    .disabled(keyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || valueText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+
+    private func loadMemories() {
+        items = MemoryService.shared.loadMemories()
+    }
+
+    private func saveEntry() {
+        let key = keyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = valueText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty, !value.isEmpty else { return }
+        if let editItem {
+            MemoryService.shared.updateMemory(id: editItem.id, key: key, value: value)
+        } else {
+            let entry = UserMemoryEntry.make(memoryKey: key, memoryValue: value)
+            MemoryService.shared.upsert([entry])
+        }
+        loadMemories()
+    }
+}
+
+// MARK: - Knowledge Base
+
+struct KnowledgeBaseView: View {
+    @State private var documents: [KnowledgeDocument] = []
+    @State private var showImporter = false
+    @State private var isProcessing = false
+    @State private var statusMessage: String?
+
+    var body: some View {
+        SettingsPage(title: "Knowledge Base") {
+            SettingsCard(title: "文档库", subtitle: "上传 PDF / TXT / DOCX / Markdown 文档用于问答。") {
+                if documents.isEmpty {
+                    Text("暂无文档")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    ForEach(documents) { doc in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(doc.fileName)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(AppTheme.textPrimary)
+                                    Text("\(doc.fileType.uppercased()) • \(doc.chunkCount) chunks")
+                                        .font(.caption)
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                }
+                                Spacer(minLength: 0)
+                                Button {
+                                    KnowledgeBaseService.shared.deleteDocument(id: doc.id)
+                                    reload()
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            Text("添加于 \(doc.createdAt.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        .padding(12)
+                        .background(AppTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(AppTheme.border, lineWidth: 1)
+                        )
+                    }
+                }
+
+                if isProcessing {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("处理中...")
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    .padding(.top, 8)
+                }
+
+                if let statusMessage, !statusMessage.isEmpty {
+                    Text(statusMessage)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showImporter = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                    Text("上传")
+                }
+                .foregroundStyle(AppTheme.primary)
+            }
+        }
+        .fileImporter(
+            isPresented: $showImporter,
+            allowedContentTypes: allowedTypes,
+            allowsMultipleSelection: true
+        ) { result in
+            switch result {
+            case .success(let urls):
+                importDocuments(urls)
+            case .failure(let error):
+                statusMessage = error.localizedDescription
+            }
+        }
+        .onAppear { reload() }
+    }
+
+    private var allowedTypes: [UTType] {
+        var types: [UTType] = [.pdf, .plainText]
+        if let md = UTType(filenameExtension: "md") { types.append(md) }
+        if let docx = UTType(filenameExtension: "docx") { types.append(docx) }
+        return types
+    }
+
+    private func reload() {
+        documents = KnowledgeBaseService.shared.listDocuments()
+    }
+
+    private func importDocuments(_ urls: [URL]) {
+        isProcessing = true
+        statusMessage = nil
+        Task {
+            var successCount = 0
+            for url in urls {
+                let accessing = url.startAccessingSecurityScopedResource()
+                defer {
+                    if accessing { url.stopAccessingSecurityScopedResource() }
+                }
+                do {
+                    _ = try await KnowledgeBaseService.shared.importDocument(from: url)
+                    successCount += 1
+                } catch {
+                    await MainActor.run {
+                        statusMessage = "导入失败：\(url.lastPathComponent)"
+                    }
+                }
+            }
+            await MainActor.run {
+                isProcessing = false
+                reload()
+                if successCount > 0 {
+                    statusMessage = "已导入 \(successCount) 个文档"
+                }
+            }
         }
     }
 }

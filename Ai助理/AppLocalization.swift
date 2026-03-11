@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 enum AppLanguage: String, CaseIterable, Identifiable {
     case chinese = "zh"
@@ -107,4 +108,14 @@ final class PinyinService {
         cache[trimmed] = result
         return result
     }
+}
+
+@inline(__always)
+func L(_ key: String) -> String {
+    AppLanguageStore.shared.localized(key)
+}
+
+@inline(__always)
+func Lf(_ key: String, _ args: CVarArg...) -> String {
+    AppLanguageStore.shared.localizedFormat(key, args)
 }
