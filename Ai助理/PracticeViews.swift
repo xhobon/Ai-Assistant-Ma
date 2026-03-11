@@ -1594,14 +1594,17 @@ struct ShadowingAlignmentView: View {
             Text(languageStore.localized("practice_shadowing_align_title"))
                 .font(.caption2)
                 .foregroundStyle(AppTheme.textTertiary)
-            FlowWrap(tokens: alignedTokens(expected: expected, recognized: recognized, targetLanguage: targetLanguage)) { token in
-                Text(token.value)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(token.isMatch ? AppTheme.success : AppTheme.error)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background((token.isMatch ? AppTheme.success : AppTheme.error).opacity(0.12))
-                    .clipShape(Capsule())
+            let tokens = alignedTokens(expected: expected, recognized: recognized, targetLanguage: targetLanguage)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 40), spacing: 6)], spacing: 6) {
+                ForEach(tokens) { token in
+                    Text(token.value)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(token.isMatch ? AppTheme.success : AppTheme.error)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background((token.isMatch ? AppTheme.success : AppTheme.error).opacity(0.12))
+                        .clipShape(Capsule())
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1635,66 +1638,6 @@ struct ShadowingToken: Identifiable {
     let id = UUID()
     let value: String
     let isMatch: Bool
-}
-
-struct FlowWrap<Data: RandomAccessCollection, Content: View>: View where Data.Element: Identifiable {
-    let tokens: Data
-    let content: (Data.Element) -> Content
-
-    init(tokens: Data, @ViewBuilder content: @escaping (Data.Element) -> Content) {
-        self.tokens = tokens
-        self.content = content
-    }
-
-    var body: some View {
-        FlexibleView(data: tokens, spacing: 6, alignment: .leading, content: content)
-    }
-}
-
-struct FlexibleView<Data: RandomAccessCollection, Content: View>: View where Data.Element: Identifiable {
-    let data: Data
-    let spacing: CGFloat
-    let alignment: HorizontalAlignment
-    let content: (Data.Element) -> Content
-
-    @State private var sizes: [Data.Element.ID: CGSize] = [:]
-
-    var body: some View {
-        VStack(alignment: alignment, spacing: spacing) {
-            var currentWidth: CGFloat = 0
-            var row: [Data.Element] = []
-            ForEach(Array(data)) { element in
-                let size = sizes[element.id, default: CGSize(width: 60, height: 24)]
-                if currentWidth + size.width + spacing > UIScreen.main.bounds.width - 80, !row.isEmpty {
-                    rowView(row)
-                    row = [element]
-                    currentWidth = size.width + spacing
-                } else {
-                    row.append(element)
-                    currentWidth += size.width + spacing
-                }
-            }
-            if !row.isEmpty {
-                rowView(row)
-            }
-        }
-    }
-
-    private func rowView(_ row: [Data.Element]) -> some View {
-        HStack(spacing: spacing) {
-            ForEach(row) { element in
-                content(element)
-                    .fixedSize()
-                    .background(
-                        GeometryReader { proxy in
-                            Color.clear
-                                .onAppear { sizes[element.id] = proxy.size }
-                                .onChange(of: proxy.size) { _, newValue in sizes[element.id] = newValue }
-                        }
-                    )
-            }
-        }
-    }
 }
 
 enum PracticeFeedbackSound {
