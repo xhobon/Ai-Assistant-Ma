@@ -28,8 +28,8 @@ struct Ai__App: App {
                     SplashView()
                         .transition(.opacity)
                         .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                                withAnimation(.easeOut(duration: 0.2)) {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                                withAnimation(.easeOut(duration: 0.18)) {
                                     showSplash = false
                                 }
                             }
@@ -62,8 +62,8 @@ private struct SplashView: View {
             AppTheme.pageBackground.ignoresSafeArea()
             Image("LaunchImage")
                 .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 220)
+                .scaledToFill()
+                .ignoresSafeArea()
         }
     }
 }
