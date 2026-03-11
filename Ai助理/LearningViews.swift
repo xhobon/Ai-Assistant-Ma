@@ -6,11 +6,11 @@ struct IndonesianLearningView: View {
     @StateObject private var statsStore = LearningStatsStore.shared
     @StateObject private var dailyStore = DailyTaskStore.shared
     @State private var searchText = ""
-    @State private var selectedDifficulty = "全部"
+    @State private var selectedDifficulty: LearningDifficulty = .all
     @State private var showFavoritesOnly = false
     @State private var learningStart: Date? = nil
 
-    private let difficulties = ["全部", "入门", "进阶", "高级"]
+    private let difficulties = LearningDifficulty.allCases
 
     private let horizontalPadding: CGFloat = 14
     private let sectionSpacing: CGFloat = 12
@@ -111,7 +111,7 @@ struct IndonesianLearningView: View {
                 || (viewModel.mode == .idToZh && PinyinService.shared.pinyin(for: $0.exampleZh).localizedCaseInsensitiveContains(searchText))
             }
 
-        let difficultyFiltered = selectedDifficulty == "全部"
+        let difficultyFiltered = selectedDifficulty == .all
             ? searched
             : searched.filter { difficultyForItem($0) == selectedDifficulty }
 
@@ -122,15 +122,15 @@ struct IndonesianLearningView: View {
         return difficultyFiltered
     }
 
-    private func difficultyForItem(_ item: VocabItem) -> String {
+    private func difficultyForItem(_ item: VocabItem) -> LearningDifficulty {
         let digits = item.id.compactMap { Int(String($0)) }
         let value = digits.first ?? 1
         if value <= 2 {
-            return "入门"
+            return .beginner
         } else if value <= 4 {
-            return "进阶"
+            return .intermediate
         }
-        return "高级"
+        return .advanced
     }
 }
 
@@ -208,9 +208,9 @@ struct LearningStatBadge: View {
 
 struct LearningSearchPanel: View {
     @Binding var searchText: String
-    @Binding var selectedDifficulty: String
+    @Binding var selectedDifficulty: LearningDifficulty
     @Binding var showFavoritesOnly: Bool
-    let difficulties: [String]
+    let difficulties: [LearningDifficulty]
 
     var body: some View {
         VStack(spacing: 10) {
@@ -427,8 +427,8 @@ struct LearningResourceSection: View {
     @EnvironmentObject private var languageStore: AppLanguageStore
     let categories: [VocabCategory]
     @Binding var selectedCategoryId: String?
-    let difficulties: [String]
-    @Binding var selectedDifficulty: String
+    let difficulties: [LearningDifficulty]
+    @Binding var selectedDifficulty: LearningDifficulty
     @Binding var showFavoritesOnly: Bool
     let mode: LearningMode
 
@@ -449,7 +449,7 @@ struct LearningResourceSection: View {
                         Button {
                             selectedDifficulty = item
                         } label: {
-                            Text(item)
+                            Text(item.label)
                                 .font(.caption.weight(selectedDifficulty == item ? .semibold : .medium))
                                 .foregroundStyle(selectedDifficulty == item ? .white : AppTheme.textPrimary)
                                 .frame(minWidth: 44)
@@ -593,8 +593,8 @@ struct SearchBar: View {
 }
 
 struct FilterRow: View {
-    let difficulties: [String]
-    @Binding var selected: String
+    let difficulties: [LearningDifficulty]
+    @Binding var selected: LearningDifficulty
     @Binding var showFavoritesOnly: Bool
 
     var body: some View {
@@ -608,7 +608,7 @@ struct FilterRow: View {
                         Button {
                             selected = item
                         } label: {
-                            Text(item)
+                            Text(item.label)
                                 .font(.caption.weight(selected == item ? .semibold : .regular))
                                 .foregroundStyle(selected == item ? AppTheme.textPrimary : AppTheme.textSecondary)
                                 .padding(.horizontal, 12)
@@ -774,7 +774,7 @@ struct VocabularyListSection: View {
     @EnvironmentObject private var languageStore: AppLanguageStore
     let items: [VocabItem]
     @ObservedObject var viewModel: LearningViewModel
-    let difficultyProvider: (VocabItem) -> String
+    let difficultyProvider: (VocabItem) -> LearningDifficulty
     let mode: LearningMode
 
     var body: some View {

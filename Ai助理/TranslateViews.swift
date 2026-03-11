@@ -137,11 +137,15 @@ struct ModernTranslationQuickLinksRow: View {
             }
         }
         .fullScreenCoverOrSheet(isPresented: $showRealtime) {
-            RealTimeTranslationView()
+            NavigationStack {
+                RealTimeTranslationView()
+            }
         }
         .fullScreenCoverOrSheet(isPresented: $showHistory) {
-            AllTranslationRecordsView(history: history) { entry in
-                onReuse(entry)
+            NavigationStack {
+                AllTranslationRecordsView(history: history) { entry in
+                    onReuse(entry)
+                }
             }
         }
     }
@@ -796,6 +800,18 @@ struct RealTimeTranslationView: View {
         .navigationTitle("实时语音翻译")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+                .accessibilityLabel("返回")
+            }
+        }
         .alert("提示", isPresented: Binding(
             get: { viewModel.alertMessage != nil },
             set: { if !$0 { viewModel.alertMessage = nil } }
