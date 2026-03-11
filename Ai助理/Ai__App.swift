@@ -12,10 +12,13 @@ import UserNotifications
 @main
 struct Ai__App: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @StateObject private var languageStore = AppLanguageStore.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(languageStore)
+                .environment(\.locale, languageStore.locale)
         }
     }
 }

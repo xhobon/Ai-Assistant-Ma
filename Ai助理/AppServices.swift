@@ -71,7 +71,7 @@ enum APIClientError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidResponse:
-            return "服务响应异常"
+            return L("服务响应异常")
         case .serverError(let message):
             return message
         }
@@ -88,20 +88,20 @@ func userFacingMessage(for error: Error) -> String {
     #endif
     let lower = desc.lowercased()
     if lower.contains("<!doctype html>") || (lower.contains("cannot get /api/") && lower.contains("<html")) {
-        return "当前服务器未启用该接口，请检查后端路由配置。"
+        return L("当前服务器未启用该接口，请检查后端路由配置。")
     }
     if lower.contains("cannot get /api/") {
-        return "当前服务器未启用该接口，请检查后端路由配置。"
+        return L("当前服务器未启用该接口，请检查后端路由配置。")
     }
     if lower.contains("connect") || lower.contains("connection") || lower.contains("网络") || lower.contains("无法连接") {
-        return "无法连接服务器，请检查网络或稍后重试。若持续失败，请确认后端服务已部署并正常运行。"
+        return L("无法连接服务器，请检查网络或稍后重试。若持续失败，请确认后端服务已部署并正常运行。")
     }
     if let urlError = error as? URLError {
         switch urlError.code {
         case .cannotConnectToHost, .notConnectedToInternet, .timedOut:
-            return "无法连接服务器，请检查网络与服务器地址。"
+            return L("无法连接服务器，请检查网络与服务器地址。")
         case .cannotFindHost:
-            return "无法解析服务器地址，请检查网络。若使用代理或 VPN 可先关闭后重试。"
+            return L("无法解析服务器地址，请检查网络。若使用代理或 VPN 可先关闭后重试。")
         default:
             break
         }
@@ -134,6 +134,7 @@ final class TokenStore: ObservableObject {
 /// 清除本地数据时发送，各页可监听并清空内存数据
 extension Notification.Name {
     static let clearLocalData = Notification.Name("ai_assistant_clear_local_data")
+    static let ttsPlaybackNotice = Notification.Name("ai_assistant_tts_playback_notice")
 }
 
 /// 清除所有本地记录（收藏、翻译历史等）；卸载应用后数据也会清空。登录用户的数据将来可同步至服务器。
@@ -146,6 +147,14 @@ final class ClearDataStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "learning_categories_cache")
         UserDefaults.standard.removeObject(forKey: "learning_active_days")
         UserDefaults.standard.removeObject(forKey: "learning_active_day_synced")
+        UserDefaults.standard.removeObject(forKey: "learning_mode")
+        UserDefaults.standard.removeObject(forKey: "practice_stats_sessions")
+        UserDefaults.standard.removeObject(forKey: "practice_stats_correct")
+        UserDefaults.standard.removeObject(forKey: "practice_stats_total")
+        UserDefaults.standard.removeObject(forKey: "learning_minutes_total")
+        UserDefaults.standard.removeObject(forKey: "learning_streak_dates")
+        UserDefaults.standard.removeObject(forKey: "daily_tasks_completed")
+        UserDefaults.standard.removeObject(forKey: "wrong_book_items")
         NotificationCenter.default.post(name: .clearLocalData, object: nil)
     }
 }
@@ -159,12 +168,31 @@ final class SpeechSettingsStore: ObservableObject {
     private let voiceGenderKey = "speech_voice_gender"
     private let speechSpeedKey = "speech_speed"
     private let playbackMutedKey = "playback_muted"
+    private let voiceStreamingKey = "speech_voice_streaming"
 
     /// 是否静音（不播放 AI 回复等 TTS）
     var playbackMuted: Bool {
         get { UserDefaults.standard.bool(forKey: playbackMutedKey) }
         set {
             UserDefaults.standard.set(newValue, forKey: playbackMutedKey)
+            objectWillChange.send()
+        }
+    }
+
+    /// 自动播放语音（等价于非静音）
+    var autoPlayVoice: Bool {
+        get { !playbackMuted }
+        set { playbackMuted = !newValue }
+    }
+
+    /// 语音流式播放（边生成边播放）
+    var voiceStreamingEnabled: Bool {
+        get {
+            if UserDefaults.standard.object(forKey: voiceStreamingKey) == nil { return true }
+            return UserDefaults.standard.bool(forKey: voiceStreamingKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: voiceStreamingKey)
             objectWillChange.send()
         }
     }
@@ -206,6 +234,7 @@ final class SpeechSettingsStore: ObservableObject {
         get { UserDefaults.standard.string(forKey: speechSpeedKey) ?? "normal" }
         set {
             UserDefaults.standard.set(newValue, forKey: speechSpeedKey)
+            UserDefaults.standard.set(mapSpeedToRate(newValue), forKey: rateKey)
             objectWillChange.send()
         }
     }
@@ -233,6 +262,11 @@ final class APIClient {
     private var webAuthSession: ASWebAuthenticationSession?
     private let authPresentationProvider = WebAuthPresentationContextProvider()
 
+    enum AssistantStreamEvent {
+        case delta(String)
+        case done(conversationId: String?, reply: String)
+    }
+
     private func request<T: Decodable>(
         _ path: String,
         method: String,
@@ -242,7 +276,7 @@ final class APIClient {
         let base = ServerConfigStore.shared.baseURLString
         let pathTrimmed = path.hasPrefix("/") ? String(path.dropFirst()) : path
         guard let url = URL(string: base.hasSuffix("/") ? base + pathTrimmed : base + "/" + pathTrimmed) else {
-            throw APIClientError.serverError("无效的请求地址")
+            throw APIClientError.serverError(L("无效的请求地址"))
         }
         var request = URLRequest(url: url)
         request.httpMethod = method
@@ -404,10 +438,10 @@ final class APIClient {
         let callbackURL = try await startGoogleWebAuth()
         let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)
         if let err = components?.queryItems?.first(where: { $0.name == "error" })?.value, !err.isEmpty {
-            throw APIClientError.serverError("Google 登录失败：\(err)")
+            throw APIClientError.serverError(Lf("Google 登录失败：%@", err))
         }
         guard let ticket = components?.queryItems?.first(where: { $0.name == "ticket" })?.value, !ticket.isEmpty else {
-            throw APIClientError.serverError("Google 登录失败：未获取到登录票据")
+            throw APIClientError.serverError(L("Google 登录失败：未获取到登录票据"))
         }
         struct GoogleTicketResponse: Codable {
             let token: String
@@ -423,13 +457,13 @@ final class APIClient {
     private func startGoogleWebAuth() async throws -> URL {
         let rawBase = ServerConfigStore.shared.baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard var comps = URLComponents(string: rawBase.hasSuffix("/") ? "\(rawBase)api/auth/google/start" : "\(rawBase)/api/auth/google/start") else {
-            throw APIClientError.serverError("Google 登录地址无效")
+            throw APIClientError.serverError(L("Google 登录地址无效"))
         }
         comps.queryItems = [
             URLQueryItem(name: "redirect_uri", value: "aiassistant://oauth/google")
         ]
         guard let authURL = comps.url else {
-            throw APIClientError.serverError("Google 登录地址无效")
+            throw APIClientError.serverError(L("Google 登录地址无效"))
         }
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.main.async {
@@ -437,14 +471,14 @@ final class APIClient {
                     self.webAuthSession = nil
                     if let error {
                         if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
-                            continuation.resume(throwing: APIClientError.serverError("已取消 Google 登录"))
+                            continuation.resume(throwing: APIClientError.serverError(L("已取消 Google 登录")))
                         } else {
-                            continuation.resume(throwing: APIClientError.serverError("Google 登录失败，请重试"))
+                            continuation.resume(throwing: APIClientError.serverError(L("Google 登录失败，请重试")))
                         }
                         return
                     }
                     guard let callbackURL else {
-                        continuation.resume(throwing: APIClientError.serverError("Google 登录失败：未收到回调"))
+                        continuation.resume(throwing: APIClientError.serverError(L("Google 登录失败：未收到回调")))
                         return
                     }
                     continuation.resume(returning: callbackURL)
@@ -454,7 +488,7 @@ final class APIClient {
                 self.webAuthSession = session
                 if !session.start() {
                     self.webAuthSession = nil
-                    continuation.resume(throwing: APIClientError.serverError("无法打开 Google 登录窗口"))
+                    continuation.resume(throwing: APIClientError.serverError(L("无法打开 Google 登录窗口")))
                 }
             }
         }
@@ -480,6 +514,152 @@ final class APIClient {
         let res: Res = try await request("api/assistant/chat", method: "POST", body: body, authorized: true)
         return (res.conversationId, res.reply)
     }
+
+    func assistantChatStream(conversationId: String? = nil, message: String, imageData: Data? = nil, userContext: String? = nil, localExecution: Bool = false) -> AsyncThrowingStream<AssistantStreamEvent, Error> {
+        let base = ServerConfigStore.shared.baseURLString
+        let pathTrimmed = "api/assistant/chat/stream"
+        guard let url = URL(string: base.hasSuffix("/") ? base + pathTrimmed : base + "/" + pathTrimmed) else {
+            return AsyncThrowingStream { $0.finish(throwing: APIClientError.serverError(L("无效的请求地址"))) }
+        }
+        var body: [String: Any] = ["message": message]
+        if let imageData {
+            body["image"] = imageData.base64EncodedString()
+        }
+        if let cid = conversationId { body["conversationId"] = cid }
+        if let ctx = userContext, !ctx.isEmpty { body["userContext"] = ctx }
+        if localExecution { body["localExecution"] = true }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = TokenStore.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                        throw APIClientError.invalidResponse
+                    }
+                    try await consumeSSE(bytes: bytes, continuation: continuation)
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    func assistantChatWithFileStream(conversationId: String? = nil, message: String, fileData: Data, fileName: String, fileType: String, userContext: String? = nil) -> AsyncThrowingStream<AssistantStreamEvent, Error> {
+        let base = ServerConfigStore.shared.baseURLString
+        let pathTrimmed = "api/assistant/chat/file/stream"
+        guard let url = URL(string: base.hasSuffix("/") ? base + pathTrimmed : base + "/" + pathTrimmed) else {
+            return AsyncThrowingStream { $0.finish(throwing: APIClientError.serverError(L("无效的请求地址"))) }
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token = TokenStore.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"message\"\r\n\r\n".data(using: .utf8)!)
+        body.append(message.data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n".data(using: .utf8)!)
+
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"fileName\"\r\n\r\n".data(using: .utf8)!)
+        body.append(fileName.data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"fileType\"\r\n\r\n".data(using: .utf8)!)
+        body.append(fileType.data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+
+        if let cid = conversationId {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"conversationId\"\r\n\r\n".data(using: .utf8)!)
+            body.append(cid.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        if let ctx = userContext, !ctx.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"userContext\"\r\n\r\n".data(using: .utf8)!)
+            body.append(ctx.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                        throw APIClientError.invalidResponse
+                    }
+                    try await consumeSSE(bytes: bytes, continuation: continuation)
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func consumeSSE(bytes: URLSession.AsyncBytes, continuation: AsyncThrowingStream<AssistantStreamEvent, Error>.Continuation) async throws {
+        var eventName = "message"
+        var dataLines: [String] = []
+
+        func flushEvent() throws {
+            guard !dataLines.isEmpty else {
+                eventName = "message"
+                return
+            }
+            let dataString = dataLines.joined(separator: "\n")
+            dataLines.removeAll()
+            if let data = dataString.data(using: .utf8),
+               let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if eventName == "delta" {
+                    if let delta = payload["delta"] as? String {
+                        continuation.yield(.delta(delta))
+                    }
+                } else if eventName == "done" {
+                    let cid = payload["conversationId"] as? String
+                    let reply = payload["reply"] as? String ?? ""
+                    continuation.yield(.done(conversationId: cid, reply: reply))
+                }
+            }
+            eventName = "message"
+        }
+
+        for try await line in bytes.lines {
+            if line.isEmpty {
+                try flushEvent()
+                continue
+            }
+            if line.hasPrefix("event:") {
+                eventName = line.replacingOccurrences(of: "event:", with: "").trimmingCharacters(in: .whitespaces)
+            } else if line.hasPrefix("data:") {
+                dataLines.append(line.replacingOccurrences(of: "data:", with: "").trimmingCharacters(in: .whitespaces))
+            }
+        }
+        try flushEvent()
+    }
     
     /// 服务器 AI 对话（支持文件上传）；userContext 为未登录时的本地记忆摘要
     func assistantChatWithFile(conversationId: String? = nil, message: String, fileData: Data, fileName: String, fileType: String, userContext: String? = nil) async throws -> (conversationId: String?, reply: String) {
@@ -487,7 +667,7 @@ final class APIClient {
         let base = ServerConfigStore.shared.baseURLString
         let pathTrimmed = "api/assistant/chat"
         guard let url = URL(string: base.hasSuffix("/") ? base + pathTrimmed : base + "/" + pathTrimmed) else {
-            throw APIClientError.serverError("无效的请求地址")
+            throw APIClientError.serverError(L("无效的请求地址"))
         }
         
         var request = URLRequest(url: url)
@@ -800,7 +980,7 @@ final class SpeechService: NSObject, ObservableObject {
     static let shared = SpeechService()
     @Published var isPlaying = false
     private let synthesizer = AVSpeechSynthesizer()
-    private let edgeService = EdgeTTSService.shared
+    private let voicePlayback = VoicePlaybackService.shared
     /// 语音回放保护：用于过滤“应用自己播报”被麦克风回采的文本
     private var playbackGuardText: String = ""
     private var playbackGuardUntil: Date = .distantPast
@@ -814,48 +994,76 @@ final class SpeechService: NSObject, ObservableObject {
     func speak(_ text: String, language: String) {
         guard !text.isEmpty else { return }
         if SpeechSettingsStore.shared.playbackMuted { return }
+        // 播放开始必须停止所有录音，避免冲突
+        AudioSessionCoordinator.shared.stopAllRecordings()
         let detectedLang = detectLanguageCode(for: text) ?? language
         // 停止当前播放
         stopSpeaking()
         beginPlaybackGuard(with: text)
         isPlaying = true
-        if SpeechSettingsStore.shared.voiceMode == "neural" {
-            Task { [weak self] in
-                guard let self else { return }
-                do {
-                    try await edgeService.play(text: text) { [weak self] in
-                        self?.isPlaying = false
-                    }
-                } catch {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.speakLocal(text: text, language: detectedLang)
-                    }
-                }
-            }
-            return
+        voicePlayback.speak(text: text, languageHint: detectedLang) { [weak self] in
+            self?.isPlaying = false
         }
-        speakLocal(text: text, language: detectedLang)
     }
 
     /// 强制在线 TTS（用于对话页：更像真人，且与本机语音无关）
     func speakOnline(_ text: String, language: String) {
         guard !text.isEmpty else { return }
         if SpeechSettingsStore.shared.playbackMuted { return }
+        // 播放开始必须停止所有录音，避免冲突
+        AudioSessionCoordinator.shared.stopAllRecordings()
         let detectedLang = detectLanguageCode(for: text) ?? language
         stopSpeaking()
         beginPlaybackGuard(with: text)
         isPlaying = true
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                try await edgeService.play(text: text) { [weak self] in
-                    self?.isPlaying = false
+        voicePlayback.speak(
+            text: text,
+            languageHint: detectedLang,
+            onFinish: { [weak self] in
+                self?.isPlaying = false
+            },
+            forceOnline: true,
+            allowFallback: false
+        )
+    }
+
+    /// 流式朗读（边生成边播放）
+    func speakStreaming(_ stream: AsyncStream<String>, language: String? = nil, onFinish: (() -> Void)? = nil) {
+        if SpeechSettingsStore.shared.playbackMuted { return }
+        // 播放开始必须停止所有录音，避免冲突
+        AudioSessionCoordinator.shared.stopAllRecordings()
+        stopSpeaking()
+        isPlaying = true
+        let wrapped = AsyncStream<String> { [weak self] continuation in
+            Task {
+                for await delta in stream {
+                    self?.extendPlaybackGuard(with: delta)
+                    continuation.yield(delta)
                 }
-            } catch {
-                DispatchQueue.main.async { [weak self] in
-                    self?.speakLocal(text: text, language: detectedLang)
-                }
+                continuation.finish()
             }
+        }
+        voicePlayback.speakStreaming(wrapped, languageHint: language) { [weak self] in
+            self?.isPlaying = false
+            onFinish?()
+        }
+    }
+
+    /// 在线语音测试（仅检测 Edge TTS 是否可用）
+    func testOnlineVoice(sampleText: String, language: String) async -> Bool {
+        if SpeechSettingsStore.shared.playbackMuted { return false }
+        AudioSessionCoordinator.shared.stopAllRecordings()
+        stopSpeaking()
+        beginPlaybackGuard(with: sampleText)
+        isPlaying = true
+        do {
+            try await voicePlayback.testOnlineVoice(text: sampleText, languageHint: language)
+            isPlaying = false
+            return true
+        } catch {
+            print("Edge TTS test failed: \(error.localizedDescription)")
+            isPlaying = false
+            return false
         }
     }
 
@@ -870,7 +1078,7 @@ final class SpeechService: NSObject, ObservableObject {
     /// 立即停止朗读（用户打断或开始说话时调用）
     func stopSpeaking() {
         synthesizer.stopSpeaking(at: .immediate)
-        edgeService.stop()
+        voicePlayback.stop()
         // 保留短暂保护窗口，避免刚停止时仍被回采
         playbackGuardUntil = Date().addingTimeInterval(1.2)
         isPlaying = false
@@ -895,6 +1103,18 @@ final class SpeechService: NSObject, ObservableObject {
         let duration = min(18.0, max(2.0, Double(text.count) * 0.12))
         playbackGuardUntil = Date().addingTimeInterval(duration)
     }
+
+    private func extendPlaybackGuard(with text: String) {
+        let normalized = normalizeForEchoCheck(text)
+        guard !normalized.isEmpty else { return }
+        if playbackGuardText.isEmpty {
+            playbackGuardText = normalized
+        } else {
+            playbackGuardText += normalized
+        }
+        let duration = min(18.0, max(2.0, Double(playbackGuardText.count) * 0.12))
+        playbackGuardUntil = Date().addingTimeInterval(duration)
+    }
     
     private func normalizeForEchoCheck(_ text: String) -> String {
         let allowed = CharacterSet.letters.union(.decimalDigits)
@@ -917,20 +1137,54 @@ final class SpeechService: NSObject, ObservableObject {
     }
 
     private func detectLanguageCode(for text: String) -> String? {
-        if text.range(of: "\\p{Han}", options: .regularExpression) != nil {
-            return "zh-CN"
+        return LanguageDetector.detect(from: text)?.localeIdentifier ?? "en-US"
+    }
+}
+
+/// 全局音频会话协调：确保录音/播放互斥
+final class AudioSessionCoordinator {
+    static let shared = AudioSessionCoordinator()
+
+    private let queue = DispatchQueue(label: "aiassistant.audio.session.coordinator")
+    private var recordingStops: [UUID: () -> Void] = [:]
+
+    private init() {}
+
+    func beginRecording(id: UUID, stop: @escaping () -> Void) {
+        queue.sync {
+            recordingStops[id] = stop
         }
-        let lower = text.lowercased()
-        let tokens = lower.split { !$0.isLetter }
-        let keywords: Set<String> = [
-            "yang","dan","tidak","apa","saya","kamu","anda","ini","itu","dengan","untuk",
-            "karena","bagaimana","terima","kasih","tolong","bisa","akan","sudah","belum","juga",
-            "mohon","sebagai","pada","dari","ke","di","adalah"
-        ]
-        if tokens.contains(where: { keywords.contains(String($0)) }) {
-            return "id-ID"
+        stopOtherRecordings(except: id)
+    }
+
+    func endRecording(id: UUID) {
+        queue.sync {
+            recordingStops.removeValue(forKey: id)
         }
-        return "en-US"
+    }
+
+    func stopAllRecordings() {
+        let stops: [() -> Void] = queue.sync {
+            let values = Array(recordingStops.values)
+            recordingStops.removeAll()
+            return values
+        }
+        DispatchQueue.main.async {
+            stops.forEach { $0() }
+        }
+    }
+
+    private func stopOtherRecordings(except id: UUID) {
+        let stops: [() -> Void] = queue.sync {
+            let other = recordingStops.filter { $0.key != id }
+            let keep = recordingStops[id]
+            recordingStops = [:]
+            if let keep { recordingStops[id] = keep }
+            return other.map(\.value)
+        }
+        DispatchQueue.main.async {
+            stops.forEach { $0() }
+        }
     }
 }
 
@@ -1022,23 +1276,23 @@ final class OpenClawService: ObservableObject {
             return await openPath(pathPart, asFolder: false)
         }
         guard Self.isCommandAllowed(command) else {
-            return "出于安全与隐私保护，该命令未被允许执行。仅支持：ls、pwd、date、whoami、df、uname、echo 等只读类命令。"
+            return L("出于安全与隐私保护，该命令未被允许执行。仅支持：ls、pwd、date、whoami、df、uname、echo 等只读类命令。")
         }
-        return "iOS 端不支持执行本机 Shell 命令。"
+        return L("iOS 端不支持执行本机 Shell 命令。")
     }
 
     /// 按关键词在 /Applications 与 ~/Applications 中查找 .app 并打开第一个匹配项（不依赖精确应用名）
     private func openAppByKeyword(_ keyword: String) async -> String {
-        guard !keyword.isEmpty else { return "未提供应用关键词。" }
-        return "iOS 不支持按关键词打开应用。"
+        guard !keyword.isEmpty else { return L("未提供应用关键词。") }
+        return L("iOS 不支持按关键词打开应用。")
     }
 
     /// 打开指定路径的文件夹（Finder）或文件（默认应用），路径仅允许用户目录与 /Applications 下
     private func openPath(_ pathPart: String, asFolder: Bool) async -> String {
         guard Self.isPathAllowed(pathPart) else {
-            return "出于安全考虑，仅允许打开用户目录（如 ~/Desktop、~/Downloads）或 /Applications 下的路径。"
+            return L("出于安全考虑，仅允许打开用户目录（如 ~/Desktop、~/Downloads）或 /Applications 下的路径。")
         }
-        return "iOS 不支持打开本地路径。"
+        return L("iOS 不支持打开本地路径。")
     }
 
 }
@@ -1162,6 +1416,7 @@ final class SpeechTranscriber: NSObject {
     private var recognizer: SFSpeechRecognizer?
     /// 是否已安装 tap，避免在未安装时 removeTap 或重复操作
     private var hasInstalledTap = false
+    private let recordingId = UUID()
 
     func requestAuthorization() async -> Bool {
         await withCheckedContinuation { continuation in
@@ -1178,6 +1433,11 @@ final class SpeechTranscriber: NSObject {
 
     /// 必须在主线程调用；AVAudioEngine 及其 inputNode 仅能在主线程访问
     private func startTranscribingOnMainThread(locale: Locale, onResult: @escaping (String, Bool) -> Void) throws {
+        // 录音开始前必须停止所有播放，避免冲突
+        SpeechService.shared.stopSpeaking()
+        AudioSessionCoordinator.shared.beginRecording(id: recordingId) { [weak self] in
+            self?.stopTranscribing()
+        }
         stopTranscribing()
 
         audioEngine.stop()
@@ -1238,6 +1498,14 @@ final class SpeechTranscriber: NSObject {
         task?.cancel()
         request = nil
         task = nil
+        AudioSessionCoordinator.shared.endRecording(id: recordingId)
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            #if DEBUG
+            print("[SpeechTranscriber] Failed to deactivate audio session: \(error.localizedDescription)")
+            #endif
+        }
     }
 }
 

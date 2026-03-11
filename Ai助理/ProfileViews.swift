@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ProfileCenterView: View {
     @StateObject private var tokenStore = TokenStore.shared
@@ -129,19 +130,19 @@ struct ProfileCenterView: View {
         .sheet(isPresented: $showAuthSheet) {
             AuthView(mode: authMode)
         }
-        .alert("清除所有记录", isPresented: $showClearConfirm) {
-            Button("取消", role: .cancel) {}
-            Button("清除", role: .destructive) {
+        .alert(L("清除所有记录"), isPresented: $showClearConfirm) {
+            Button(L("取消"), role: .cancel) {}
+            Button(L("清除"), role: .destructive) {
                 ClearDataStore.shared.clearAll()
                 showClearDone = true
             }
         } message: {
-            Text("将清除本机上的收藏、翻译历史等本地数据，且无法恢复。登录后数据可同步至账号；未登录时卸载应用也会清空。")
+            Text(L("将清除本机上的收藏、翻译历史等本地数据，且无法恢复。登录后数据可同步至账号；未登录时卸载应用也会清空。"))
         }
-        .alert("已清除", isPresented: $showClearDone) {
-            Button("确定", role: .cancel) {}
+        .alert(L("已清除"), isPresented: $showClearDone) {
+            Button(L("确定"), role: .cancel) {}
         } message: {
-            Text("本地记录已清除。")
+            Text(L("本地记录已清除。"))
         }
     }
 }
@@ -216,11 +217,11 @@ struct AccountProfileCenterView: View {
         let saved = UserDefaults.standard.string(forKey: "profile_name_override")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !saved.isEmpty { return saved }
         if let p = profile, !p.displayName.isEmpty { return p.displayName }
-        return "用户"
+        return L("用户")
     }
 
     private var emailText: String {
-        profile?.email ?? "未绑定邮箱"
+        profile?.email ?? L("未绑定邮箱")
     }
 
     private var avatarSymbol: String {
@@ -286,12 +287,12 @@ struct AccountProfileCenterView: View {
             SettingsCard(title: "登录管理", subtitle: "你可以随时退出当前账号") {
                 Button {
                     tokenStore.token = nil
-                    message = "已退出登录"
+                    message = L("已退出登录")
                     dismiss()
                 } label: {
                     HStack {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("退出登录")
+                        Text(L("退出登录"))
                             .font(.subheadline.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity)
@@ -318,11 +319,11 @@ struct AccountProfileCenterView: View {
                 UserDefaults.standard.set(name.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "profile_name_override")
             }
         }
-        .alert("提示", isPresented: Binding(
+        .alert(L("提示"), isPresented: Binding(
             get: { message != nil },
             set: { if !$0 { message = nil } }
         )) {
-            Button("确定", role: .cancel) {}
+            Button(L("确定"), role: .cancel) {}
         } message: {
             Text(message ?? "")
         }
@@ -362,7 +363,7 @@ struct ProfileEditSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 14) {
-                TextField("请输入昵称", text: $name)
+                TextField(L("请输入昵称"), text: $name)
                     .textFieldStyle(.plain)
                     .foregroundStyle(AppTheme.inputText)
                     .padding(12)
@@ -377,16 +378,16 @@ struct ProfileEditSheet: View {
             .padding(20)
             .background(AppTheme.pageBackground.ignoresSafeArea())
             #if os(iOS)
-            .navigationTitle("资料设置")
+            .navigationTitle(L("资料设置"))
             #endif
             #if os(iOS)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(L("取消")) { dismiss() }
                         .foregroundStyle(AppTheme.textPrimary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button(L("保存")) {
                         onSave(name)
                         dismiss()
                     }
@@ -413,10 +414,10 @@ struct VIPBannerCard: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("VIP会员")
+                Text(L("VIP会员"))
                     .font(.headline.weight(.bold))
                     .foregroundStyle(AppTheme.textOnPrimary)
-                Text("升级解锁全部功能与更高额度")
+                Text(L("升级解锁全部功能与更高额度"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textOnPrimary.opacity(0.82))
             }
@@ -465,7 +466,7 @@ struct ProfileSectionHeader: View {
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             if let subtitle {
-                Text(subtitle)
+                Text(L(subtitle))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -502,7 +503,7 @@ struct MemberBenefitsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("会员专享 4 大权益")
+            Text(L("会员专享 4 大权益"))
                 .font(.headline)
                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -518,10 +519,10 @@ struct MemberBenefitsCard: View {
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(benefit.title)
+                            Text(L(benefit.title))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
-                            Text(benefit.subtitle)
+                            Text(L(benefit.subtitle))
                                 .font(.caption2)
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
@@ -553,10 +554,10 @@ struct MemberCenterEntryCard: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("充值会员")
+                Text(L("充值会员"))
                     .font(.headline)
                     .foregroundStyle(AppTheme.textPrimary)
-                Text("进入会员中心选择套餐与支付方式")
+                Text(L("进入会员中心选择套餐与支付方式"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -564,7 +565,7 @@ struct MemberCenterEntryCard: View {
             Spacer()
 
             Button(action: onUnlock) {
-                Text("立即解锁")
+                Text(L("立即解锁"))
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
@@ -604,7 +605,7 @@ struct MemberPlanCard: View {
                                     .frame(height: 20)
                             }
 
-                            Text(plan.title)
+                            Text(L(plan.title))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -631,7 +632,7 @@ struct MemberPlanCard: View {
             }
 
             Button(action: onUnlock) {
-                Text("立即解锁")
+                Text(L("立即解锁"))
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -660,7 +661,7 @@ struct PaymentOptionCard: View {
                         Image(systemName: option.systemImage)
                             .foregroundStyle(option.id == "wechat" ? .green : AppTheme.brandBlue)
 
-                        Text(option.title)
+                        Text(L(option.title))
                             .font(.subheadline)
                             .foregroundStyle(AppTheme.textPrimary)
 
@@ -724,7 +725,7 @@ struct ProfileQuickActionRow: View {
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.primary)
                         }
-                        Text(action.title)
+                        Text(L(action.title))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textPrimary)
                     }
@@ -771,11 +772,11 @@ struct ProfileMenuList: View {
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title)
+                            Text(L(item.title))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
                             if let subtitle = item.subtitle {
-                                Text(subtitle)
+                                Text(L(subtitle))
                                     .font(.caption)
                                     .foregroundStyle(AppTheme.textSecondary)
                             }
@@ -855,7 +856,7 @@ struct MemberRechargeView: View {
             }
             PaymentOptionCard(options: paymentOptions, selectedId: $selectedPaymentId)
         }
-        .navigationTitle("会员中心")
+        .navigationTitle(L("会员中心"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -891,7 +892,7 @@ struct TaskCenterView: View {
 
             TaskListCard(tasks: tasks)
         }
-        .navigationTitle("每日奖励任务")
+        .navigationTitle(L("每日奖励任务"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -915,7 +916,7 @@ struct TaskSummaryCard: View {
                 Text("\(availableDays)")
                     .font(.title.weight(.bold))
                     .foregroundStyle(AppTheme.accentWarm)
-                Text("可用天数")
+                Text(L("可用天数"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -942,7 +943,7 @@ struct TaskListCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("做任务 领次数")
+            Text(L("做任务 领次数"))
                 .font(.headline)
                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -975,7 +976,7 @@ struct TaskRow: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(task.title)
+                    Text(L(task.title))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer()
@@ -989,7 +990,7 @@ struct TaskRow: View {
                     .frame(width: 88)
                 }
 
-                Text(task.subtitle)
+                Text(L(task.subtitle))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
 
@@ -1012,14 +1013,19 @@ struct TaskRow: View {
 struct AppSettingsView: View {
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
     @ObservedObject private var tokenStore = TokenStore.shared
+    @ObservedObject private var memoryMode = MemoryModeStore.shared
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @State private var showClearConfirm = false
     @State private var toastMessage: String?
     @State private var showAccountSecurity = false
     @State private var showFAQ = false
     @State private var showSupport = false
+    @State private var showUserMemory = false
+    @State private var showKnowledgeBase = false
 
     var body: some View {
         SettingsPage(title: "设置") {
+            let L = languageStore.localized
             SettingsCard(
                 title: "快捷入口",
                 subtitle: "常用设置与帮助集中在这里。"
@@ -1051,40 +1057,76 @@ struct AppSettingsView: View {
             }
 
             SettingsCard(
-                title: "语音与朗读",
-                subtitle: "控制语音播报开关、语速与音质。"
+                title: L("voice_settings_title"),
+                subtitle: L("voice_settings_subtitle")
             ) {
                 SettingsInlineToggleRow(
-                    systemImage: speechSettings.playbackMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                    title: "语音播报",
-                    subtitle: speechSettings.playbackMuted ? "已关闭" : "已开启",
+                    systemImage: speechSettings.autoPlayVoice ? "speaker.wave.2.fill" : "speaker.slash.fill",
+                    title: L("voice_auto_play_title"),
+                    subtitle: speechSettings.autoPlayVoice ? L("voice_on") : L("voice_off"),
                     isOn: Binding(
-                        get: { !speechSettings.playbackMuted },
-                        set: { speechSettings.playbackMuted = !$0 }
+                        get: { speechSettings.autoPlayVoice },
+                        set: { speechSettings.autoPlayVoice = $0 }
+                    )
+                )
+
+                SettingsInlineToggleRow(
+                    systemImage: speechSettings.voiceStreamingEnabled ? "bolt.fill" : "bolt.slash.fill",
+                    title: L("voice_streaming_title"),
+                    subtitle: speechSettings.voiceStreamingEnabled ? L("voice_streaming_realtime") : L("voice_streaming_wait"),
+                    isOn: Binding(
+                        get: { speechSettings.voiceStreamingEnabled },
+                        set: { speechSettings.voiceStreamingEnabled = $0 }
                     )
                 )
 
                 SettingsSegmentedRow(
                     systemImage: "waveform",
-                    title: "语音模式",
-                    subtitle: "神经网络更自然，系统语音更稳定",
+                    title: L("voice_mode_title"),
+                    subtitle: L("voice_mode_subtitle"),
                     options: [
-                        (label: "Neural Voice", value: "neural"),
-                        (label: "System Voice", value: "system")
+                        (label: L("voice_mode_neural"), value: "neural"),
+                        (label: L("voice_mode_system"), value: "system")
                     ],
                     selection: Binding(
                         get: { speechSettings.voiceMode },
-                        set: { speechSettings.voiceMode = $0 }
+                        set: {
+                            speechSettings.voiceMode = $0
+                            if $0 == "system" {
+                                toastMessage = L("voice_system_mode_notice")
+                            }
+                        }
                     )
                 )
 
+                SettingsRow(
+                    systemImage: "antenna.radiowaves.left.and.right",
+                    title: L("voice_test_title"),
+                    subtitle: L("voice_test_subtitle"),
+                    showChevron: false
+                ) {
+                    if speechSettings.playbackMuted {
+                        toastMessage = L("voice_unmute_required")
+                        return
+                    }
+                    Task {
+                        let ok = await SpeechService.shared.testOnlineVoice(
+                            sampleText: L("voice_preview_sample"),
+                            language: "zh-CN"
+                        )
+                        await MainActor.run {
+                            toastMessage = ok ? L("voice_test_success") : L("voice_test_failed")
+                        }
+                    }
+                }
+
                 SettingsSegmentedRow(
                     systemImage: "person.fill",
-                    title: "语音性别",
-                    subtitle: "选择更偏好的声音",
+                    title: L("voice_gender_title"),
+                    subtitle: L("voice_gender_subtitle"),
                     options: [
-                        (label: "女性", value: "female"),
-                        (label: "男性", value: "male")
+                        (label: L("voice_gender_female"), value: "female"),
+                        (label: L("voice_gender_male"), value: "male")
                     ],
                     selection: Binding(
                         get: { speechSettings.voiceGender },
@@ -1094,12 +1136,12 @@ struct AppSettingsView: View {
 
                 SettingsSegmentedRow(
                     systemImage: "speedometer",
-                    title: "语速",
-                    subtitle: "慢速适合学习，快速适合浏览",
+                    title: L("voice_speed_title"),
+                    subtitle: L("voice_speed_subtitle"),
                     options: [
-                        (label: "慢", value: "slow"),
-                        (label: "正常", value: "normal"),
-                        (label: "快", value: "fast")
+                        (label: L("voice_speed_slow"), value: "slow"),
+                        (label: L("voice_speed_normal"), value: "normal"),
+                        (label: L("voice_speed_fast"), value: "fast")
                     ],
                     selection: Binding(
                         get: { speechSettings.speechSpeed },
@@ -1108,11 +1150,67 @@ struct AppSettingsView: View {
                 )
 
                 UnifiedAppButton(
-                    title: "试听",
+                    title: L("voice_preview"),
                     systemImage: "play.circle.fill",
                     style: .primary
                 ) {
-                    SpeechService.shared.speak("这是一个示例播报，用来预览当前语音设置。", language: "zh-CN")
+                    let lang: String
+                    switch languageStore.current {
+                    case .chinese: lang = "zh-CN"
+                    case .indonesian: lang = "id-ID"
+                    case .english: lang = "en-US"
+                    }
+                    SpeechService.shared.speak(L("voice_preview_sample"), language: lang)
+                }
+            }
+
+            SettingsCard(
+                title: "Language",
+                subtitle: "设置应用显示语言。"
+            ) {
+                SettingsSegmentedRow(
+                    systemImage: "globe",
+                    title: "Language",
+                    subtitle: "中文 / Bahasa Indonesia / English",
+                    options: [
+                        (label: "中文", value: "zh"),
+                        (label: "Bahasa Indonesia", value: "id"),
+                        (label: "English", value: "en")
+                    ],
+                    selection: Binding(
+                        get: { languageStore.current.rawValue },
+                        set: { languageStore.setLanguage(code: $0) }
+                    )
+                )
+            }
+
+            SettingsCard(
+                title: "智能能力",
+                subtitle: "管理记忆、知识库与回答上下文。"
+            ) {
+                SettingsInlineToggleRow(
+                    systemImage: memoryMode.isEnabled ? "brain.head.profile" : "brain",
+                    title: "Memory Mode",
+                    subtitle: memoryMode.isEnabled ? "已开启" : "已关闭",
+                    isOn: $memoryMode.isEnabled
+                )
+
+                SettingsRow(
+                    systemImage: "person.text.rectangle",
+                    title: "User Memory",
+                    subtitle: "管理用户关键信息",
+                    showChevron: true
+                ) {
+                    showUserMemory = true
+                }
+
+                SettingsRow(
+                    systemImage: "books.vertical.fill",
+                    title: "Knowledge Base",
+                    subtitle: "上传文档并用于问答",
+                    showChevron: true
+                ) {
+                    showKnowledgeBase = true
                 }
             }
 
@@ -1160,6 +1258,12 @@ struct AppSettingsView: View {
         .navigationDestination(isPresented: $showAccountSecurity) {
             AccountSecurityView()
         }
+        .navigationDestination(isPresented: $showUserMemory) {
+            UserMemorySettingsView()
+        }
+        .navigationDestination(isPresented: $showKnowledgeBase) {
+            KnowledgeBaseView()
+        }
         .navigationDestination(isPresented: $showFAQ) {
             FAQView()
         }
@@ -1167,19 +1271,19 @@ struct AppSettingsView: View {
             SupportView()
         }
         .confirmationDialog(
-            "清除所有本地记录？",
+            L("清除所有本地记录？"),
             isPresented: $showClearConfirm,
             titleVisibility: .visible
         ) {
-            Button("清除", role: .destructive) {
+            Button(L("清除"), role: .destructive) {
                 ClearDataStore.shared.clearAll()
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    toastMessage = "已清除本地记录"
+                    toastMessage = L("已清除本地记录")
                 }
             }
-            Button("取消", role: .cancel) {}
+            Button(L("取消"), role: .cancel) {}
         } message: {
-            Text("该操作不可恢复。登录用户的云端数据不会被删除。")
+            Text(L("该操作不可恢复。登录用户的云端数据不会被删除。"))
         }
     }
 }
@@ -1200,7 +1304,7 @@ struct AssistantMemoryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("助理会按“偏好 / 习惯 / 长期目标”分层记忆，并结合置信度与过期策略自动优化。登录后记忆会同步到你的账号。")
+                Text(L("助理会按“偏好 / 习惯 / 长期目标”分层记忆，并结合置信度与过期策略自动优化。登录后记忆会同步到你的账号。"))
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.textSecondary)
                     .padding(.horizontal)
@@ -1208,7 +1312,7 @@ struct AssistantMemoryView: View {
                 if loading && items.isEmpty {
                     HStack(spacing: 8) {
                         ProgressView()
-                        Text("加载中…")
+                        Text(L("加载中…"))
                             .foregroundStyle(AppTheme.textSecondary)
                     }
                     .frame(maxWidth: .infinity)
@@ -1240,11 +1344,11 @@ struct AssistantMemoryView: View {
                                             .foregroundStyle(AppTheme.primary)
                                     }
                                     if let expiresAt = item.expiresAt {
-                                        Text("到期 \(expiresAt.formatted(date: .abbreviated, time: .omitted))")
+                                    Text(Lf("到期 %@", expiresAt.formatted(date: .abbreviated, time: .omitted)))
                                             .font(.caption2)
                                             .foregroundStyle(AppTheme.textSecondary)
                                     } else {
-                                        Text("长期")
+                                        Text(L("长期"))
                                             .font(.caption2)
                                             .foregroundStyle(AppTheme.textSecondary)
                                     }
@@ -1274,7 +1378,7 @@ struct AssistantMemoryView: View {
         }
         .background(AppTheme.pageBackground.ignoresSafeArea())
         #if os(iOS)
-        .navigationTitle("助理记忆")
+        .navigationTitle(L("助理记忆"))
         #endif
         #if os(iOS)
         .toolbar {
@@ -1285,7 +1389,7 @@ struct AssistantMemoryView: View {
                     showAddSheet = true
                 } label: {
                     Image(systemName: "plus.circle.fill")
-                    Text("添加")
+                    Text(L("添加"))
                 }
                 .foregroundStyle(AppTheme.primary)
             }
@@ -1303,7 +1407,7 @@ struct AssistantMemoryView: View {
     private var addMemorySheet: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                TextField("例如：偏好简洁回答、常用印尼语翻译", text: $newContent, axis: .vertical)
+                TextField(L("例如：偏好简洁回答、常用印尼语翻译"), text: $newContent, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(3...6)
                     .foregroundStyle(AppTheme.inputText)
@@ -1315,9 +1419,9 @@ struct AssistantMemoryView: View {
                             .stroke(AppTheme.border, lineWidth: 1)
                     )
                 Picker("类型", selection: $newCategory) {
-                    Text("偏好").tag("preference")
-                    Text("习惯").tag("habit")
-                    Text("长期目标").tag("goal")
+                    Text(L("偏好")).tag("preference")
+                    Text(L("习惯")).tag("habit")
+                    Text(L("长期目标")).tag("goal")
                 }
                 .pickerStyle(.segmented)
                 .foregroundStyle(AppTheme.textPrimary)
@@ -1326,7 +1430,7 @@ struct AssistantMemoryView: View {
             .padding(20)
             .background(AppTheme.pageBackground.ignoresSafeArea())
             #if os(iOS)
-            .navigationTitle("添加记忆")
+            .navigationTitle(L("添加记忆"))
             #endif
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -1334,13 +1438,13 @@ struct AssistantMemoryView: View {
             #if os(iOS)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") {
+                    Button(L("取消")) {
                         showAddSheet = false
                     }
                     .foregroundStyle(AppTheme.textPrimary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button(L("保存")) {
                         saveNewMemory()
                         showAddSheet = false
                     }
@@ -1430,6 +1534,291 @@ struct AssistantMemoryView: View {
     }
 }
 
+
+// MARK: - User Memory (KV)
+
+struct UserMemorySettingsView: View {
+    @State private var items: [UserMemoryEntry] = []
+    @State private var showEditor = false
+    @State private var editItem: UserMemoryEntry? = nil
+    @State private var keyText = ""
+    @State private var valueText = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        SettingsPage(title: "User Memory") {
+            SettingsCard(title: "已保存的用户信息", subtitle: "用于长期记忆和个性化回复。") {
+                if items.isEmpty {
+                    Text(L("暂无记忆"))
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    ForEach(items) { item in
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.memoryKey)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Text(item.memoryValue)
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
+                            Spacer(minLength: 0)
+                            Button {
+                                editItem = item
+                                keyText = item.memoryKey
+                                valueText = item.memoryValue
+                                showEditor = true
+                            } label: {
+                                Image(systemName: "pencil")
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
+                            .buttonStyle(.plain)
+                            Button {
+                                MemoryService.shared.deleteMemory(id: item.id)
+                                loadMemories()
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(12)
+                        .background(AppTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(AppTheme.border, lineWidth: 1)
+                        )
+                    }
+                }
+            }
+
+            if let errorMessage, !errorMessage.isEmpty {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    editItem = nil
+                    keyText = ""
+                    valueText = ""
+                    showEditor = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                    Text(L("添加"))
+                }
+                .foregroundStyle(AppTheme.primary)
+            }
+        }
+        .onAppear { loadMemories() }
+        .sheet(isPresented: $showEditor) {
+            editorSheet
+        }
+    }
+
+    private var editorSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                TextField("Key (e.g. name, language)", text: $keyText)
+                    .textFieldStyle(.plain)
+                    .padding(12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+                TextField("Value", text: $valueText, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(2...6)
+                    .padding(12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.border, lineWidth: 1)
+                    )
+                Spacer()
+            }
+            .padding(20)
+            .background(AppTheme.pageBackground.ignoresSafeArea())
+            .navigationTitle(editItem == nil ? "添加记忆" : "编辑记忆")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L("取消")) { showEditor = false }
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L("保存")) {
+                        saveEntry()
+                        showEditor = false
+                    }
+                    .foregroundStyle(AppTheme.primary)
+                    .disabled(keyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || valueText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+
+    private func loadMemories() {
+        items = MemoryService.shared.loadMemories()
+    }
+
+    private func saveEntry() {
+        let key = keyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = valueText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty, !value.isEmpty else { return }
+        if let editItem {
+            MemoryService.shared.updateMemory(id: editItem.id, key: key, value: value)
+        } else {
+            let entry = UserMemoryEntry.make(memoryKey: key, memoryValue: value)
+            MemoryService.shared.upsert([entry])
+        }
+        loadMemories()
+    }
+}
+
+// MARK: - Knowledge Base
+
+struct KnowledgeBaseView: View {
+    @State private var documents: [KnowledgeDocument] = []
+    @State private var showImporter = false
+    @State private var isProcessing = false
+    @State private var statusMessage: String?
+
+    var body: some View {
+        SettingsPage(title: "Knowledge Base") {
+            SettingsCard(title: "文档库", subtitle: "上传 PDF / TXT / DOCX / Markdown 文档用于问答。") {
+                if documents.isEmpty {
+                    Text(L("暂无文档"))
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    ForEach(documents) { doc in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(doc.fileName)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(AppTheme.textPrimary)
+                                    Text("\(doc.fileType.uppercased()) • \(doc.chunkCount) chunks")
+                                        .font(.caption)
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                }
+                                Spacer(minLength: 0)
+                                Button {
+                                    KnowledgeBaseService.shared.deleteDocument(id: doc.id)
+                                    reload()
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                    Text(Lf("添加于 %@", doc.createdAt.formatted(date: .abbreviated, time: .shortened)))
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        .padding(12)
+                        .background(AppTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(AppTheme.border, lineWidth: 1)
+                        )
+                    }
+                }
+
+                if isProcessing {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text(L("处理中..."))
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    .padding(.top, 8)
+                }
+
+                if let statusMessage, !statusMessage.isEmpty {
+                    Text(statusMessage)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showImporter = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                    Text(L("上传"))
+                }
+                .foregroundStyle(AppTheme.primary)
+            }
+        }
+        .fileImporter(
+            isPresented: $showImporter,
+            allowedContentTypes: allowedTypes,
+            allowsMultipleSelection: true
+        ) { result in
+            switch result {
+            case .success(let urls):
+                importDocuments(urls)
+            case .failure(let error):
+                statusMessage = error.localizedDescription
+            }
+        }
+        .onAppear { reload() }
+    }
+
+    private var allowedTypes: [UTType] {
+        var types: [UTType] = [.pdf, .plainText]
+        if let md = UTType(filenameExtension: "md") { types.append(md) }
+        if let docx = UTType(filenameExtension: "docx") { types.append(docx) }
+        return types
+    }
+
+    private func reload() {
+        documents = KnowledgeBaseService.shared.listDocuments()
+    }
+
+    private func importDocuments(_ urls: [URL]) {
+        isProcessing = true
+        statusMessage = nil
+        Task {
+            var successCount = 0
+            for url in urls {
+                let accessing = url.startAccessingSecurityScopedResource()
+                defer {
+                    if accessing { url.stopAccessingSecurityScopedResource() }
+                }
+                do {
+                    _ = try await KnowledgeBaseService.shared.importDocument(from: url)
+                    successCount += 1
+                } catch {
+                    await MainActor.run {
+                    statusMessage = Lf("导入失败：%@", url.lastPathComponent)
+                    }
+                }
+            }
+            await MainActor.run {
+                isProcessing = false
+                reload()
+                if successCount > 0 {
+                    statusMessage = Lf("已导入 %d 个文档", successCount)
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Auth
 
 enum AuthMode: String, CaseIterable, Identifiable {
@@ -1511,16 +1900,16 @@ struct AuthView: View {
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
                     }
-                    .accessibilityLabel("返回")
+                    .accessibilityLabel(L("返回"))
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
         }
-        .alert("提示", isPresented: Binding(
+        .alert(L("提示"), isPresented: Binding(
             get: { message != nil },
             set: { if !$0 { message = nil } }
         )) {
-            Button("确定", role: .cancel) {}
+            Button(L("确定"), role: .cancel) {}
         } message: {
             Text(message ?? "")
         }
@@ -1575,11 +1964,11 @@ struct AuthView: View {
 
     private var codeFieldSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("验证码")
+            Text(L("验证码"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             HStack(spacing: 10) {
-                TextField("请输入邮箱验证码", text: $code)
+                TextField(L("请输入邮箱验证码"), text: $code)
                     .textFieldStyle(.plain)
                     .foregroundStyle(AppTheme.inputText)
                     .padding(12)
@@ -1690,8 +2079,8 @@ struct AuthView: View {
 
     private func validateEmail() -> String? {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return "请输入邮箱" }
-        if !trimmed.contains("@") { return "邮箱格式不正确" }
+        if trimmed.isEmpty { return L("请输入邮箱") }
+        if !trimmed.contains("@") { return L("邮箱格式不正确") }
         return nil
     }
 
@@ -1703,7 +2092,7 @@ struct AuthView: View {
             return
         }
         isSendingCode = true
-        statusText = "正在发送验证码..."
+        statusText = L("正在发送验证码...")
         let targetEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         let purpose = mode == .login ? "login" : "register"
 
@@ -1711,16 +2100,16 @@ struct AuthView: View {
             do {
                 let codeReturned = try await APIClient.shared.sendEmailCode(email: targetEmail, purpose: purpose)
                 await MainActor.run {
-                    statusText = "验证码已发送，请在 10 分钟内完成验证"
+                    statusText = L("验证码已发送，请在 10 分钟内完成验证")
                     if let c = codeReturned, !c.isEmpty {
-                        message = "验证码已发送，请在 10 分钟内完成验证。\n\n验证码：\(c)"
+                        message = Lf("验证码已发送，请在 10 分钟内完成验证。\n\n验证码：%@", c)
                     } else {
-                        message = "验证码已发送，请在 10 分钟内完成验证。"
+                        message = L("验证码已发送，请在 10 分钟内完成验证。")
                     }
                 }
             } catch {
                 await MainActor.run {
-                    statusText = "发送失败，请重试"
+                    statusText = L("发送失败，请重试")
                     message = userFacingMessage(for: error)
                 }
             }
@@ -1739,16 +2128,16 @@ struct AuthView: View {
         }
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedCode.isEmpty {
-            message = "请输入验证码"
+            message = L("请输入验证码")
             return
         }
         if mode == .register && displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            message = "请输入昵称"
+            message = L("请输入昵称")
             return
         }
 
         isSubmitting = true
-        statusText = "正在验证账号信息..."
+        statusText = L("正在验证账号信息...")
         let targetEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         let targetName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -1766,12 +2155,12 @@ struct AuthView: View {
                 }
                 await MainActor.run {
                     TokenStore.shared.token = auth.token
-                    statusText = "登录成功"
+                    statusText = L("登录成功")
                     dismiss()
                 }
             } catch {
                 await MainActor.run {
-                    statusText = "提交失败，请检查验证码或网络"
+                    statusText = L("提交失败，请检查验证码或网络")
                     message = userFacingMessage(for: error)
                 }
             }
@@ -1785,18 +2174,18 @@ struct AuthView: View {
     private func onTapGoogleSignIn() {
         guard !isGoogleSigningIn, !isSubmitting, !isSendingCode else { return }
         isGoogleSigningIn = true
-        statusText = "正在打开 Google 登录..."
+        statusText = L("正在打开 Google 登录...")
         Task {
             do {
                 let auth = try await APIClient.shared.loginWithGoogle()
                 await MainActor.run {
                     TokenStore.shared.token = auth.token
-                    statusText = "Google 登录成功"
+                    statusText = L("Google 登录成功")
                     dismiss()
                 }
             } catch {
                 await MainActor.run {
-                    statusText = "Google 登录失败"
+                    statusText = L("Google 登录失败")
                     message = userFacingMessage(for: error)
                 }
             }
@@ -1874,10 +2263,10 @@ struct MyFavoritesView: View {
                         Image(systemName: "star.slash")
                             .font(.system(size: 48))
                             .foregroundStyle(AppTheme.textSecondary.opacity(0.6))
-                        Text("暂无收藏")
+                        Text(L("暂无收藏"))
                             .font(.subheadline)
                             .foregroundStyle(AppTheme.textSecondary)
-                        Text("在学习页将词汇或句子加入收藏后，会显示在这里")
+                        Text(L("在学习页将词汇或句子加入收藏后，会显示在这里"))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textSecondary.opacity(0.8))
                             .multilineTextAlignment(.center)
@@ -1943,7 +2332,7 @@ struct MyWalletView: View {
             }
 
             SettingsCard(title: "收支记录", subtitle: "最近交易记录") {
-                Text("暂无记录")
+                Text(L("暂无记录"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -2029,17 +2418,17 @@ struct MemberExplainView: View {
             SettingsCard(title: "会员规则", subtitle: "权益、续费与退款说明") {
                 VStack(alignment: .leading, spacing: 16) {
                     sectionTitle("会员权益")
-                    Text("• 无限制 AI 对话与翻译\n• 专业学习内容与场景解锁\n• 优先响应与专属助理能力\n• 更多权益持续更新")
+                    Text(L("• 无限制 AI 对话与翻译\n• 专业学习内容与场景解锁\n• 优先响应与专属助理能力\n• 更多权益持续更新"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
 
                     sectionTitle("自动续费规则")
-                    Text("订阅周期内可随时在系统设置中关闭自动续费。到期前 24 小时内扣款；若取消续费，到期后将恢复为免费版，已解锁内容在当期内仍可使用。")
+                    Text(L("订阅周期内可随时在系统设置中关闭自动续费。到期前 24 小时内扣款；若取消续费，到期后将恢复为免费版，已解锁内容在当期内仍可使用。"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
 
                     sectionTitle("退款说明")
-                    Text("虚拟会员服务一经开通，如无特殊故障，原则上不支持退款。如有异议请联系客服。")
+                    Text(L("虚拟会员服务一经开通，如无特殊故障，原则上不支持退款。如有异议请联系客服。"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -2171,7 +2560,7 @@ private struct SettingsLinkRow: View {
                 Text(title)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text(subtitle)
+                Text(L(subtitle))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
                     .lineLimit(2)
@@ -2213,13 +2602,13 @@ struct AboutView: View {
                             .foregroundStyle(AppTheme.accentStrong)
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("AI 助理")
+                        Text(L("AI 助理"))
                             .font(.title3.weight(.bold))
                             .foregroundStyle(AppTheme.textPrimary)
-                        Text("版本 \(versionText)")
+                Text(Lf("版本 %@", versionText))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textSecondary)
-                        Text("让 AI 更懂你，也让你更高效。")
+                        Text(L("让 AI 更懂你，也让你更高效。"))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textSecondary)
                     }
@@ -2268,40 +2657,8 @@ struct AboutView: View {
 // MARK: - 文档页（用户协议 / 服务条款）
 
 enum DocContent {
-    static let userAgreement = """
-    欢迎使用 AI 助理。在使用本应用前，请您仔细阅读以下用户协议。
-
-    一、服务说明
-    本应用提供 AI 对话、多语翻译、情景学习等功能。我们会根据产品迭代更新功能与界面，并以应用内说明为准。
-
-    二、账号与安全
-    您可选择以游客身份使用部分功能，或注册/登录账号以使用完整功能并同步数据。请妥善保管账号信息，因您自身原因导致的泄露由您自行承担责任。
-
-    三、用户行为规范
-    您在使用本应用时，应遵守法律法规及公序良俗，不得利用本服务从事违法违规或侵害他人权益的行为。我们有权对违规行为进行处理，包括限制或终止服务。
-
-    四、隐私与数据
-    我们重视您的隐私。具体规则请参见《隐私政策》及应用内「设置」中的相关说明。未经您同意，我们不会向第三方出售您的个人信息。
-
-    五、协议变更
-    我们可能适时修订本协议，修订后将通过应用内通知或更新说明的方式告知。继续使用即视为接受修订后的协议。
-    """
-
-    static let termsOfService = """
-    本服务条款与用户协议共同构成您与 AI 助理之间的约定。
-
-    一、服务内容
-    AI 助理提供基于 AI 的对话、翻译与学习辅助服务。服务可用性可能因网络、设备或维护而受影响，我们力求稳定但不做绝对保证。
-
-    二、免责声明
-    1. AI 生成内容仅供参考，不构成专业建议。重要决策请结合实际情况或咨询专业人士。\n    2. 因不可抗力、网络故障、第三方服务异常等导致的无法使用或数据丢失，我们将在法律允许范围内尽力协助，但不承担超出法律规定的责任。
-
-    三、知识产权
-    本应用内的界面、文案、标识等知识产权归我们或相关权利人所有。未经授权，不得复制、修改或用于商业用途。
-
-    四、争议解决
-    与本服务有关的争议，以中华人民共和国法律为准据法；如协商不成，由本应用运营方所在地有管辖权的法院管辖。
-    """
+    static var userAgreement: String { L("doc_user_agreement") }
+    static var termsOfService: String { L("doc_terms_of_service") }
 }
 
 struct DocView: View {

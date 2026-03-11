@@ -6,12 +6,13 @@ struct SettingsPage<Content: View>: View {
     let title: String
     var trailing: AnyView? = nil
     @ViewBuilder let content: () -> Content
+    @EnvironmentObject private var languageStore: AppLanguageStore
 
     var body: some View {
         AppPageScaffold(maxWidth: 980, horizontalPadding: 20, topPadding: 16, bottomPadding: 32, spacing: 16) {
             content()
         }
-        .navigationTitle(title)
+        .navigationTitle(languageStore.localized(title))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -19,14 +20,15 @@ struct SettingsPage<Content: View>: View {
 private struct SettingsSectionTitle: View {
     let title: String
     let subtitle: String?
+    @EnvironmentObject private var languageStore: AppLanguageStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
+            Text(languageStore.localized(title))
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
             if let subtitle, !subtitle.isEmpty {
-                Text(subtitle)
+                Text(languageStore.localized(subtitle))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
                     .lineSpacing(1)
@@ -67,6 +69,7 @@ struct SettingsRow: View {
     var isDestructive: Bool = false
     var showChevron: Bool = false
     var action: (() -> Void)? = nil
+    @EnvironmentObject private var languageStore: AppLanguageStore
 
     var body: some View {
         Button {
@@ -82,11 +85,11 @@ struct SettingsRow: View {
                         .foregroundStyle(isDestructive ? AppTheme.error : tint)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+                    Text(languageStore.localized(title))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(isDestructive ? AppTheme.error : AppTheme.textPrimary)
                     if let subtitle, !subtitle.isEmpty {
-                        Text(subtitle)
+                        Text(languageStore.localized(subtitle))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textSecondary)
                             .lineLimit(2)
@@ -94,7 +97,7 @@ struct SettingsRow: View {
                 }
                 Spacer(minLength: 0)
                 if let value, !value.isEmpty {
-                    Text(value)
+                    Text(languageStore.localized(value))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -123,6 +126,7 @@ struct SettingsInlineToggleRow: View {
     let title: String
     var subtitle: String? = nil
     @Binding var isOn: Bool
+    @EnvironmentObject private var languageStore: AppLanguageStore
 
     var body: some View {
         HStack(spacing: 12) {
@@ -135,11 +139,11 @@ struct SettingsInlineToggleRow: View {
                     .foregroundStyle(AppTheme.primary)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(languageStore.localized(title))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(AppTheme.textPrimary)
                 if let subtitle, !subtitle.isEmpty {
-                    Text(subtitle)
+                    Text(languageStore.localized(subtitle))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -165,6 +169,7 @@ struct SettingsSegmentedRow: View {
     var subtitle: String? = nil
     let options: [(label: String, value: String)]
     @Binding var selection: String
+    @EnvironmentObject private var languageStore: AppLanguageStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -178,20 +183,20 @@ struct SettingsSegmentedRow: View {
                         .foregroundStyle(AppTheme.primary)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+                    Text(languageStore.localized(title))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(AppTheme.textPrimary)
                     if let subtitle, !subtitle.isEmpty {
-                        Text(subtitle)
+                        Text(languageStore.localized(subtitle))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textSecondary)
                     }
                 }
                 Spacer(minLength: 0)
             }
-            Picker(title, selection: $selection) {
+            Picker(languageStore.localized(title), selection: $selection) {
                 ForEach(options, id: \.value) { option in
-                    Text(option.label).tag(option.value)
+                    Text(languageStore.localized(option.label)).tag(option.value)
                 }
             }
             .pickerStyle(.segmented)
@@ -210,9 +215,10 @@ struct SettingsSegmentedRow: View {
 
 struct ToastView: View {
     let text: String
+    @EnvironmentObject private var languageStore: AppLanguageStore
 
     var body: some View {
-        Text(text)
+        Text(languageStore.localized(text))
             .font(.caption.weight(.semibold))
             .foregroundStyle(AppTheme.textPrimary)
             .padding(.horizontal, 14)

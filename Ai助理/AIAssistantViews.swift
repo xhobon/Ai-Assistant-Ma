@@ -31,8 +31,8 @@ struct AIAssistantHomeView: View {
         let filtered = services.filter { service in
             let matchedCategory = selectedCategory == "全部" || category(for: service) == selectedCategory
             let matchedSearch = searchText.isEmpty
-                || service.title.localizedCaseInsensitiveContains(searchText)
-                || service.subtitle.localizedCaseInsensitiveContains(searchText)
+                || L(service.title).localizedCaseInsensitiveContains(searchText)
+                || L(service.subtitle).localizedCaseInsensitiveContains(searchText)
             return matchedCategory && matchedSearch
         }
         return filtered
@@ -52,7 +52,7 @@ struct AIAssistantHomeView: View {
                             Image(systemName: "magnifyingglass")
                                 .font(.subheadline)
                                 .foregroundStyle(AppTheme.textTertiary)
-                            TextField("搜索AI服务...", text: $searchText)
+                            TextField(L("搜索AI服务..."), text: $searchText)
                                 .font(.subheadline)
                                 .textFieldStyle(.plain)
                                 .foregroundStyle(AppTheme.inputText)
@@ -82,11 +82,11 @@ struct AIAssistantHomeView: View {
                                     .font(.system(size: 40, weight: .light))
                                     .foregroundStyle(AppTheme.textTertiary)
                                 
-                                Text("没有找到匹配的服务")
+                                Text(L("没有找到匹配的服务"))
                                     .font(ModernDesignSystem.Typography.cardTitle)
                                     .foregroundStyle(AppTheme.textPrimary)
                                 
-                                Text("试试其他关键词或分类")
+                                Text(L("试试其他关键词或分类"))
                                     .font(ModernDesignSystem.Typography.body)
                                     .foregroundStyle(AppTheme.textSecondary)
                             }
@@ -184,17 +184,17 @@ struct AIAssistantHomeHeader: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("AI助理")
+                        Text(L("AI助理"))
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
-                        Text("随时待命，支持多场景协作")
+                        Text(L("随时待命，支持多场景协作"))
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.88))
                     }
 
                     Spacer()
 
-                    Text("在线")
+                    Text(L("在线"))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10)
@@ -204,10 +204,10 @@ struct AIAssistantHomeHeader: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("为你安排高效的一天")
+                    Text(L("为你安排高效的一天"))
                         .font(.title2.weight(.semibold))
                         .foregroundStyle(.white)
-                    Text("快速进入对话、翻译与学习场景")
+                    Text(L("快速进入对话、翻译与学习场景"))
                         .font(.callout)
                         .foregroundStyle(.white.opacity(0.9))
                 }
@@ -228,7 +228,7 @@ struct HomeSearchBar: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(AppTheme.textSecondary)
-            TextField("搜索服务/场景/关键词", text: $text)
+            TextField(L("搜索服务/场景/关键词"), text: $text)
                 .textFieldStyle(.plain)
                 .foregroundStyle(AppTheme.inputText)
             if !text.isEmpty {
@@ -304,16 +304,16 @@ struct HomeQuickActionCard: View {
                     .foregroundStyle(tint)
             }
 
-            Text(title)
+            Text(L(title))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
 
-            Text(subtitle)
+            Text(L(subtitle))
                 .font(.caption)
                 .foregroundStyle(AppTheme.textSecondary)
 
             HStack(spacing: 6) {
-                Text("立即进入")
+                Text(L("立即进入"))
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(tint)
                 Image(systemName: "arrow.right")
@@ -350,11 +350,11 @@ struct HomeInsightCard: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
-                    Text(title)
+                    Text(L(title))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
 
-                    Text("建议")
+                    Text(L("建议"))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(AppTheme.accentWarm)
                         .padding(.horizontal, 8)
@@ -362,10 +362,10 @@ struct HomeInsightCard: View {
                         .background(AppTheme.accentWarm.opacity(0.15))
                         .clipShape(Capsule())
                 }
-                Text(subtitle)
+                Text(L(subtitle))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
-                Text(detail)
+                Text(L(detail))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -393,7 +393,7 @@ struct HomeStatBadge: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title)
+            Text(L(title))
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.8))
             Text(value)
@@ -417,10 +417,10 @@ struct HomeSectionHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
+            Text(L(title))
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text(subtitle)
+            Text(L(subtitle))
                 .font(.caption)
                 .foregroundStyle(AppTheme.textSecondary)
         }
@@ -448,10 +448,10 @@ struct HomePrimaryEntryCard: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
-                            Text(service.title)
+                            Text(L(service.title))
                                 .font(.title3.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
-                            Text("推荐")
+                            Text(L("推荐"))
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(AppTheme.accentStrong)
                                 .padding(.horizontal, 8)
@@ -459,7 +459,7 @@ struct HomePrimaryEntryCard: View {
                                 .background(AppTheme.accent.opacity(0.15))
                                 .clipShape(Capsule())
                         }
-                        Text(service.subtitle)
+                        Text(L(service.subtitle))
                             .font(.subheadline)
                             .foregroundStyle(AppTheme.textSecondary)
                     }
@@ -469,7 +469,7 @@ struct HomePrimaryEntryCard: View {
 
                 HStack(spacing: 8) {
                     ForEach(service.tags, id: \.self) { tag in
-                        Text(tag)
+                        Text(L(tag))
                             .font(.caption2)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -480,7 +480,7 @@ struct HomePrimaryEntryCard: View {
                     Spacer()
 
                     HStack(spacing: 6) {
-                        Text("立即\(service.action)")
+                        Text(L("立即") + L(service.action))
                             .font(.caption.weight(.semibold))
                         Image(systemName: "arrow.up.right")
                             .font(.caption.weight(.semibold))
@@ -537,12 +537,12 @@ struct HomeQuickEntryCard: View {
                         .foregroundStyle(AppTheme.accentStrong)
                 }
 
-                Text(service.title)
+                Text(L(service.title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
 
                 HStack(spacing: 6) {
-                    Text(service.action)
+                    Text(L(service.action))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                     Image(systemName: "arrow.right")
@@ -579,7 +579,7 @@ struct AIAssistantCategoryTabs: View {
                             Image(systemName: "sparkle")
                                 .font(.caption)
                         }
-                        Text(item)
+                        Text(L(item))
                             .font(.subheadline.weight(selected == item ? .semibold : .regular))
                     }
                     .foregroundStyle(selected == item ? AppTheme.textPrimary : AppTheme.textSecondary)
@@ -623,18 +623,18 @@ struct AIAssistantServiceCard: View {
                     .clipShape(Capsule())
             }
 
-            Text(service.title)
+            Text(L(service.title))
                 .font(.headline)
                 .foregroundStyle(AppTheme.textPrimary)
 
-            Text(service.subtitle)
+            Text(L(service.subtitle))
                 .font(.caption)
                 .foregroundStyle(AppTheme.textSecondary)
                 .lineLimit(2)
 
             HStack(spacing: 6) {
                 ForEach(service.tags, id: \.self) { tag in
-                    Text(tag)
+                    Text(L(tag))
                         .font(.caption2)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -644,7 +644,7 @@ struct AIAssistantServiceCard: View {
             }
 
             HStack {
-                Text("立即\(service.action)")
+                Text(L("立即") + L(service.action))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppTheme.accentStrong)
                 Spacer()
@@ -676,6 +676,7 @@ struct AIAssistantChatView: View {
 
     @StateObject private var viewModel: ChatViewModel
     @ObservedObject private var speechSettings = SpeechSettingsStore.shared
+    @EnvironmentObject private var languageStore: AppLanguageStore
 
     init(title: String, allowLocalExecution: Bool = false) {
         self.title = title
@@ -704,6 +705,7 @@ struct AIAssistantChatView: View {
     ]
 
     var body: some View {
+        let L = languageStore.localized
         VStack(spacing: 0) {
             VStack(spacing: 0) {
                 ScrollViewReader { proxy in
@@ -711,6 +713,9 @@ struct AIAssistantChatView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             ChatSyncStatusRow(status: viewModel.syncStatus, errorText: viewModel.lastSyncError)
                                 .padding(.top, 4)
+                            if viewModel.statusText == "Searching the web..." {
+                                ChatStatusBanner(text: viewModel.statusText)
+                            }
                             ChatMessageSection(messages: viewModel.messages, onClear: viewModel.resetConversation)
                             if viewModel.isSending {
                                 ChatThinkingBubble()
@@ -773,9 +778,50 @@ struct AIAssistantChatView: View {
                     .padding(.bottom, 6)
                 }
 
+                if let data = viewModel.pendingImageData, let image = UIImage(data: data) {
+                    HStack(spacing: 12) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 56, height: 56)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(AppTheme.unifiedButtonBorder.opacity(0.25), lineWidth: 1)
+                            )
+
+                        Text("图片已添加")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+
+                        Spacer()
+
+                        Button {
+                            viewModel.clearPendingImage()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("移除图片")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(AppTheme.unifiedButtonBorder.opacity(0.2), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                }
+
                 HStack(alignment: .bottom, spacing: 0) {
                     ChatComposerBar(
                         text: $viewModel.inputText,
+                        hasAttachment: viewModel.pendingImageData != nil,
                         isListening: viewModel.isListening,
                         isSending: viewModel.isSending,
                         onVoice: { viewModel.toggleListening() },
@@ -836,48 +882,48 @@ struct AIAssistantChatView: View {
                 }
             }
         }
-        .confirmationDialog("更多操作", isPresented: $showChatMenu) {
-            Button("新对话") {
+        .confirmationDialog(L("更多操作"), isPresented: $showChatMenu) {
+            Button(L("新对话")) {
                 viewModel.resetConversation()
             }
-            Button("清空对话", role: .destructive) {
+            Button(L("清空对话"), role: .destructive) {
                 viewModel.resetConversation()
             }
-            Button("取消", role: .cancel) {}
+            Button(L("取消"), role: .cancel) {}
         }
-        .confirmationDialog("执行命令", isPresented: Binding(
+        .confirmationDialog(L("执行命令"), isPresented: Binding(
             get: { viewModel.pendingCommand != nil },
             set: { if !$0 { viewModel.cancelCommandExecution() } }
         )) {
-            Button("允许") {
+            Button(L("允许")) {
                 viewModel.confirmCommandExecution()
             }
-            Button("拒绝", role: .cancel) {
+            Button(L("拒绝"), role: .cancel) {
                 viewModel.cancelCommandExecution()
             }
         } message: {
             if let pending = viewModel.pendingCommand {
-                Text("助理请求在本机执行：\n\(pending.command)")
+                Text(Lf("助理请求在本机执行：\n%@", pending.command))
             }
         }
-        .confirmationDialog("发送执行结果", isPresented: Binding(
+        .confirmationDialog(L("发送执行结果"), isPresented: Binding(
             get: { viewModel.pendingSendResult != nil },
             set: { if !$0 { viewModel.cancelSendResult() } }
         )) {
-            Button("继续") {
+            Button(L("继续")) {
                 viewModel.confirmSendResult()
             }
-            Button("取消", role: .cancel) {
+            Button(L("取消"), role: .cancel) {
                 viewModel.cancelSendResult()
             }
         } message: {
-            Text("执行结果将发送至服务器以生成回复。请确认结果中无敏感信息后再继续，保护您的隐私。")
+            Text(L("执行结果将发送至服务器以生成回复。请确认结果中无敏感信息后再继续，保护您的隐私。"))
         }
-        .alert("提示", isPresented: Binding(
+        .alert(L("提示"), isPresented: Binding(
             get: { viewModel.alertMessage != nil },
             set: { if !$0 { viewModel.alertMessage = nil } }
         )) {
-            Button("确定", role: .cancel) {}
+            Button(L("确定"), role: .cancel) {}
         } message: {
             Text(viewModel.alertMessage ?? "")
         }
@@ -919,7 +965,16 @@ struct AIAssistantChatView: View {
                         .font(.system(size: 16, weight: .semibold))
                 }
                 .tint(AppTheme.primary)
-                .accessibilityLabel("新对话")
+                .accessibilityLabel(L("新对话"))
+
+                Button {
+                    speechSettings.autoPlayVoice.toggle()
+                } label: {
+                    Image(systemName: speechSettings.autoPlayVoice ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .tint(AppTheme.primary)
+                .accessibilityLabel(speechSettings.autoPlayVoice ? L("chat_voice_play_off") : L("chat_voice_play_on"))
 
                 Button {
                     Task { await viewModel.loadConversationHistory() }
@@ -929,7 +984,7 @@ struct AIAssistantChatView: View {
                         .font(.system(size: 16, weight: .semibold))
                 }
                 .tint(AppTheme.primary)
-                .accessibilityLabel("历史对话")
+                .accessibilityLabel(L("历史对话"))
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
@@ -1026,7 +1081,7 @@ struct VoiceCallView: View {
                         }
                         SpeechService.shared.stopSpeaking()
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            toastMessage = "已暂停语音"
+                            toastMessage = L("已暂停语音")
                         }
                     }) {
                         Image(systemName: "ellipsis")
@@ -1034,7 +1089,7 @@ struct VoiceCallView: View {
                             .foregroundStyle(controlGray)
                     }
                     Spacer()
-                    Text("语音通话")
+                    Text(L("语音通话"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(controlGray)
                         .padding(.horizontal, 14)
@@ -1046,11 +1101,11 @@ struct VoiceCallView: View {
                         viewModel.stopListening()
                         onEnd()
                     }) {
-                        Text("字")
+                        Text(L("字"))
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(controlGray)
                     }
-                    .accessibilityLabel("切换到文字")
+                    .accessibilityLabel(L("切换到文字"))
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
@@ -1121,10 +1176,10 @@ struct VoiceCallView: View {
                         let text = lastReplyText.trimmingCharacters(in: .whitespacesAndNewlines)
                         ClipboardService.copy(text.isEmpty ? "AI语音通话中" : text)
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            toastMessage = "已复制内容"
+                            toastMessage = L("已复制内容")
                         }
                     }
-                    .accessibilityLabel("分享")
+                    .accessibilityLabel(L("分享"))
 
                     Button(action: { showCamera = true }) {
                         Image(systemName: "video.fill")
@@ -1135,7 +1190,7 @@ struct VoiceCallView: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("打开摄像头")
+                    .accessibilityLabel(L("打开摄像头"))
 
                     Button(action: {
                         viewModel.stopListening()
@@ -1149,11 +1204,11 @@ struct VoiceCallView: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("结束通话")
+                    .accessibilityLabel(L("结束通话"))
                 }
                 .padding(.bottom, 24)
 
-                Text("内容由 AI 生成")
+                Text(L("内容由 AI 生成"))
                     .font(.caption)
                     .foregroundStyle(controlGray.opacity(0.8))
                     .padding(.bottom, 20)
@@ -1327,7 +1382,7 @@ struct VideoCallView: View {
                     .padding(.top, 12)
                 }
 
-                Text("视频通话")
+                Text(L("视频通话"))
                     .font(.headline)
                     .foregroundStyle(.white)
 
@@ -1458,15 +1513,15 @@ struct ConversationHistorySheet: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack(spacing: 10) {
-                Text("历史对话")
+                Text(L("历史对话"))
                     .font(.title3.weight(.bold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
-                Button("刷新") { onRefresh() }
+                Button(L("刷新")) { onRefresh() }
                     .buttonStyle(.plain)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.primary)
-                Button("关闭") { dismiss() }
+                Button(L("关闭")) { dismiss() }
                     .buttonStyle(.plain)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textSecondary)
@@ -1477,7 +1532,7 @@ struct ConversationHistorySheet: View {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(AppTheme.textSecondary)
-                TextField("搜索标题或内容", text: $keyword)
+                TextField(L("搜索标题或内容"), text: $keyword)
                     .textFieldStyle(.plain)
                     .foregroundStyle(AppTheme.textPrimary)
             }
@@ -1494,7 +1549,7 @@ struct ConversationHistorySheet: View {
             if isLoading {
                 VStack(spacing: 12) {
                     ProgressView()
-                    Text("正在加载历史对话...")
+                    Text(L("正在加载历史对话..."))
                         .font(.subheadline)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -1504,7 +1559,7 @@ struct ConversationHistorySheet: View {
                     Image(systemName: "clock")
                         .font(.title2)
                         .foregroundStyle(AppTheme.textSecondary)
-                    Text(keyword.isEmpty ? "暂无历史对话" : "没有匹配内容")
+                    Text(keyword.isEmpty ? L("暂无历史对话") : L("没有匹配内容"))
                         .font(.subheadline)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -1524,11 +1579,11 @@ struct ConversationHistorySheet: View {
                                         .background(AppTheme.primary.opacity(0.12))
                                         .clipShape(Circle())
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text(item.title.isEmpty ? "未命名对话" : item.title)
+                                        Text(item.title.isEmpty ? L("未命名对话") : item.title)
                                             .font(.subheadline.weight(.semibold))
                                             .foregroundStyle(AppTheme.textPrimary)
                                             .lineLimit(1)
-                                        Text(item.lastMessage.isEmpty ? "无内容" : item.lastMessage)
+                                        Text(item.lastMessage.isEmpty ? L("无内容") : item.lastMessage)
                                             .font(.caption)
                                             .foregroundStyle(AppTheme.textSecondary)
                                             .lineLimit(2)
@@ -1549,12 +1604,12 @@ struct ConversationHistorySheet: View {
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
-                                Button("重命名") {
+                                Button(L("重命名")) {
                                     selectedItem = item
                                     renameText = item.title
                                     showRenameDialog = true
                                 }
-                                Button("删除对话", role: .destructive) {
+                                Button(L("删除对话"), role: .destructive) {
                                     selectedItem = item
                                     showDeleteConfirm = true
                                 }
@@ -1568,12 +1623,12 @@ struct ConversationHistorySheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppTheme.pageBackground)
         .onAppear { onRefresh() }
-        .alert("重命名对话", isPresented: $showRenameDialog) {
-            TextField("对话标题", text: $renameText)
-            Button("取消", role: .cancel) {
+        .alert(L("重命名对话"), isPresented: $showRenameDialog) {
+            TextField(L("对话标题"), text: $renameText)
+            Button(L("取消"), role: .cancel) {
                 selectedItem = nil
             }
-            Button("保存") {
+            Button(L("保存")) {
                 guard let item = selectedItem else { return }
                 let title = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !title.isEmpty {
@@ -1582,19 +1637,19 @@ struct ConversationHistorySheet: View {
                 selectedItem = nil
             }
         } message: {
-            Text("输入 6-20 个字符的标题")
+            Text(L("输入 6-20 个字符的标题"))
         }
-        .alert("删除对话", isPresented: $showDeleteConfirm) {
-            Button("取消", role: .cancel) {
+        .alert(L("删除对话"), isPresented: $showDeleteConfirm) {
+            Button(L("取消"), role: .cancel) {
                 selectedItem = nil
             }
-            Button("删除", role: .destructive) {
+            Button(L("删除"), role: .destructive) {
                 guard let item = selectedItem else { return }
                 onDelete(item)
                 selectedItem = nil
             }
         } message: {
-            Text("该操作将删除此对话及其消息，无法恢复。")
+            Text(L("该操作将删除此对话及其消息，无法恢复。"))
         }
     }
     
@@ -1619,7 +1674,7 @@ struct ChatPromptRow: View {
             Spacer()
 
             HStack(spacing: 10) {
-                Text("帮我写一份年度总结")
+                Text(L("帮我写一份年度总结"))
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.textPrimary)
                     .padding(.horizontal, 14)
@@ -1639,7 +1694,7 @@ struct ChatReplyBubble: View {
             AvatarBubble()
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("xxxx年，对我来说是一个不平凡的一年。它给我考验、带来挑战，也让我幸运地获得成功。\n\n一方面，在2019年我坚持完成了自己的学习计划，取得了进步，提高了自己的能力，得到了老师的认可和肯定。我参加了一系列的考试，如期末考试、中考和高考，取得了优异的成绩，非常满意。我对自己已经可以承担起学习与责任感到很开心。")
+                Text(L("xxxx年，对我来说是一个不平凡的一年。它给我考验、带来挑战，也让我幸运地获得成功。\n\n一方面，在2019年我坚持完成了自己的学习计划，取得了进步，提高了自己的能力，得到了老师的认可和肯定。我参加了一系列的考试，如期末考试、中考和高考，取得了优异的成绩，非常满意。我对自己已经可以承担起学习与责任感到很开心。"))
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.textPrimary)
             }
@@ -1656,6 +1711,7 @@ struct ChatReplyBubble: View {
 /// 参考图：相机 | 发消息或按住说话 | 语音输入 | 发送 | 加号
 struct ChatComposerBar: View {
     @Binding var text: String
+    let hasAttachment: Bool
     let isListening: Bool
     let isSending: Bool
     var onVoice: () -> Void
@@ -1664,23 +1720,25 @@ struct ChatComposerBar: View {
     var onPlus: () -> Void = {}
     var onPasteImage: ((Data) -> Void)? = nil
     var onCameraTap: (() -> Void)? = nil
+    @EnvironmentObject private var languageStore: AppLanguageStore
 
     private var hasInputText: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var canSend: Bool {
-        hasInputText && !isSending
+        (hasInputText || hasAttachment) && !isSending
     }
 
     var body: some View {
+        let L = languageStore.localized
         HStack(alignment: .center, spacing: 10) {
             UnifiedAppIconButton(systemImage: "camera") {
                 onCameraTap?()
             }
-            .accessibilityLabel("拍照与相册")
+            .accessibilityLabel(L("chat_camera_accessibility"))
 
-            TextField("发消息或按住说话...", text: $text, axis: .vertical)
+            TextField(L("chat_input_placeholder"), text: $text, axis: .vertical)
                 .font(.subheadline)
                 .textFieldStyle(.plain)
                 .foregroundStyle(AppTheme.inputText)
@@ -1691,8 +1749,8 @@ struct ChatComposerBar: View {
                 .onSubmit { onSend() }
 
             UnifiedAppIconButton(
-                systemImage: hasInputText ? "paperplane.fill" : (isListening ? "waveform.circle.fill" : "mic.fill"),
-                isPrimary: hasInputText || isListening
+                systemImage: (hasInputText || hasAttachment) ? "paperplane.fill" : (isListening ? "waveform.circle.fill" : "mic.fill"),
+                isPrimary: hasInputText || hasAttachment || isListening
             ) {
                 if canSend {
                     onSend()
@@ -1700,18 +1758,18 @@ struct ChatComposerBar: View {
                     onVoice()
                 }
             }
-            .disabled(hasInputText && !canSend)
-            .accessibilityLabel(hasInputText ? "发送" : (isListening ? "正在听" : "语音输入"))
+            .disabled((hasInputText || hasAttachment) && !canSend)
+            .accessibilityLabel((hasInputText || hasAttachment) ? L("chat_send") : (isListening ? L("chat_listening") : L("chat_voice_input")))
 
             UnifiedAppIconButton(systemImage: "waveform") {
                 onVoiceCall()
             }
-            .accessibilityLabel("语音通话")
+            .accessibilityLabel(L("chat_voice_call"))
 
             UnifiedAppIconButton(systemImage: "plus.circle.fill") {
                 onPlus()
             }
-            .accessibilityLabel("更多功能")
+            .accessibilityLabel(L("chat_more"))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -1744,7 +1802,7 @@ struct ChatPhotoQuickRow: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("相机")
+            .accessibilityLabel(L("相机"))
 
             if isLoading {
                 ProgressView()
@@ -1763,7 +1821,7 @@ struct ChatPhotoQuickRow: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("选择照片")
+                    .accessibilityLabel(L("选择照片"))
                 }
             }
 
@@ -1771,7 +1829,7 @@ struct ChatPhotoQuickRow: View {
                 HStack(spacing: 6) {
                     Image(systemName: "photo.on.rectangle")
                         .font(.subheadline.weight(.semibold))
-                    Text("更多")
+                    Text(L("更多"))
                         .font(.subheadline.weight(.semibold))
                 }
                 .foregroundStyle(AppTheme.primary)
@@ -1785,7 +1843,7 @@ struct ChatPhotoQuickRow: View {
                 )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("更多照片")
+            .accessibilityLabel(L("更多照片"))
 
             Spacer(minLength: 0)
 
@@ -1798,7 +1856,7 @@ struct ChatPhotoQuickRow: View {
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("收起")
+            .accessibilityLabel(L("收起"))
         }
     }
 }
@@ -1826,12 +1884,12 @@ struct ChatSectionHeader: View {
 
     var body: some View {
         HStack {
-            Text(title)
+            Text(L(title))
                 .font(.headline)
             Spacer()
             if let actionTitle {
                 Button(action: action) {
-                    Text(actionTitle)
+                    Text(L(actionTitle))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -1902,7 +1960,7 @@ struct ChatShortcutHorizontalRow: View {
                 Image(systemName: icon)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(tint)
-                Text(title)
+                Text(L(title))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textPrimary)
             }
@@ -1926,7 +1984,7 @@ struct ChatShortcutPopoverContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("快捷功能")
+                Text(L("快捷功能"))
                     .font(.headline)
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
@@ -1993,10 +2051,10 @@ struct ChatShortcutPopoverContent: View {
                         .foregroundStyle(tint)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
+                    Text(L(title))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text(subtitle)
+                    Text(L(subtitle))
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -2096,10 +2154,10 @@ struct ChatQuickToggleButton: View {
                 Image(systemName: systemImage)
                     .font(.title3)
                     .foregroundStyle(AppTheme.unifiedButtonBorder)
-                Text(title)
+                Text(L(title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text(subtitle)
+                Text(L(subtitle))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -2126,10 +2184,10 @@ struct ChatQuickActionButton: View {
                 Image(systemName: systemImage)
                     .font(.title3)
                     .foregroundStyle(AppTheme.unifiedButtonBorder)
-                Text(title)
+                Text(L(title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text(subtitle)
+                Text(L(subtitle))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -2185,22 +2243,22 @@ struct ChatThreadCard: View {
                         .foregroundStyle(thread.tint)
                 }
                 Spacer()
-                Text(thread.time)
+                Text(L(thread.time))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
 
-            Text(thread.title)
+            Text(L(thread.title))
                 .font(.subheadline.weight(.semibold))
 
-            Text(thread.preview)
+            Text(L(thread.preview))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
             HStack(spacing: 6) {
                 ForEach(thread.tags, id: \.self) { tag in
-                    GlassTag(text: tag, isActive: tag == "置顶")
+                    GlassTag(text: L(tag), isActive: tag == "置顶")
                 }
             }
         }
@@ -2267,7 +2325,7 @@ struct ChatSyncStatusRow: View {
                 Text("·")
                     .font(.caption)
                     .foregroundStyle(AppTheme.textTertiary)
-                Text("稍后自动重试")
+                Text(L("稍后自动重试"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textTertiary)
             }
@@ -2387,6 +2445,31 @@ struct ChatBubble: View {
     }
 }
 
+
+private struct ChatStatusBanner: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "globe")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.primary)
+            Text(L(text))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppTheme.border, lineWidth: 1)
+        )
+    }
+}
+
 /// AI 回复前的“思考中”反馈气泡
 private struct ChatThinkingBubble: View {
     private let aiBubbleGray = Color(red: 0.965, green: 0.965, blue: 0.97)
@@ -2396,12 +2479,12 @@ private struct ChatThinkingBubble: View {
             AvatarBubble()
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    Text("思考中")
+                    Text(L("思考中"))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(AppTheme.textPrimary)
                     ThinkingDots()
                 }
-                Text("正在生成回复…")
+                Text(L("正在生成回复…"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -2437,7 +2520,7 @@ private struct ThinkingDots: View {
 struct AIAssistantCapabilityCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("能力与记忆")
+            Text(L("能力与记忆"))
                 .font(.headline)
             CapabilityRow(title: "机器学习能力", detail: "自动适配学习节奏与使用习惯")
             CapabilityRow(title: "云端长期记忆", detail: "跨设备同步对话、翻译与学习记录")
@@ -2453,9 +2536,9 @@ struct CapabilityRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title)
+            Text(L(title))
                 .font(.subheadline.weight(.semibold))
-            Text(detail)
+            Text(L(detail))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -2468,7 +2551,7 @@ struct MessageInputBar: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            TextField("输入内容或使用语音", text: $text)
+            TextField(L("输入内容或使用语音"), text: $text)
                 .textFieldStyle(.plain)
                 .foregroundStyle(AppTheme.inputText)
             GlassTinyButton(systemImage: "mic")
@@ -2512,7 +2595,7 @@ struct MemoryDetailView: View {
                     )
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("记忆摘要")
+                        Text(L("记忆摘要"))
                             .font(.headline)
                         Text(summaryText)
                             .font(.subheadline)
@@ -2521,9 +2604,9 @@ struct MemoryDetailView: View {
                     .glassCard()
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("智能建议")
+                        Text(L("智能建议"))
                             .font(.headline)
-                        Text("- 建议每天至少完成 15 分钟口语或翻译练习\n- 多复习「旅行」「职场」等高频场景的短句")
+                        Text(L("- 建议每天至少完成 15 分钟口语或翻译练习\n- 多复习「旅行」「职场」等高频场景的短句"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -2531,7 +2614,7 @@ struct MemoryDetailView: View {
                 }
                 .padding(20)
             }
-            .navigationTitle("长期记忆")
+            .navigationTitle(L("长期记忆"))
             .task(id: tokenStore.token) {
                 await statsViewModel.load()
             }
@@ -2566,7 +2649,7 @@ struct ModernSearchBar: View {
                 .foregroundStyle(AppTheme.textTertiary)
                 .font(.system(size: 16, weight: .medium))
             
-            TextField("搜索智能服务...", text: $text)
+            TextField(L("搜索智能服务..."), text: $text)
                 .font(.callout)
                 .textFieldStyle(.plain)
                 .foregroundStyle(AppTheme.inputText)
@@ -2601,7 +2684,7 @@ struct ModernQuickActionStrip: View {
         ModernCard(style: .glass) {
             HStack(spacing: ModernDesignSystem.Spacing.md) {
                 VStack(alignment: .leading, spacing: ModernDesignSystem.Spacing.xs) {
-                    Text("快速开始")
+                    Text(L("快速开始"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                     
@@ -2648,15 +2731,15 @@ struct ModernInsightCard: View {
                 
                 // 中间内容
                 VStack(alignment: .leading, spacing: ModernDesignSystem.Spacing.xs) {
-                    Text(title)
+                    Text(L(title))
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                     
-                    Text(subtitle)
+                    Text(L(subtitle))
                         .font(.callout)
                         .foregroundStyle(AppTheme.textSecondary)
                     
-                    Text(detail)
+                    Text(L(detail))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textTertiary)
                         .lineLimit(2)
@@ -2678,11 +2761,11 @@ struct ModernSectionHeader: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: ModernDesignSystem.Spacing.xs) {
-            Text(title)
+            Text(L(title))
                 .font(.title2.weight(.bold))
                 .foregroundStyle(AppTheme.textPrimary)
             
-            Text(subtitle)
+            Text(L(subtitle))
                 .font(.callout)
                 .foregroundStyle(AppTheme.textSecondary)
         }
@@ -2703,18 +2786,18 @@ struct ModernPrimaryEntryCard: View {
             VStack(spacing: ModernDesignSystem.Spacing.md) {
                 HStack {
                     VStack(alignment: .leading, spacing: ModernDesignSystem.Spacing.sm) {
-                        Text(service.title)
+                        Text(L(service.title))
                             .font(.title3.weight(.bold))
                             .foregroundStyle(AppTheme.textPrimary)
                         
-                        Text(service.subtitle)
+                        Text(L(service.subtitle))
                             .font(.callout)
                             .foregroundStyle(AppTheme.textSecondary)
                             .lineLimit(2)
                         
                         HStack(spacing: ModernDesignSystem.Spacing.xs) {
                             ForEach(service.tags, id: \.self) { tag in
-                                ModernTag(text: tag, isActive: true)
+                                ModernTag(text: L(tag), isActive: true)
                             }
                         }
                     }
@@ -2733,7 +2816,7 @@ struct ModernPrimaryEntryCard: View {
                 }
                 
                 ModernButton(
-                    service.action,
+                    L(service.action),
                     systemImage: "arrow.right",
                     style: .primary
                 ) {
@@ -2786,7 +2869,7 @@ struct ResponsiveQuickEntryCard: View {
                     .foregroundStyle(AppTheme.primary)
                 
                 ResponsiveText(
-                    service.title,
+                    L(service.title),
                     style: .caption,
                     maxLines: 2
                 )
@@ -2840,17 +2923,17 @@ struct ModernServiceCard: View {
                     
                     Spacer()
                     
-                    ModernTag(text: category, isActive: false)
+                    ModernTag(text: L(category), isActive: false)
                 }
                 
                 // 标题和描述
                 VStack(alignment: .leading, spacing: ModernDesignSystem.Spacing.xs) {
-                    Text(service.title)
+                    Text(L(service.title))
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                         .lineLimit(2)
                     
-                    Text(service.subtitle)
+                    Text(L(service.subtitle))
                         .font(.callout)
                         .foregroundStyle(AppTheme.textSecondary)
                         .lineLimit(3)
@@ -2860,7 +2943,7 @@ struct ModernServiceCard: View {
                 VStack(alignment: .leading, spacing: ModernDesignSystem.Spacing.xs) {
                     HStack(spacing: ModernDesignSystem.Spacing.xs) {
                         ForEach(service.tags.prefix(2), id: \.self) { tag in
-                            ModernTag(text: tag, isActive: false)
+                            ModernTag(text: L(tag), isActive: false)
                         }
                         if service.tags.count > 2 {
                             Text("+\(service.tags.count - 2)")
@@ -2870,7 +2953,7 @@ struct ModernServiceCard: View {
                     }
                     
                     ModernButton(
-                        service.action,
+                        L(service.action),
                         systemImage: "arrow.right",
                         style: .primary,
                         size: .small
@@ -2903,11 +2986,11 @@ struct ModernEmptyState: View {
             }
             
             VStack(spacing: ModernDesignSystem.Spacing.sm) {
-                Text(title)
+                Text(L(title))
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                 
-                Text(subtitle)
+                Text(L(subtitle))
                     .font(.callout)
                     .foregroundStyle(AppTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -2972,7 +3055,7 @@ struct CategoryFilterChip: View {
     
     var body: some View {
         Button(action: action) {
-            Text(title)
+            Text(L(title))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isSelected ? .white : AppTheme.textPrimary)
                 .padding(.horizontal, 14)
@@ -3032,7 +3115,7 @@ struct TechAIAssistantHeader: View {
                 Image(systemName: "sparkles")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(AppTheme.primary)
-                Text("AI助理")
+                Text(L("AI助理"))
                     .font(.title2.weight(.bold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer(minLength: 0)
@@ -3045,20 +3128,20 @@ struct TechAIAssistantHeader: View {
                         .foregroundStyle(AppTheme.primary)
                 }
             }
-            Text("智能AI助手集合")
+            Text(L("智能AI助手集合"))
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.textSecondary)
             HStack(spacing: 6) {
                 Circle()
                     .fill(ModernColorSystem.Neon.neonGreen)
                     .frame(width: 6, height: 6)
-                Text("系统在线")
+                Text(L("系统在线"))
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
                 Spacer(minLength: 0)
-                Text("最后更新: \(Date(), style: .time)")
-                    .font(.caption2)
-                    .foregroundStyle(AppTheme.textTertiary)
+                Text(Lf("最后更新: %@", Date().formatted(date: .omitted, time: .shortened)))
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textTertiary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -3088,14 +3171,14 @@ struct TechServiceCard: View {
                             .frame(width: 30, height: 30)
                             .background(AppTheme.primary.opacity(0.12))
                             .clipShape(RoundedRectangle(cornerRadius: 6))
-                        Text(service.title)
+                        Text(L(service.title))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(AppTheme.textPrimary)
                             .lineLimit(1)
                         Spacer(minLength: 0)
                     }
                     
-                    Text(service.subtitle)
+                    Text(L(service.subtitle))
                         .font(.system(size: 10, weight: .regular))
                         .foregroundStyle(AppTheme.textSecondary)
                         .lineLimit(2)
@@ -3103,7 +3186,7 @@ struct TechServiceCard: View {
                     
                     HStack(spacing: 3) {
                         ForEach(service.tags, id: \.self) { tag in
-                            Text(tag)
+                            Text(L(tag))
                                 .font(.system(size: 9, weight: .medium))
                                 .foregroundStyle(AppTheme.primary)
                                 .lineLimit(1)
@@ -3114,7 +3197,7 @@ struct TechServiceCard: View {
                     }
                     
                     HStack(spacing: 3) {
-                        Text(service.action)
+                        Text(L(service.action))
                             .font(.system(size: 11, weight: .semibold))
                         Image(systemName: "arrow.right")
                             .font(.system(size: 9, weight: .semibold))

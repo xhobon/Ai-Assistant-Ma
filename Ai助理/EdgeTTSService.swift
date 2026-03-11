@@ -36,18 +36,13 @@ final class EdgeTTSService: NSObject {
         player = nil
     }
 
-    func play(text: String, onFinish: (() -> Void)? = nil) async throws {
+    func synthesize(text: String, voice: String, speed: String) async throws -> URL {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw EdgeTTSError.emptyText }
-        self.onFinish = onFinish
-
-        let voice = selectVoice(for: trimmed)
-        let speed = SpeechSettingsStore.shared.speechSpeed
         let cacheURL = cachedFileURL(text: trimmed, voice: voice, speed: speed)
 
         if FileManager.default.fileExists(atPath: cacheURL.path) {
-            try await playAudio(at: cacheURL)
-            return
+            return cacheURL
         }
 
         let audioData = try await fetchSpeechData(text: trimmed, voice: voice, speed: speed)
@@ -56,18 +51,25 @@ final class EdgeTTSService: NSObject {
         } catch {
             throw EdgeTTSError.audioWriteFailed
         }
-        try await playAudio(at: cacheURL)
+        return cacheURL
     }
 
-    private func playAudio(at url: URL) async throws {
-        try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
-        try AVAudioSession.sharedInstance().setActive(true, options: [])
+    func play(url: URL, onFinish: (() -> Void)? = nil) async throws {
         let data = try Data(contentsOf: url)
+        self.onFinish = onFinish
         player = try AVAudioPlayer(data: data)
         player?.delegate = self
         player?.prepareToPlay()
-        guard player?.play() == true else {
-            throw EdgeTTSError.playbackFailed
+        guard player?.play() == true else { throw EdgeTTSError.playbackFailed }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            currentTask?.cancel()
+            currentTask = Task { [weak self] in
+                guard let self else { return }
+                while self.player?.isPlaying == true {
+                    try? await Task.sleep(nanoseconds: 120_000_000)
+                }
+                continuation.resume()
+            }
         }
     }
 
@@ -147,24 +149,8 @@ final class EdgeTTSService: NSObject {
     }
 
     private func detectLanguage(for text: String) -> String {
-        if containsChinese(text) { return "zh" }
-        if containsIndonesian(text) { return "id" }
-        return "en"
-    }
-
-    private func containsChinese(_ text: String) -> Bool {
-        return text.range(of: "\\p{Han}", options: .regularExpression) != nil
-    }
-
-    private func containsIndonesian(_ text: String) -> Bool {
-        let lower = text.lowercased()
-        let tokens = lower.split { !$0.isLetter }
-        let keywords: Set<String> = [
-            "yang","dan","tidak","apa","saya","kamu","anda","ini","itu","dengan","untuk",
-            "karena","bagaimana","terima","kasih","tolong","bisa","akan","sudah","belum","juga",
-            "mohon","sebagai","pada","dari","ke","di","adalah"
-        ]
-        return tokens.contains { keywords.contains(String($0)) }
+        guard let lang = LanguageDetector.detect(from: text) else { return "en" }
+        return lang.rawValue
     }
 }
 
