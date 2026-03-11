@@ -2127,17 +2127,6 @@ struct AuthView: View {
                     .frame(height: 1)
             }
 
-            SignInWithAppleButton(.signIn) { request in
-                request.requestedScopes = [.fullName, .email]
-            } onCompletion: { result in
-                onTapAppleSignIn(result)
-            }
-            .signInWithAppleButtonStyle(.black)
-            .frame(height: 44)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .disabled(isSubmitting || isSendingCode || isGoogleSigningIn || isAppleSigningIn)
-            .opacity((isSubmitting || isSendingCode || isGoogleSigningIn || isAppleSigningIn) ? 0.7 : 1)
-
             Button {
                 onTapGoogleSignIn()
             } label: {
