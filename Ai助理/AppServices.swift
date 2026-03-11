@@ -680,16 +680,36 @@ final class APIClient {
             }
             let dataString = dataLines.joined(separator: "\n")
             dataLines.removeAll()
-            if let data = dataString.data(using: .utf8),
-               let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                if eventName == "delta" {
-                    if let delta = payload["delta"] as? String {
-                        continuation.yield(.delta(delta))
+            let trimmed = dataString.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed == "[DONE]" {
+                continuation.yield(.done(conversationId: nil, reply: ""))
+                eventName = "message"
+                return
+            }
+            if let data = dataString.data(using: .utf8) {
+                if let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if eventName == "delta" {
+                        if let delta = payload["delta"] as? String {
+                            continuation.yield(.delta(delta))
+                        }
+                    } else if eventName == "done" {
+                        let cid = payload["conversationId"] as? String
+                        let reply = payload["reply"] as? String ?? ""
+                        continuation.yield(.done(conversationId: cid, reply: reply))
                     }
-                } else if eventName == "done" {
-                    let cid = payload["conversationId"] as? String
-                    let reply = payload["reply"] as? String ?? ""
-                    continuation.yield(.done(conversationId: cid, reply: reply))
+                } else if let payload = try? JSONSerialization.jsonObject(with: data) as? String {
+                    if eventName == "delta" {
+                        continuation.yield(.delta(payload))
+                    } else if eventName == "done" {
+                        continuation.yield(.done(conversationId: nil, reply: payload))
+                    }
+                } else {
+                    // 服务端偶发返回非 JSON 数据，直接当作文本处理，避免格式错误弹窗
+                    if eventName == "delta" {
+                        continuation.yield(.delta(dataString))
+                    } else if eventName == "done" {
+                        continuation.yield(.done(conversationId: nil, reply: dataString))
+                    }
                 }
             }
             eventName = "message"
@@ -794,9 +814,25 @@ final class APIClient {
             let message = String(data: data, encoding: .utf8) ?? "请求失败"
             throw APIClientError.serverError("HTTP \(httpResponse.statusCode): \(message)")
         }
-        
-        let res: Res = try JSONDecoder().decode(Res.self, from: data)
-        return (res.conversationId, res.reply)
+
+        // 避免服务返回非 JSON 时直接抛出“格式不正确”的系统错误
+        let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type")?.lowercased() ?? ""
+        let looksLikeJSON = data.first == UInt8(ascii: "{") || data.first == UInt8(ascii: "[")
+        if !contentType.contains("application/json") && !looksLikeJSON {
+            let preview = String(data: data.prefix(200), encoding: .utf8) ?? ""
+            throw APIClientError.serverError(preview.isEmpty ? L("服务返回数据格式异常") : preview)
+        }
+
+        do {
+            let res: Res = try JSONDecoder().decode(Res.self, from: data)
+            return (res.conversationId, res.reply)
+        } catch {
+            let preview = String(data: data.prefix(200), encoding: .utf8) ?? ""
+            if !preview.isEmpty {
+                throw APIClientError.serverError(preview)
+            }
+            throw APIClientError.serverError(L("服务返回数据格式异常"))
+        }
     }
 
     func generateNoteWithAI(prompt: String) async throws -> String {

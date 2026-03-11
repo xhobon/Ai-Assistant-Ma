@@ -181,10 +181,10 @@ struct ProfileLoginCard: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(tokenStore.isLoggedIn ? displayName : "未登录账号")
+                Text(tokenStore.isLoggedIn ? displayName : L("未登录账号"))
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                Text(tokenStore.isLoggedIn ? "当前设备已启用账号同步" : "登录后可同步收藏、翻译和学习记录")
+                Text(tokenStore.isLoggedIn ? L("当前设备已启用账号同步") : L("登录后可同步收藏、翻译和学习记录"))
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
                     .lineLimit(2)
@@ -193,7 +193,7 @@ struct ProfileLoginCard: View {
             Spacer(minLength: 10)
 
             HStack(spacing: 6) {
-                Text(tokenStore.isLoggedIn ? "个人中心" : "去登录")
+                Text(tokenStore.isLoggedIn ? L("个人中心") : L("去登录"))
                     .font(.caption.weight(.semibold))
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
